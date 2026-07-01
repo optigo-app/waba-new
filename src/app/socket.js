@@ -2,6 +2,7 @@ import { io } from 'socket.io-client';
 import { getSocketState, setSocketState, removeSocketState } from './utils/storage';
 import { getSocketURL } from './api/Config';
 import { useChatStore } from './store/chatStore';
+import { processIncomingMedia } from './utils/processIncomingMedia';
 
 // Socket state
 let socketInstance = null;
@@ -104,6 +105,23 @@ export const initializeSocket = (token) => {
             console.error('Chat store newMessage error:', e);
         }
         dispatch('waba:newMessage', data);
+
+        // Background: fetch from Meta, upload to own server, save URL
+        processIncomingMedia(data).then((result) => {
+            if (result?.serverUrl && result?.conversationId) {
+                const msgId = String(data?.Id ?? data?.id ?? data?.autoid ?? data?.MessageId ?? '');
+                if (msgId) {
+                    useChatStore.getState().updateMessage(result.conversationId, msgId, {
+                        FileUrl: result.serverUrl,
+                        fileUrl: result.serverUrl,
+                        MediaUrl: result.serverUrl,
+                        mediaUrl: result.serverUrl,
+                    });
+                }
+            }
+        }).catch((err) => {
+            console.error('Incoming media processing error:', err);
+        });
     });
 
     // session logout
@@ -119,6 +137,23 @@ export const initializeSocket = (token) => {
             console.error('Chat store sendMessage error:', e);
         }
         dispatch('waba:sendMessage', data);
+
+        // Background: fetch from Meta, upload to own server, save URL
+        processIncomingMedia(data).then((result) => {
+            if (result?.serverUrl && result?.conversationId) {
+                const msgId = String(data?.Id ?? data?.id ?? data?.autoid ?? data?.MessageId ?? '');
+                if (msgId) {
+                    useChatStore.getState().updateMessage(result.conversationId, msgId, {
+                        FileUrl: result.serverUrl,
+                        fileUrl: result.serverUrl,
+                        MediaUrl: result.serverUrl,
+                        mediaUrl: result.serverUrl,
+                    });
+                }
+            }
+        }).catch((err) => {
+            console.error('Incoming media processing error:', err);
+        });
     });
 
     // Handle message reactions

@@ -120,6 +120,23 @@ export const useChatStore = create((set, get) => ({
       };
     }),
 
+  clearConversationUnread: (conversationId) =>
+    set((s) => {
+      const cid = String(conversationId);
+      const clear = (list) =>
+        list.map((c) => {
+          const cId = String(c?.ConversationId ?? c?.Id ?? c?.CustomerId);
+          if (cId === cid) {
+            return { ...c, unreadCount: 0, UnReadMsgCount: 0 };
+          }
+          return c;
+        });
+      return {
+        conversations: clear(s.conversations),
+        allConversationsCache: clear(s.allConversationsCache),
+      };
+    }),
+
   /* socket handlers */
   handleSocketMessage: (data) => {
     const state = get();

@@ -425,6 +425,11 @@ function ChatSidebar({
     if (customer) {
       const convId = String(customer?.ConversationId ?? customer?.Id ?? customer?.CustomerId);
       useChatStore.getState().setSelectedConversationId(convId);
+      // Optimistically clear unread count locally for instant UI feedback
+      const unread = customer?.unreadCount ?? customer?.UnReadMsgCount ?? 0;
+      if (unread > 0) {
+        useChatStore.getState().clearConversationUnread(convId);
+      }
     } else {
       useChatStore.getState().setSelectedConversationId(null);
     }
@@ -673,15 +678,17 @@ function ChatSidebar({
           setTagSearchTerm('');
         }}
         disableAutoFocusItem
-        PaperProps={{
-          elevation: 0,
-          sx: {
-            minWidth: 260,
-            maxHeight: 420,
-            borderRadius: 3,
-            boxShadow: '0 12px 40px rgba(0,0,0,0.14)',
-            border: '1px solid rgba(0,0,0,0.06)',
-            overflow: 'hidden',
+        slotProps={{
+          paper: {
+            elevation: 0,
+            sx: {
+              minWidth: 260,
+              maxHeight: 420,
+              borderRadius: 3,
+              boxShadow: '0 12px 40px rgba(0,0,0,0.14)',
+              border: '1px solid rgba(0,0,0,0.06)',
+              overflow: 'hidden',
+            },
           },
         }}
       >
@@ -1006,13 +1013,15 @@ function ChatSidebar({
         open={Boolean(anchorEl)}
         onClose={handleCloseMenu}
         onClick={(e) => e.stopPropagation()}
-        PaperProps={{
-          elevation: 0,
-          sx: {
-            minWidth: 180,
-            borderRadius: 2,
-            py: 0.5,
-            boxShadow: '0px 6px 18px rgba(0,0,0,0.12), 0px 3px 6px rgba(0,0,0,0.08)',
+        slotProps={{
+          paper: {
+            elevation: 0,
+            sx: {
+              minWidth: 180,
+              borderRadius: 2,
+              py: 0.5,
+              boxShadow: '0px 6px 18px rgba(0,0,0,0.12), 0px 3px 6px rgba(0,0,0,0.08)',
+            },
           },
         }}
       >
@@ -1046,13 +1055,15 @@ function ChatSidebar({
         anchorReference="anchorPosition"
         anchorPosition={contextMenu ? { top: contextMenu.mouseY, left: contextMenu.mouseX } : undefined}
         onClick={(e) => e.stopPropagation()}
-        PaperProps={{
-          elevation: 0,
-          sx: {
-            minWidth: 180,
-            borderRadius: 2,
-            py: 0.5,
-            boxShadow: '0px 6px 18px rgba(0,0,0,0.12), 0px 3px 6px rgba(0,0,0,0.08)',
+        slotProps={{
+          paper: {
+            elevation: 0,
+            sx: {
+              minWidth: 180,
+              borderRadius: 2,
+              py: 0.5,
+              boxShadow: '0px 6px 18px rgba(0,0,0,0.12), 0px 3px 6px rgba(0,0,0,0.08)',
+            },
           },
         }}
       >

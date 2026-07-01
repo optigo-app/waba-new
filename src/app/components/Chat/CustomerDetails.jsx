@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Drawer, Box, Avatar, IconButton } from '@mui/material';
+import { Drawer, Box, Avatar, IconButton, useMediaQuery, useTheme } from '@mui/material';
 import { X, Image, FileText, Link } from 'lucide-react';
 import {
   getWhatsAppAvatarConfig,
@@ -32,6 +32,8 @@ export default function CustomerDetails({ customer, open, onClose, variant = 'dr
   const [mediaCache, setMediaCache] = useState({});
 
   const auth = useAuthStore((s) => s.auth);
+  const theme = useTheme();
+  const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'), { noSsr: true });
   const pageSize = 6;
   const enablePagination = true;
 
@@ -395,7 +397,14 @@ export default function CustomerDetails({ customer, open, onClose, variant = 'dr
       anchor="right"
       open={open}
       onClose={onClose}
-      PaperProps={{ sx: { width: { xs: '100%', sm: 400 }, bgcolor: '#f8f9fa' } }}
+      slotProps={{
+        paper: {
+          sx: {
+            width: isSmallScreen ? '100%' : 400,
+            bgcolor: '#f8f9fa',
+          },
+        },
+      }}
     >
       {content}
     </Drawer>

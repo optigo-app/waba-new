@@ -5,6 +5,8 @@ import { useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { getCustomerDisplayName, getCustomerAvatarSeed, getWhatsAppAvatarConfig } from './utils/chatUtils';
 import { fetchConversationView, sendChatText, sendChatMedia, sendReplyMessage, sendForwardMessage, fetchCustomerTags, fetchAgentLists, uploadChatMedia, deleteAssignedTags, sendMessageReaction, readMessage } from '../../api/chat/conversationApi';
+import { filesUploadApi } from '../../api/filesUploadApi';
+import { generateMediaFolderName } from '../../utils/generateMediaFolderName';
 import { fetchAndCacheMedia, preloadCacheIntoState, setCachedMediaUrl, setCachedMediaUrls } from '../../utils/mediaCacheService';
 import ChatHeader from './ChatHeader';
 import ChatMessagesArea from './ChatMessagesArea';
@@ -16,7 +18,6 @@ import { useAuthStore } from '../../store/authStore';
 import { useChatStore } from '../../store/chatStore';
 import { emitReaction, addMessageReactionHandler } from '../../socket';
 import TagsModal from './TagsModal';
-import CustomerDetails from './CustomerDetails';
 import MediaViewer from './MediaViewer';
 import RedirectionModal from './RedirectionModal';
 import toast from 'react-hot-toast';
@@ -38,7 +39,6 @@ export default function ChatConversation({
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [tagModalOpen, setTagModalOpen] = useState(false);
-  const [detailsOpen, setDetailsOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [mediaViewer, setMediaViewer] = useState({ open: false, src: '', filename: '', type: '', mediaItems: null, initialIndex: 0 });
   const [tagsList, setTagsList] = useState([]);
@@ -75,15 +75,10 @@ export default function ChatConversation({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const isTabletOrMobile = useMediaQuery('(max-width:1000px)');
-  const isDesktop = useMediaQuery('(min-width:1001px)');
 
   const handleDetailsClick = useCallback(() => {
-    if (isDesktop) {
-      onToggleDetailsPanel?.();
-    } else {
-      setDetailsOpen(true);
-    }
-  }, [isDesktop, onToggleDetailsPanel]);
+    onToggleDetailsPanel?.();
+  }, [onToggleDetailsPanel]);
 
   const checkScroll = useCallback(() => {
     const el = tagsScrollRef.current;
@@ -323,9 +318,9 @@ export default function ChatConversation({
   }, [conversationId, auth?.userId]);
 
   // Media preview helpers (must be before handleSend)
-  const ALLOWED_EXTS = ['.pdf', '.doc', '.docx', '.txt', '.ppt', '.pptx', '.xls', '.xlsx'];
+  const ALLOWED_EXTS = ['.pdf', '.doc', '.docx', '.txt', '.ppt', '.pptx', '.xls', '.xlsx'/* , '.aac', '.amr', '.mp3', '.m4a', '.ogg' */];
   const isFileAllowed = (file) => {
-    if (file.type.startsWith('image/') || file.type.startsWith('video/')) return true;
+    if (file.type.startsWith('image/') || file.type.startsWith('video/') /* || file.type.startsWith('audio/') */) return true;
     const allowedMime = [
       'application/pdf',
       'application/msword',
@@ -335,6 +330,11 @@ export default function ChatConversation({
       'application/vnd.ms-excel',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'text/plain',
+      /* 'audio/aac',
+      'audio/amr',
+      'audio/mpeg',
+      'audio/mp4',
+      'audio/ogg', */
     ];
     if (allowedMime.includes(file.type)) return true;
     const name = file.name.toLowerCase();
@@ -397,6 +397,8 @@ export default function ChatConversation({
         ? 'image'
         : file.type.startsWith('video/')
         ? 'video'
+        /* : file.type.startsWith('audio/')
+        ? 'audio' */
         : 'document';
       return { file, previewUrl, type, name: file.name, size: file.size };
     });
@@ -474,9 +476,11 @@ export default function ChatConversation({
           },
         ]);
 
-        let uploadedId = null;
+        let metaMediaId = null;
+        let serverUrl = null;
         try {
-          const uploadResp = await uploadChatMedia(
+          // 1. Upload to Meta server
+          const metaResp = await uploadChatMedia(
             preview.file,
             auth?.whatsappNumber,
             auth?.whatsappKey,
@@ -488,10 +492,28 @@ export default function ChatConversation({
               );
             }
           );
-          uploadedId = uploadResp?.id ?? uploadResp?.mediaId ?? null;
+          metaMediaId = metaResp?.id ?? metaResp?.mediaId ?? null;
 
-          if (!uploadedId) {
-            throw new Error('Upload did not return media id');
+          if (!metaMediaId) {
+            throw new Error('Meta upload did not return media id');
+          }
+
+          // 2. Upload to own server
+          const folderName = generateMediaFolderName(conversationId, 'chat_media');
+          const serverResp = await filesUploadApi({
+            attachments: [{ file: preview.file }],
+            folderName,
+            uniqueNo: conversationId,
+          });
+          serverUrl = serverResp?.files?.[0]?.url ?? null;
+
+          if (serverUrl) {
+            // Update temp message with server URL so preview loads from server
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === tempId ? { ...msg, mediaUrl: serverUrl, FileUrl: serverUrl } : msg
+              )
+            );
           }
         } catch (err) {
           console.error('Upload failed:', err);
@@ -508,7 +530,8 @@ export default function ChatConversation({
           const mediaDimensions = await getMediaDimensions(preview.file);
           const sendResp = await sendChatMedia({
             phoneNo: selectedCustomer?.CustomerPhone || selectedCustomer?.Sender || '',
-            mediaId: uploadedId,
+            mediaId: metaMediaId,
+            fileUrl: serverUrl,
             type: preview.type,
             caption: text || '',
             userId: auth.userId,
@@ -523,7 +546,7 @@ export default function ChatConversation({
             throw new Error('Failed to send media message');
           }
 
-          // Mark sent — keep local preview URL visible
+          // Mark sent
           setMessages((prev) =>
             prev.map((msg) =>
               msg.id === tempId
@@ -531,25 +554,6 @@ export default function ChatConversation({
                 : msg
             )
           );
-
-          // Retrieve final media URL in background for this uploaded ID only
-          (async () => {
-            try {
-              const mediaUrl = await fetchAndCacheMedia(uploadedId, conversationId);
-              if (mediaUrl) {
-                setMediaCache((prev) => ({ ...prev, [uploadedId]: mediaUrl }));
-                setMessages((prev) =>
-                  prev.map((msg) =>
-                    (msg.id === tempId || msg.tempId === tempId)
-                      ? { ...msg, mediaUrl }
-                      : msg
-                  )
-                );
-              }
-            } catch (e) {
-              // Silent fail — local preview already showing
-            }
-          })();
         } catch (err) {
           console.error('Media send error:', err);
           setMessages((prev) =>
@@ -1026,7 +1030,7 @@ export default function ChatConversation({
         ref={fileInputRef}
         style={{ display: 'none' }}
         onChange={handleFileUpload}
-        accept="image/*,video/*,application/pdf,.doc,.docx,.txt,.ppt,.pptx,.xls,.xlsx"
+        accept="image/*,video/*,application/pdf,.doc,.docx,.txt,.ppt,.pptx,.xls,.xlsx" /* audio/*,.aac,.amr,.mp3,.m4a,.ogg */
         multiple
       />
 
@@ -1068,14 +1072,6 @@ export default function ChatConversation({
           }
         }}
       />
-
-      {!isDesktop && (
-        <CustomerDetails
-          customer={selectedCustomer}
-          open={detailsOpen}
-          onClose={() => setDetailsOpen(false)}
-        />
-      )}
 
       <MediaViewer
         open={mediaViewer.open}

@@ -70,7 +70,8 @@ export default function SocketProvider({ children }) {
           const uid = auth?.userId || userData?.userId;
           const id = auth?.id || userData?.id;
           if (socketId && uid && id) {
-            const result = await savePlayerId(socketId, uid, id);
+            const socketKey = pathname === '/chat' ? 'ChatSocketId' : 'SocketId';
+            const result = await savePlayerId(socketId, uid, id, socketKey);
             if (result) {
               console.log('Socket ID registered successfully:', result);
             } else {

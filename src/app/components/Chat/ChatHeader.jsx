@@ -1,6 +1,6 @@
 'use client';
 
-import { Avatar, IconButton, Popover } from '@mui/material';
+import { Avatar, IconButton, Popover, useMediaQuery, useTheme } from '@mui/material';
 import {
   ArrowLeft, X, Plus, Tag as TagIcon, ChevronLeft, ChevronRight,
 } from 'lucide-react';
@@ -31,6 +31,8 @@ export default function ChatHeader({
   onToggleDetails,
   onDeleteTag,
 }) {
+  const theme = useTheme();
+  const isCompact = useMediaQuery('(max-width:1024px)');
   const can = useAuthStore((s) => s.can);
   const baseAvatarConfig = selectedCustomer?.avatarConfig
     || getWhatsAppAvatarConfig(getCustomerAvatarSeed(selectedCustomer), 38);
@@ -74,7 +76,7 @@ export default function ChatHeader({
         </div>
         {!!selectedCustomer?.CustomerId && (
           <div className="customer-tags-wrapper">
-            {isMobile ? (
+            {isCompact ? (
               <div className="mobile-tags-container">
                 <IconButton
                   size="small"

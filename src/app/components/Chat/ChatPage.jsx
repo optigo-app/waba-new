@@ -22,10 +22,11 @@ export default function ChatPage() {
   const [isConversationRead, setIsConversationRead] = useState(false);
   const [viewConversationRead, setViewConversationRead] = useState(false);
   const [selectedTag, setSelectedTag] = useState('All');
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const layoutRef = useRef(null);
 
   const toggleDetailsPanel = useCallback(() => {
-    layoutRef.current?.classList.toggle('details-open');
+    setDetailsOpen((prev) => !prev);
   }, []);
 
   const handleCustomerSelect = useCallback((customer) => {
@@ -130,16 +131,15 @@ export default function ChatPage() {
           />
         </div>
 
-        {/* Right: contact info panel (desktop only) */}
-        <div className="chat-details-section">
-          <CustomerDetails
-            customer={selectedCustomer}
-            open={true}
-            onClose={toggleDetailsPanel}
-            variant="panel"
-          />
-        </div>
       </div>
+
+      {/* Contact info drawer (desktop + mobile) */}
+      <CustomerDetails
+        customer={selectedCustomer}
+        open={detailsOpen}
+        onClose={() => setDetailsOpen(false)}
+        variant="drawer"
+      />
     </div>
   );
 }

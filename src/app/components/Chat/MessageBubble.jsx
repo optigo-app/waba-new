@@ -415,7 +415,7 @@ const MessageBubble = memo(function MessageBubble({
                 ) : (
                   <div className="message-doc">
                     <Paperclip size={18} />
-                    <span>{msg?.content || msg?.Message || msg?.fileName || 'Document'}</span>
+                    <span>{msg?.MediaName || msg?.content || msg?.Message || msg?.fileName || 'Document'}</span>
                   </div>
                 )}
                 {msg?.isUploading && msg?.percent !== undefined && (
@@ -540,19 +540,21 @@ const MessageBubble = memo(function MessageBubble({
 });
 
 /* Document icon helper */
-const getDocIcon = (name = '') => {
+const getDocIcon = (name = '', mimeType = '') => {
   const lower = name.toLowerCase();
-  if (lower.endsWith('.pdf')) return '/pdf.png';
-  if (lower.endsWith('.doc') || lower.endsWith('.docx')) return '/word.png';
-  if (lower.endsWith('.txt')) return '/txt.png';
-  if (lower.endsWith('.xls') || lower.endsWith('.xlsx')) return '/excel.png';
-  if (lower.endsWith('.ppt') || lower.endsWith('.pptx')) return '/word.png';
+  const mt = (mimeType || '').toLowerCase();
+  if (lower.endsWith('.pdf') || mt === 'application/pdf') return '/pdf.png';
+  if (lower.endsWith('.doc') || lower.endsWith('.docx') || mt.includes('wordprocessingml') || mt === 'application/msword') return '/word.png';
+  if (lower.endsWith('.txt') || mt === 'text/plain') return '/txt.png';
+  if (lower.endsWith('.xls') || lower.endsWith('.xlsx') || mt.includes('spreadsheetml') || mt === 'application/vnd.ms-excel') return '/excel.png';
+  if (lower.endsWith('.ppt') || lower.endsWith('.pptx') || mt.includes('presentationml') || mt === 'application/vnd.ms-powerpoint') return '/word.png';
   return '/pdf.png';
 };
 
 /* Document Card */
 function DocumentCard({ msg, setMediaViewer, mediaCache }) {
-  const fileName = msg?.fileName || msg?.content || msg?.Message || 'Document';
+  const fileName = msg?.MediaName || msg?.fileName || msg?.content || msg?.Message || 'Document';
+  const mimeType = msg?.MimeType || msg?.mimeType || '';
   const ext = (fileName.split('.').pop() || '').toUpperCase();
   const resolveMediaUrl = (val) => {
     const directUrl = msg?.FileUrl;
@@ -563,7 +565,7 @@ function DocumentCard({ msg, setMediaViewer, mediaCache }) {
   };
   const href = resolveMediaUrl(msg?.documentUrl || msg?.DocumentUrl || msg?.mediaUrl || msg?.MediaUrl);
 
-  const docIcon = getDocIcon(fileName);
+  const docIcon = getDocIcon(fileName, mimeType);
 
   return (
     <div
@@ -592,9 +594,32 @@ function DocumentCard({ msg, setMediaViewer, mediaCache }) {
         href={href}
         download={fileName}
         title="Download"
-        onClick={(e) => {
+        onClick={async (e) => {
           e.stopPropagation();
-          if (!href) e.preventDefault();
+          if (!href || (!href.startsWith('http') && !href.startsWith('blob:') && !href.startsWith('data:'))) {
+            e.preventDefault();
+            return;
+          }
+          // For cross-origin URLs, fetch blob then trigger download via object URL
+          if (href.startsWith('http')) {
+            e.preventDefault();
+            try {
+              const res = await fetch(href);
+              if (!res.ok) throw new Error('Failed to fetch');
+              const blob = await res.blob();
+              const url = window.URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = fileName;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              window.URL.revokeObjectURL(url);
+            } catch {
+              // Fallback: open in new tab
+              window.open(href, '_blank');
+            }
+          }
         }}
       >
         <Download size={18} />
@@ -605,7 +630,7 @@ function DocumentCard({ msg, setMediaViewer, mediaCache }) {
 
 /* Broken Media Card — shown when image/video fails to load */
 function BrokenMediaCard({ msg, setMediaViewer, mediaCache }) {
-  const fileName = msg?.fileName || msg?.content || msg?.Message || 'Media';
+  const fileName = msg?.MediaName || msg?.fileName || msg?.content || msg?.Message || 'Media';
   const ext = (fileName.split('.').pop() || '').toUpperCase() || 'IMAGE';
   const resolveMediaUrl = (val) => {
     const directUrl = msg?.FileUrl;
@@ -641,11 +666,32 @@ function BrokenMediaCard({ msg, setMediaViewer, mediaCache }) {
       <a
         className="message-broken-media-action"
         href={href}
-        download
+        download={fileName}
         title="Try download"
-        onClick={(e) => {
+        onClick={async (e) => {
           e.stopPropagation();
-          if (!href) e.preventDefault();
+          if (!href || (!href.startsWith('http') && !href.startsWith('blob:') && !href.startsWith('data:'))) {
+            e.preventDefault();
+            return;
+          }
+          if (href.startsWith('http')) {
+            e.preventDefault();
+            try {
+              const res = await fetch(href);
+              if (!res.ok) throw new Error('Failed to fetch');
+              const blob = await res.blob();
+              const url = window.URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = fileName;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              window.URL.revokeObjectURL(url);
+            } catch {
+              window.open(href, '_blank');
+            }
+          }
         }}
       >
         <Download size={18} />

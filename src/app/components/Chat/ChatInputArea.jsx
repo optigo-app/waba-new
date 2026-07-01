@@ -1,10 +1,17 @@
 'use client';
 
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect, useCallback, useState } from 'react';
 import { IconButton, CircularProgress, Tooltip } from '@mui/material';
-import { Paperclip, Smile, Send } from 'lucide-react';
+import { Paperclip, Smile, Send, Image, Video, FileText, Headphones } from 'lucide-react';
 import EmojiPicker from 'emoji-picker-react';
 import ReplyPreview from './ReplyPreview';
+
+const ATTACH_MENU_ITEMS = [
+  { icon: Image, label: 'Image', accept: 'image/*', color: '#8b5cf6', bg: '#f3f0ff' },
+  { icon: Video, label: 'Video', accept: 'video/*', color: '#06b6d4', bg: '#ecfeff' },
+  { icon: FileText, label: 'Document', accept: 'application/pdf,.doc,.docx,.txt,.ppt,.pptx,.xls,.xlsx', color: '#f59e0b', bg: '#fffbeb' },
+  // { icon: Headphones, label: 'Audio', accept: 'audio/*,.aac,.amr,.mp3,.m4a,.ogg', color: '#10b981', bg: '#ecfdf5' },
+];
 
 export default function ChatInputArea({
   replyToMessage,
@@ -23,6 +30,8 @@ export default function ChatInputArea({
   addMediaFiles,
 }) {
   const textareaRef = useRef(null);
+  const [attachMenuOpen, setAttachMenuOpen] = useState(false);
+  const attachMenuRef = useRef(null);
 
   const adjustHeight = useCallback(() => {
     const el = textareaRef.current;
@@ -35,6 +44,26 @@ export default function ChatInputArea({
     adjustHeight();
   }, [input, adjustHeight]);
 
+  // Close attachment menu on click outside
+  useEffect(() => {
+    if (!attachMenuOpen) return;
+    const handleClickOutside = (e) => {
+      if (attachMenuRef.current && !attachMenuRef.current.contains(e.target)) {
+        setAttachMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [attachMenuOpen]);
+
+  const handleMenuItemClick = (accept) => {
+    setAttachMenuOpen(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.setAttribute('accept', accept);
+      fileInputRef.current.click();
+    }
+  };
+
   return (
     <div className="chat-input-area">
         {/* Reply-to preview */}
@@ -46,16 +75,88 @@ export default function ChatInputArea({
         )}
 
         <div className="chat-input-container">
-          <Tooltip title="Attach file">
-            <IconButton
-              size="small"
-              className="chat-attach-btn"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-            >
-              {uploading ? <CircularProgress size={18} /> : <Paperclip size={18} />}
-            </IconButton>
-          </Tooltip>
+          <div style={{ position: 'relative' }} ref={attachMenuRef}>
+            <Tooltip title="Attach file">
+              <IconButton
+                size="small"
+                className="chat-attach-btn"
+                onClick={() => setAttachMenuOpen((prev) => !prev)}
+                disabled={uploading}
+              >
+                {uploading ? <CircularProgress size={18} /> : <Paperclip size={18} />}
+              </IconButton>
+            </Tooltip>
+
+            {attachMenuOpen && (
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: 'calc(100% + 10px)',
+                  left: 0,
+                  background: '#fff',
+                  borderRadius: 16,
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08)',
+                  padding: '10px 6px',
+                  minWidth: 180,
+                  zIndex: 100,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 2,
+                  animation: 'attachMenuIn 0.2s ease',
+                }}
+              >
+                <style>{`
+                  @keyframes attachMenuIn {
+                    from { opacity: 0; transform: translateY(8px) scale(0.96); }
+                    to { opacity: 1; transform: translateY(0) scale(1); }
+                  }
+                `}</style>
+                {ATTACH_MENU_ITEMS.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.label}
+                      onClick={() => handleMenuItemClick(item.accept)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 12,
+                        padding: '10px 14px',
+                        borderRadius: 12,
+                        border: 'none',
+                        background: 'transparent',
+                        cursor: 'pointer',
+                        transition: 'background 0.15s ease',
+                        fontFamily: 'var(--font-poppins), Poppins, sans-serif',
+                        fontSize: '0.88rem',
+                        color: '#1f2937',
+                        textAlign: 'left',
+                        width: '100%',
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = item.bg; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      <span
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: '50%',
+                          background: item.bg,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <Icon size={18} color={item.color} strokeWidth={2} />
+                      </span>
+                      <span style={{ fontWeight: 500 }}>{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
           <textarea
             ref={textareaRef}
             className="chat-text-input"

@@ -33,7 +33,7 @@ export default function EscalatedDropdown({
   onRefresh,
 }) {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isCompact = useMediaQuery('(max-width:1024px)');
   const { auth } = useAuth();
   const [selectOpen, setSelectOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -73,10 +73,10 @@ export default function EscalatedDropdown({
   if (!options.length) return null;
 
   return (
-    <Box sx={{ display: 'flex', gap: 0.5, minWidth: isMobile ? 0 : 140, alignItems: 'center' }}>
+    <Box sx={{ display: 'flex', gap: 0.5, minWidth: isCompact ? 0 : 140, alignItems: 'center' }}>
       <Box
-        sx={{ mb: 0.5, cursor: isMobile ? 'pointer' : 'default' }}
-        onClick={isMobile ? () => setDialogOpen(true) : undefined}
+        sx={{ mb: 0.5, cursor: isCompact ? 'pointer' : 'default' }}
+        onClick={isCompact ? () => setDialogOpen(true) : undefined}
       >
         <AvatarGroup max={3} sx={{ '& .MuiAvatar-root': { width: 28, height: 28, fontSize: 12 } }}>
           {visibleEscalated.map((user) => {
@@ -107,7 +107,7 @@ export default function EscalatedDropdown({
               </Avatar>
             </Tooltip>
           )}
-          {isMobile && escalatedUsers.length === 0 && (
+          {isCompact && escalatedUsers.length === 0 && (
             <Tooltip title="Escalate" arrow>
               <Avatar
                 onClick={(e) => {
@@ -130,7 +130,7 @@ export default function EscalatedDropdown({
       <FormControl
         fullWidth
         size="small"
-        sx={isMobile ? { position: 'absolute', opacity: 0, width: 0, height: 0, overflow: 'hidden' } : {}}
+        sx={isCompact ? { position: 'absolute', opacity: 0, width: 0, height: 0, overflow: 'hidden' } : {}}
       >
         <Select
           open={selectOpen}
@@ -144,7 +144,7 @@ export default function EscalatedDropdown({
             '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(0,0,0,0.08)' },
             '& .MuiSelect-select': { py: '5px', px: 1.5 },
           }}
-          MenuProps={{ PaperProps: { sx: { border: '1px solid rgba(0,0,0,0.08)', borderRadius: 2 } } }}
+          MenuProps={{ slotProps: { paper: { sx: { border: '1px solid rgba(0,0,0,0.08)', borderRadius: 2 } } } }}
         >
           {options.map((option) => {
             const escalated = isUserEscalated(option, conversationId);

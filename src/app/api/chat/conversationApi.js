@@ -3,6 +3,8 @@
 import { callCommonApi } from '../CommonApi';
 import { MESSAGEAPIURL, MESSAGEAPIURLBULK, MEDIARETRIEVED, getHeaders } from '../Config';
 import { getUserData } from '../../utils/storage';
+import { filesUploadApi } from '../filesUploadApi';
+import { generateMediaFolderName } from '../../utils/generateMediaFolderName';
 
 export const fetchConversationLists = async (page = 1, pageSize = 20, userId, search = '') => {
   try {
@@ -175,9 +177,11 @@ export const fetchChatMediaBlob = async (mediaId) => {
   }
 };
 
-export const sendChatMedia = async ({ phoneNo, mediaUrl, mediaId, type, caption, userId, customerId, mediaName, mediaWidth, mediaHeight, mimeType }) => {
+export const sendChatMedia = async ({ phoneNo, mediaUrl, mediaId, fileUrl, type, caption, userId, customerId, mediaName, mediaWidth, mediaHeight, mimeType }) => {
   const mediaPayload = { caption: caption || '' };
-  if (mediaId) {
+  if (fileUrl) {
+    mediaPayload.link = fileUrl;
+  } else if (mediaId) {
     mediaPayload.id = mediaId;
   } else if (mediaUrl) {
     mediaPayload.link = mediaUrl;
@@ -193,6 +197,7 @@ export const sendChatMedia = async ({ phoneNo, mediaUrl, mediaId, type, caption,
     ...(typeof mediaWidth === 'number' && { MediaWidth: mediaWidth }),
     ...(typeof mediaHeight === 'number' && { MediaHeight: mediaHeight }),
     ...(mimeType && { MimeType: mimeType }),
+    ...(fileUrl && { FileUrl: fileUrl }),
   };
 
   try {
@@ -214,6 +219,21 @@ export const sendChatMedia = async ({ phoneNo, mediaUrl, mediaId, type, caption,
     return await response.json();
   } catch (error) {
     console.error('Error sending media:', error);
+    return null;
+  }
+};
+
+export const saveMediaUrl = async ({ fileUrl, messageId, userId }) => {
+  try {
+    const response = await callCommonApi({
+      mode: 'wa_save_media_url',
+      f: 'Save Media Url',
+      p: JSON.stringify({ FileUrl: fileUrl, MessageId: messageId }),
+      userId: String(userId || ''),
+    });
+    return response;
+  } catch (error) {
+    console.error('Error saving media URL:', error);
     return null;
   }
 };
@@ -514,12 +534,12 @@ export const sendForwardMessage = async ({ userId, contacts, type = 'text', cont
   }
 };
 
-export const savePlayerId = async (socketId, userId, id) => {
+export const savePlayerId = async (socketId, userId, id, socketKey = 'SocketId') => {
   try {
     const response = await callCommonApi({
       mode: 'wa_save_device_tok',
       f: 'Agent Information (Save Device Token)',
-      p: JSON.stringify({ UserId: Number(id), SocketId: String(socketId) }),
+      p: JSON.stringify({ UserId: Number(id), [socketKey]: String(socketId) }),
       userId,
     });
     if (response?.Data) {

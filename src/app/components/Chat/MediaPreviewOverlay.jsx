@@ -135,7 +135,9 @@ export default function MediaPreviewOverlay({
                 <img src={preview.previewUrl} alt={preview.name} className="media-preview-slide-img" />
               ) : preview.type === 'video' ? (
                 <video src={preview.previewUrl} className="media-preview-slide-img" controls />
-              ) : (
+              ) /* : preview.type === 'audio' ? (
+                <audio src={preview.previewUrl} controls style={{ width: '80%', maxWidth: 500 }} />
+              ) */ : (
                 <div className="media-preview-slide-doc">
                   <img src={getDocIcon(preview.name)} alt="document" style={{ width: 100, height: 100, objectFit: 'contain' }} />
                   <span>{preview.name}</span>
@@ -173,7 +175,9 @@ export default function MediaPreviewOverlay({
                 <img src={preview.previewUrl} alt="" />
               ) : preview.type === 'video' ? (
                 <img src="/video.png" alt="video" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 4 }} />
-              ) : (
+              ) /* : preview.type === 'audio' ? (
+                <span style={{ fontSize: 10, color: '#666', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>AUDIO</span>
+              ) */ : (
                 <img src={getDocIcon(preview.name)} alt="document" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
               )}
               <button

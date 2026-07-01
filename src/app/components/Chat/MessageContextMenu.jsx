@@ -40,17 +40,19 @@ export default function MessageContextMenu({
       onClose={onClose}
       anchorReference="anchorPosition"
       anchorPosition={open ? { top: mouseY, left: mouseX } : undefined}
-      PaperProps={{
-        elevation: 0,
-        sx: {
-          width: 200,
-          borderRadius: 2.5,
-          bgcolor: 'rgba(255, 255, 255, 0.96)',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(0,0,0,0.08)',
-          boxShadow: '0 16px 40px rgba(0,0,0,0.12)',
-          overflow: 'hidden',
-          '& .MuiList-root': { py: 0.75 },
+      slotProps={{
+        paper: {
+          elevation: 0,
+          sx: {
+            width: 200,
+            borderRadius: 2.5,
+            bgcolor: 'rgba(255, 255, 255, 0.96)',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(0,0,0,0.08)',
+            boxShadow: '0 16px 40px rgba(0,0,0,0.12)',
+            overflow: 'hidden',
+            '& .MuiList-root': { py: 0.75 },
+          },
         },
       }}
       onContextMenu={(e) => {
