@@ -13,8 +13,10 @@ import { Search, Plus, MessageCircle } from 'lucide-react';
 import WalletDrawer from './WalletDrawer';
 import ChannelCardSkeleton from './ChannelCardSkeleton';
 import ChannelCard from './ChannelCard';
+import BusinessProfile from '../BusinessProfile/BusinessProfile';
 import { useAuth } from '../../hooks/useAuth';
 import { useWallet } from '../../contexts/WalletContext';
+import styles from './ChannelsDashboard.module.scss';
 
 // ── Static data (replace with API later) ──────────────────────────────────────
 const CHANNELS = [
@@ -31,6 +33,7 @@ const ChannelsDashboard = () => {
     const { auth } = useAuth();
     const { walletInfo, isLoading, loadWalletData } = useWallet();
     const [walletOpen, setWalletOpen] = useState(false);
+    const [profileOpen, setProfileOpen] = useState(false);
     const [activeChannel, setActiveChannel] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -48,6 +51,7 @@ const ChannelsDashboard = () => {
 
         return CHANNELS.map((channel) => ({
             ...channel,
+            ...walletInfo,
             balance: walletInfo.availableBalance,
             totalCredits: walletInfo.totalCredits,
             used: walletInfo.used,
@@ -75,53 +79,33 @@ const ChannelsDashboard = () => {
         setWalletOpen(true);
     };
 
+    const handleBusinessProfileOpen = (channel) => {
+        setActiveChannel(channel);
+        setProfileOpen(false);
+        requestAnimationFrame(() => {
+            setProfileOpen(true);
+        });
+    };
+
     const handleAddChannel = () => {
         router.push('/onboarding');
     };
 
     return (
-        <Box sx={{ padding: { xs: '1rem', sm: '1.5rem', md: '2rem' }, background: '#f8f9fa', minHeight: '100vh' }}>
-            {/* Header Section */}
-            <Box
-                sx={{
-                    display: 'flex',
-                    alignItems: { xs: 'flex-start', sm: 'flex-end' },
-                    justifyContent: 'space-between',
-                    flexWrap: 'wrap',
-                    gap: '1.5rem',
-                    pb: '1.5rem',
-                    borderBottom: '1px solid #e4e8ee',
-                    flexDirection: { xs: 'column', sm: 'row' },
-                }}
-            >
-                <Box>
-                    <Typography
-                        variant="h4"
-                        sx={{
-                            fontSize: { xs: '1.25rem', sm: '1.4rem', md: '1.6rem' },
-                            fontWeight: 600,
-                            color: '#444050',
-                            margin: 0,
-                            fontFamily: 'Poppins, sans-serif',
-                        }}
-                    >
-                        Channels
-                    </Typography>
-                    <Typography
-                        variant="body2"
-                        sx={{
-                            fontSize: '0.875rem',
-                            color: '#6D6B77',
-                            margin: '0.35rem 0 0',
-                            fontFamily: 'Poppins, sans-serif',
-                        }}
-                    >
-                        Manage your WhatsApp Business channels and wallets
-                    </Typography>
-                </Box>
+        <div className={styles.page}>
+            {/* Header */}
+            <div className={styles.topBar}>
+                <div className={styles.topBarLeft}>
+                    <div className={styles.headerIconWrap}>
+                        <MessageCircle size={18} />
+                    </div>
+                    <div>
+                        <h2 className={styles.pageTitle}>Channels</h2>
+                        <p className={styles.pageSubtitle}>Manage your WhatsApp Business channels and wallets</p>
+                    </div>
+                </div>
 
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: '1rem', width: { xs: '100%', sm: 'auto' }, flexDirection: { xs: 'column', sm: 'row' } }}>
-                    {/* Search */}
+                <div className={styles.topActions}>
                     <Paper
                         elevation={0}
                         sx={{
@@ -159,36 +143,38 @@ const ChannelsDashboard = () => {
                         />
                     </Paper>
 
-                    {/* Add Channel Button */}
-                    <Button
-                        variant="contained"
-                        disableElevation
-                        onClick={handleAddChannel}
-                        startIcon={<Plus size={18} />}
-                        sx={{
-                            textTransform: 'none',
-                            borderRadius: '12px',
-                            fontFamily: 'Poppins, sans-serif',
-                            fontWeight: 600,
-                            fontSize: '0.875rem',
-                            background: '#1daa61',
-                            color: '#fff',
-                            px: '1.25rem',
-                            py: '8px',
-                            boxShadow: '0 4px 12px rgba(29, 170, 97, 0.25)',
-                            '&:hover': {
-                                background: '#1a9a57',
-                                boxShadow: '0 6px 16px rgba(29, 170, 97, 0.35)',
-                            },
-                        }}
-                    >
-                        Add New Channel
-                    </Button>
-                </Box>
-            </Box>
+                    {/* Add Channel Button — hidden while multi-channel is pending */}
+                    {false && (
+                        <Button
+                            variant="contained"
+                            disableElevation
+                            onClick={handleAddChannel}
+                            startIcon={<Plus size={18} />}
+                            sx={{
+                                textTransform: 'none',
+                                borderRadius: '12px',
+                                fontFamily: 'Poppins, sans-serif',
+                                fontWeight: 600,
+                                fontSize: '0.875rem',
+                                background: '#1daa61',
+                                color: '#fff',
+                                px: '1.25rem',
+                                py: '8px',
+                                boxShadow: '0 4px 12px rgba(29, 170, 97, 0.25)',
+                                '&:hover': {
+                                    background: '#1a9a57',
+                                    boxShadow: '0 6px 16px rgba(29, 170, 97, 0.35)',
+                                },
+                            }}
+                        >
+                            Add New Channel
+                        </Button>
+                    )}
+                </div>
+            </div>
 
-            {/* Cards Grid */}
-            <Box sx={{ marginTop: '2rem' }}>
+            {/* Content */}
+            <div className={styles.contentArea}>
                 {isLoading ? (
                     <ChannelCardSkeleton count={3} />
                 ) : filteredChannels.length === 0 ? (
@@ -249,7 +235,8 @@ const ChannelsDashboard = () => {
                             </Typography>
                         </Box>
 
-                        {!searchQuery && (
+                        {/* Add New Channel — hidden while multi-channel is pending */}
+                        {false && !searchQuery && (
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, alignItems: 'center' }}>
                                 <Button
                                     variant="contained"
@@ -307,11 +294,12 @@ const ChannelsDashboard = () => {
                                 channel={channel}
                                 onWalletOpen={() => handleWalletOpen(channel)}
                                 onTemplatesClick={() => router.push('/templates')}
+                                onBusinessProfileClick={() => handleBusinessProfileOpen(channel)}
                             />
                         ))}
                     </Box>
                 )}
-            </Box>
+            </div>
 
             {/* Wallet Drawer */}
             <WalletDrawer
@@ -319,7 +307,14 @@ const ChannelsDashboard = () => {
                 onClose={() => setWalletOpen(false)}
                 channel={activeChannel}
             />
-        </Box>
+
+            {/* Business Profile Dialog */}
+            <BusinessProfile
+                open={profileOpen}
+                onClose={() => setProfileOpen(false)}
+                channel={activeChannel}
+            />
+        </div>
     );
 };
 

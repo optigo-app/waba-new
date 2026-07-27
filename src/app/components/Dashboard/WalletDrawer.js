@@ -15,7 +15,7 @@ const WalletDrawer = ({ open, onClose, channel }) => {
             anchor="right"
             open={open}
             onClose={onClose}
-            PaperProps={{ sx: { width: 480, background: 'transparent', boxShadow: 'none' } }}
+            slotProps={{ paper: { sx: { width: { xs: '100%', sm: 480 }, maxWidth: '100%', background: 'transparent', boxShadow: 'none' } } }}
         >
             <div className={styles.drawerRoot}>
                 {/* Drawer Header */}

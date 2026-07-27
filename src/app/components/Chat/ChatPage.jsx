@@ -7,7 +7,9 @@ import { MessageCircle } from 'lucide-react';
 import ChatSidebar from './ChatSidebar';
 import ChatConversation from './ChatConversation';
 import CustomerDetails from './CustomerDetails';
+import ChatPreloader from './ChatPreloader';
 import { useAuthStore } from '../../store/authStore';
+import { useChatStore } from '../../store/chatStore';
 import './styles/global-chat.css';
 import './styles/chat-page.css';
 import './styles/chat-sidebar.css';
@@ -23,7 +25,13 @@ export default function ChatPage() {
   const [viewConversationRead, setViewConversationRead] = useState(false);
   const [selectedTag, setSelectedTag] = useState('All');
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [pendingDropFiles, setPendingDropFiles] = useState(null);
+  const [preloading, setPreloading] = useState(true);
   const layoutRef = useRef(null);
+
+  const handlePreloadComplete = useCallback(() => {
+    setPreloading(false);
+  }, []);
 
   const toggleDetailsPanel = useCallback(() => {
     setDetailsOpen((prev) => !prev);
@@ -50,6 +58,14 @@ export default function ChatPage() {
     setViewConversationRead(isRead);
   }, []);
 
+  const handleFileDrop = useCallback((files) => {
+    setPendingDropFiles(files);
+  }, []);
+
+  const clearPendingDropFiles = useCallback(() => {
+    setPendingDropFiles(null);
+  }, []);
+
   // Handle browser-notification click to open a specific conversation
   useEffect(() => {
     const handler = (e) => {
@@ -62,6 +78,9 @@ export default function ChatPage() {
           String(c?.autoid) === String(conversationId)
       );
       if (found) {
+        const convId = String(found?.ConversationId ?? found?.Id ?? found?.CustomerId);
+        useChatStore.getState().setSelectedConversationId(convId);
+        useChatStore.getState().clearConversationUnread(convId);
         handleCustomerSelect(found);
       }
     };
@@ -69,10 +88,28 @@ export default function ChatPage() {
     return () => window.removeEventListener('SELECT_CONVERSATION', handler);
   }, [converList, handleCustomerSelect]);
 
+  // Prevent browser from opening files dropped outside drop targets
+  // Use capture phase so child stopPropagation() can't bypass it
+  useEffect(() => {
+    const preventDefault = (e) => {
+      e.preventDefault();
+    };
+    window.addEventListener('dragover', preventDefault, true);
+    window.addEventListener('drop', preventDefault, true);
+    return () => {
+      window.removeEventListener('dragover', preventDefault, true);
+      window.removeEventListener('drop', preventDefault, true);
+    };
+  }, []);
+
   const auth = useAuthStore((s) => s.auth);
   const isAddConversation = pathname === '/chat/add-conversation';
 
   const hasChannel = !!auth?.whatsappNumber && !!auth?.whatsappKey;
+
+  if (preloading) {
+    return <ChatPreloader onComplete={handlePreloadComplete} />;
+  }
 
   if (!hasChannel) {
     return (
@@ -113,6 +150,7 @@ export default function ChatPage() {
             isAddConversation={isAddConversation}
             selectedTag={selectedTag}
             onTagSelect={setSelectedTag}
+            onFileDrop={handleFileDrop}
           />
         </div>
 
@@ -128,6 +166,8 @@ export default function ChatPage() {
             isConversationRead={isConversationRead}
             setIsConversationRead={setIsConversationRead}
             onToggleDetailsPanel={toggleDetailsPanel}
+            pendingDropFiles={pendingDropFiles}
+            onClearPendingDropFiles={clearPendingDropFiles}
           />
         </div>
 

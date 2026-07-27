@@ -43,13 +43,13 @@ export default function SocketProvider({ children }) {
 
     const start = async () => {
       let token = auth?.token;
-      let userId = auth?.userId;
+      let userId = auth?.userId || auth?.userid || auth?.appuserid;
 
       if (!token || !userId) {
         const userData = getUserData();
         if (userData) {
           token = userData.token;
-          userId = userData.userId;
+          userId = userData.userId || userData.userid || userData.appuserid;
         }
       }
 
@@ -116,6 +116,7 @@ export default function SocketProvider({ children }) {
     const removeHandler = addSessionLogoutHandler(() => {
       disconnectSocket(true);
       storage.clear();
+      sessionStorage.removeItem('waba_preload_done');
       broadcastLogout();
       window.location.replace(`${window.location.origin}/`);
       toast.error('Your session has been logged out from another device', {
@@ -138,6 +139,7 @@ export default function SocketProvider({ children }) {
         if (event.data === 'logout') {
           disconnectSocket(true);
           storage.clear();
+          sessionStorage.removeItem('waba_preload_done');
           window.location.replace(`${window.location.origin}/`);
         }
       };
@@ -150,6 +152,7 @@ export default function SocketProvider({ children }) {
       if (e.key === 'waba-logout') {
         disconnectSocket(true);
         storage.clear();
+        sessionStorage.removeItem('waba_preload_done');
         window.location.replace(`${window.location.origin}/`);
       }
     };
@@ -182,20 +185,47 @@ export default function SocketProvider({ children }) {
   useEffect(() => {
     if (isPublicRoute) return;
 
-    // Deduplicate notifications within 2 seconds by message ID
+    // Deduplicate notifications within 2 seconds by message ID (per-tab)
     const recentNotifications = new Map();
+    // Cross-tab deduplication via BroadcastChannel
+    const claimedByOtherTab = new Map();
+    let bc = null;
+    try {
+      bc = new BroadcastChannel('waba-notify');
+      bc.onmessage = (ev) => {
+        if (ev.data?.action === 'claim' && ev.data?.msgId) {
+          claimedByOtherTab.set(ev.data.msgId, Date.now());
+        }
+      };
+    } catch (_) { /* BroadcastChannel not supported */ }
+
+    const cleanClaims = () => {
+      const now = Date.now();
+      for (const [key, ts] of claimedByOtherTab) {
+        if (now - ts > 3000) claimedByOtherTab.delete(key);
+      }
+    };
 
     const handleNotify = (data, type) => {
       console.log('[SocketProvider] handleNotify called:', { type, data });
       const msgId = data?.Id ?? data?.id ?? data?.autoid ?? data?.MessageId;
       if (msgId) {
         const key = `${type}-${msgId}`;
+        // Per-tab dedup
         const last = recentNotifications.get(key);
         if (last && Date.now() - last < 2000) {
           console.log('[SocketProvider] Duplicate notification skipped:', key);
-          return; // skip duplicate
+          return;
         }
+        // Cross-tab dedup: another tab already claimed this message
+        cleanClaims();
+        if (claimedByOtherTab.has(key)) {
+          console.log('[SocketProvider] Skipped — claimed by another tab:', key);
+          return;
+        }
+        // Claim it for other tabs
         recentNotifications.set(key, Date.now());
+        try { bc?.postMessage({ action: 'claim', msgId: key }); } catch (_) {}
       }
       notify(data, type);
     };
@@ -216,6 +246,7 @@ export default function SocketProvider({ children }) {
       removeNewMsg();
       removeAssignMsg();
       removeReaction();
+      try { bc?.close(); } catch (_) {}
     };
   }, [isPublicRoute]);
 

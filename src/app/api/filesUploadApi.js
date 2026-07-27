@@ -5,6 +5,7 @@ export const filesUploadApi = async ({ attachments, folderName, uniqueNo }) => {
   const userToken = getToken();
   const ukey = userToken?.ukey ?? '';
   const formData = new FormData();
+  console.log('ukey',userToken)
 
   attachments?.forEach((item) => {
     if (item.file) {

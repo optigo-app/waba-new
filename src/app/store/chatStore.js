@@ -47,6 +47,8 @@ export const useChatStore = create((set, get) => ({
   allConversationsCache: [],
   selectedConversationId: null,
   messagesByConversationId: {},
+  templates: [],
+  templatesLoaded: false,
 
   /* actions */
   setConversations: (conversations) =>
@@ -62,6 +64,13 @@ export const useChatStore = create((set, get) => ({
           : allConversationsCache,
     })),
   setSelectedConversationId: (selectedConversationId) => set({ selectedConversationId }),
+
+  setTemplates: (templates) =>
+    set((s) => ({
+      templates:
+        typeof templates === 'function' ? templates(s.templates) : templates,
+    })),
+  setTemplatesLoaded: (loaded) => set({ templatesLoaded: loaded }),
 
   setMessages: (conversationId, messages) =>
     set((s) => ({
@@ -153,10 +162,26 @@ export const useChatStore = create((set, get) => ({
       set((s) => {
         const existing = s.messagesByConversationId[msgConversationId] || [];
         const msgId = String(normalized.id);
+        const msgMessageId = String(normalized.MessageId);
         const exists = existing.some(
-          (m) => String(m.id ?? m.Id ?? m.autoid ?? m.MessageId) === msgId
+          (m) => {
+            const mId = String(m.id ?? m.Id ?? m.autoid ?? m.MessageId);
+            return mId === msgId || mId === msgMessageId;
+          }
         );
         if (exists) return {};
+
+        // Race-condition guard: socket may arrive before API updates tempId → wamid
+        const hasRecentOptimistic = existing.some((m) => {
+          const mId = String(m.id ?? '');
+          if (!mId.startsWith('temp-')) return false;
+          const mContent = String(m.content || m.message || m.Message || '');
+          const sContent = String(normalized.content || normalized.message || normalized.Message || '');
+          if (mContent !== sContent) return false;
+          return (m.direction ?? m.Direction ?? 0) === (normalized.direction ?? normalized.Direction ?? 0);
+        });
+        if (hasRecentOptimistic) return {};
+
         return {
           messagesByConversationId: {
             ...s.messagesByConversationId,
@@ -168,7 +193,7 @@ export const useChatStore = create((set, get) => ({
       if (typeof window !== 'undefined') {
         try {
           window.dispatchEvent(
-            new CustomEvent('waba:markConversationRead', { detail: { conversationId: msgConversationId } })
+            new CustomEvent('waba:markConversationRead', { detail: { conversationId: msgConversationId, messageId: normalized?.MessageId || normalized?.id || '' } })
           );
         } catch (_) { /* ignore */ }
       }
@@ -248,6 +273,40 @@ export const useChatStore = create((set, get) => ({
       return {
         conversations: [enriched, ...s.conversations],
         allConversationsCache: [enriched, ...s.allConversationsCache],
+      };
+    });
+  },
+
+  handleSocketStatusChange: (data) => {
+    const conversationId = String(
+      data?.ConversationId ?? data?.conversationId
+    );
+    if (!conversationId || conversationId === 'undefined') return;
+
+    const targetId = String(data?.Id ?? data?.id ?? data?.autoid ?? '');
+    const targetMessageId = String(data?.MessageId ?? '');
+    const newStatus = data?.Status ?? data?.status;
+    if (newStatus === undefined) return;
+
+    set((s) => {
+      const list = s.messagesByConversationId[conversationId] || [];
+      let changed = false;
+      const updated = list.map((m) => {
+        const mId = String(m.id ?? m.Id ?? m.autoid ?? m.MessageId);
+        if (mId === targetId || mId === targetMessageId) {
+          const currentStatus = m?.Status ?? m?.status;
+          if (currentStatus === newStatus) return m;
+          changed = true;
+          return { ...m, status: newStatus, Status: newStatus };
+        }
+        return m;
+      });
+      if (!changed) return {};
+      return {
+        messagesByConversationId: {
+          ...s.messagesByConversationId,
+          [conversationId]: updated,
+        },
       };
     });
   },

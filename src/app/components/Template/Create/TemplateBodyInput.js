@@ -1,28 +1,8 @@
 'use client';
 
 import React from 'react';
-import { TextField, Tooltip, IconButton, Box } from '@mui/material';
-import { Smile, Code, Bold, Italic, Strikethrough, Braces } from 'lucide-react';
-import Picker from '@emoji-mart/react';
-import data from '@emoji-mart/data';
-import styles from './TemplateBodyInput.module.scss';
-
-const iconButtonSx = {
-    color: 'var(--secondary-color)',
-    padding: '6px',
-    borderRadius: '8px',
-    transition: 'all 0.2s ease-in-out',
-    width: '32px',
-    height: '32px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    '&:hover': {
-        background: 'var(--primary-light-bg)',
-        color: 'var(--primary-main)',
-        borderRadius: '8px'
-    }
-};
+import { FormHelperText, FormControl } from '@mui/material';
+import LexicalEditor from './LexicalEditor';
 
 const TemplateBodyInput = ({
     value = '',
@@ -31,6 +11,7 @@ const TemplateBodyInput = ({
     minRows = 6,
     maxRows = 12,
     maxLength = 1024,
+    effectiveCharCount,
     error = false,
     helperText = '',
     showCharCounter = true,
@@ -41,120 +22,32 @@ const TemplateBodyInput = ({
     onToggleEmoji,
     onEmojiSelect,
     onAddVariablePlaceholder,
+    variableKeys = [],
     styles = {},
     parentStyles = {},
     textareaRef: forwardedRef,
 }) => {
-    const charCount = value.length;
-    const internalRef = React.useRef(null);
-    const textareaRef = forwardedRef || internalRef;
-
-    const wrapSelectedText = (prefix, suffix) => {
-        const textarea = textareaRef.current;
-        if (!textarea) return;
-
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const selectedText = value.substring(start, end);
-
-        if (selectedText) {
-            const newValue = value.substring(0, start) + prefix + selectedText + suffix + value.substring(end);
-            onChange(newValue);
-            setTimeout(() => {
-                textarea.focus();
-                textarea.setSelectionRange(start + prefix.length, end + prefix.length);
-            }, 0);
-        } else {
-            onChange(value + prefix + suffix);
-        }
-    };
-
-    const handleBold = () => {
-        wrapSelectedText('*', '*');
-    };
-
-    const handleItalic = () => {
-        wrapSelectedText('_', '_');
-    };
-
-    const handleStrikethrough = () => {
-        wrapSelectedText('~', '~');
-    };
-
-    const handleCode = () => {
-        wrapSelectedText('```', '```');
-    };
-
     return (
-        <>
-            <TextField
-                multiline
-                minRows={minRows}
-                maxRows={maxRows}
-                fullWidth
-                placeholder={placeholder}
+        <FormControl fullWidth error={error}>
+            <LexicalEditor
                 value={value}
-                onChange={(e) => onChange(e.target.value)}
-                error={error}
-                helperText={helperText}
-                inputRef={textareaRef}
-                sx={{
-                    '& .MuiInputBase-multiline': {
-                        padding: '8px 14px',
-                    },
-                }}
+                onChange={onChange}
+                placeholder={placeholder}
+                maxLength={maxLength}
+                effectiveCharCount={effectiveCharCount}
+                showCharCounter={showCharCounter}
+                showFormatting={showFormatting}
+                showEmoji={showEmoji}
+                showVariableButton={showVariableButton}
+                emojiPickerOpen={emojiPickerOpen}
+                onToggleEmoji={onToggleEmoji}
+                onEmojiSelect={onEmojiSelect}
+                onAddVariablePlaceholder={onAddVariablePlaceholder}
+                variableKeys={variableKeys}
+                textareaRef={forwardedRef}
             />
-            <Box className={`${styles.bodyFooterRow} ${parentStyles?.bodyFooterRow || ''}`}>
-                {showCharCounter && (
-                    <span className={`${styles.charCounter} ${parentStyles?.charCounter || ''}`} style={{ color: 'var(--secondary-color)', fontSize: '0.78rem' }}>
-                        Characters: {charCount}/{maxLength}
-                    </span>
-                )}
-                {showFormatting && (
-                    <Box className={styles.formattingButtons} sx={{ display: 'flex', flexDirection: 'row', gap: '8px', alignItems: 'center', flexWrap: 'nowrap' }}>
-                        {showEmoji && (
-                            <Tooltip title="Add Emoji">
-                                <IconButton size="small" sx={iconButtonSx} onClick={onToggleEmoji}>
-                                    <Smile size={16} />
-                                </IconButton>
-                            </Tooltip>
-                        )}
-                        <Tooltip title="Bold">
-                            <IconButton size="small" sx={iconButtonSx} onClick={handleBold}>
-                                <Bold size={16} />
-                            </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Italic">
-                            <IconButton size="small" sx={iconButtonSx} onClick={handleItalic}>
-                                <Italic size={16} />
-                            </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Strikethrough">
-                            <IconButton size="small" sx={iconButtonSx} onClick={handleStrikethrough}>
-                                <Strikethrough size={16} />
-                            </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Code">
-                            <IconButton size="small" sx={iconButtonSx} onClick={handleCode}>
-                                <Code size={16} />
-                            </IconButton>
-                        </Tooltip>
-                        {showVariableButton && (
-                            <Tooltip title="Add Variable Placeholder">
-                                <IconButton size="small" sx={iconButtonSx} onClick={onAddVariablePlaceholder}>
-                                    <Braces size={16} />
-                                </IconButton>
-                            </Tooltip>
-                        )}
-                    </Box>
-                )}
-                {emojiPickerOpen && (
-                    <Box className={styles.emojiPickerWrapper}>
-                        <Picker data={data} onEmojiSelect={onEmojiSelect} theme="light" />
-                    </Box>
-                )}
-            </Box>
-        </>
+            {helperText && <FormHelperText>{helperText}</FormHelperText>}
+        </FormControl>
     );
 };
 

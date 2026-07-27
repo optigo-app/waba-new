@@ -1,21 +1,19 @@
 /**
- * MUI component overrides used by both light and dark themes.
+ * MUI component overrides for the light theme.
  * Import the font string so we don't repeat it.
  */
 
 const poppinsFont = "'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif";
 
-export const getComponentOverrides = (mode) => {
-  const isDark = mode === 'dark';
-
+export const getComponentOverrides = () => {
   return {
     MuiCssBaseline: {
       styleOverrides: {
         html: { height: '100%' },
         body: {
           fontFamily: poppinsFont,
-          backgroundColor: isDark ? '#121212' : '#f5f5f5',
-          color: isDark ? '#e0e0e0' : '#444050',
+          backgroundColor: '#f5f5f5',
+          color: '#444050',
           minHeight: '100%',
           WebkitFontSmoothing: 'antialiased',
           MozOsxFontSmoothing: 'grayscale',
@@ -25,18 +23,18 @@ export const getComponentOverrides = (mode) => {
           height: '8px',
         },
         '::-webkit-scrollbar-track': {
-          background: isDark ? '#1e1e1e' : '#f5f5f5',
+          background: '#f5f5f5',
         },
         '::-webkit-scrollbar-thumb': {
-          background: isDark ? '#424242' : '#bdbdbd',
+          background: '#bdbdbd',
           borderRadius: '4px',
         },
         '::-webkit-scrollbar-thumb:hover': {
-          background: isDark ? '#616161' : '#9e9e9e',
+          background: '#9e9e9e',
         },
         '*': {
           scrollbarWidth: 'thin',
-          scrollbarColor: isDark ? '#424242 #1e1e1e' : '#bdbdbd #f5f5f5',
+          scrollbarColor: '#bdbdbd #f5f5f5',
         },
       },
     },
@@ -88,7 +86,7 @@ export const getComponentOverrides = (mode) => {
           borderRadius: 12,
         },
         outlined: {
-          borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
+          borderColor: 'rgba(0,0,0,0.08)',
         },
       },
     },
@@ -97,9 +95,7 @@ export const getComponentOverrides = (mode) => {
       styleOverrides: {
         root: {
           borderRadius: 12,
-          boxShadow: isDark
-            ? 'rgba(0, 0, 0, 0.3) 0px 6px 24px, rgba(0, 0, 0, 0.2) 0px 0px 0px 1px'
-            : 'rgba(0, 0, 0, 0.05) 0px 6px 24px, rgba(0, 0, 0, 0.03) 0px 0px 0px 1px',
+          boxShadow: 'rgba(0, 0, 0, 0.05) 0px 6px 24px, rgba(0, 0, 0, 0.03) 0px 0px 0px 1px',
         },
       },
     },
@@ -110,10 +106,10 @@ export const getComponentOverrides = (mode) => {
           fontFamily: poppinsFont,
           borderRadius: 8,
           '& fieldset': {
-            borderColor: isDark ? 'rgba(255,255,255,0.23)' : 'rgba(0,0,0,0.23)',
+            borderColor: 'rgba(0,0,0,0.23)',
           },
           '&:hover fieldset': {
-            borderColor: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)',
+            borderColor: 'rgba(0,0,0,0.4)',
           },
           '&.Mui-focused fieldset': {
             borderWidth: 1,
@@ -243,7 +239,7 @@ export const getComponentOverrides = (mode) => {
     MuiDivider: {
       styleOverrides: {
         root: {
-          borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
+          borderColor: 'rgba(0,0,0,0.08)',
         },
       },
     },
@@ -262,7 +258,7 @@ export const getComponentOverrides = (mode) => {
           fontFamily: poppinsFont,
           border: 'none',
           '& .MuiDataGrid-columnHeaders': {
-            backgroundColor: isDark ? '#1e1e1e' : '#f5f5f5',
+            backgroundColor: '#f5f5f5',
           },
         },
       },

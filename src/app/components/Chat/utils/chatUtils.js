@@ -207,6 +207,12 @@ export const parseTemplateData = (message) => {
   try {
     const raw = message.MessageBody || message.messageBody;
     const body = typeof raw === 'string' ? JSON.parse(raw) : raw;
+
+    // Skip failed/outgoing-failed template sends (e.g. status 404, success false)
+    if (body?.status === 404 || body?.success === false || body?.error) {
+      return { isTemplate: false };
+    }
+
     const template = body?.payload?.template;
     if (!template) return { isTemplate: false };
 
@@ -231,6 +237,112 @@ export const parseTemplateData = (message) => {
     console.error('Error parsing template message:', error);
     return { isTemplate: false };
   }
+};
+
+/**
+ * Extract up to N unique template names per conversation,
+ * sorted by message date within each conversation (latest first).
+ * @param {Array} conversations - Preloaded conversations with ChatMessages
+ * @param {number} perConversationLimit - Max templates per conversation (default 10)
+ * @returns {Array} - Array of unique template names across all conversations
+ */
+export const extractTopTemplates = (conversations = [], perConversationLimit = 10) => {
+  if (!Array.isArray(conversations)) return [];
+
+  const allTemplateNames = new Set();
+
+  conversations.forEach((conv) => {
+    const msgs = conv.ChatMessages || [];
+
+    // Collect template messages with dates
+    const templateMessages = [];
+    msgs.forEach((msg) => {
+      const tData = parseTemplateData(msg);
+      if (tData.isTemplate && tData.templateName) {
+        const dateStr = msg.DateTime || msg.sentAt || msg.sent_at || msg.Date || '1970-01-01';
+        templateMessages.push({
+          templateName: tData.templateName,
+          date: new Date(dateStr).getTime() || 0,
+        });
+      }
+    });
+
+    // Sort by date descending within this conversation
+    templateMessages.sort((a, b) => b.date - a.date);
+
+    // Take top N unique template names for this conversation
+    const seen = new Set();
+    for (const item of templateMessages) {
+      if (!seen.has(item.templateName)) {
+        seen.add(item.templateName);
+        allTemplateNames.add(item.templateName);
+        if (perConversationLimit > 0 && seen.size >= perConversationLimit) break;
+      }
+    }
+  });
+
+  return Array.from(allTemplateNames);
+};
+
+/**
+ * Extract media cache info from preloaded conversations in a single pass.
+ * @param {Array} conversations - Preloaded conversations with ChatMessages
+ * @param {number} maxMissing - Max missing media items to track for background fetch
+ * @returns {{ fileUrlCache: Object, missingMedia: Array }} - fileUrlCache: { mediaId: fileUrl }, missingMedia: [{ mediaId, convId }]
+ */
+export const extractMediaInfo = (conversations = [], maxMissing = 20) => {
+  if (!Array.isArray(conversations)) return { fileUrlCache: {}, missingMedia: [], imageUrls: [] };
+
+  const fileUrlCache = {};
+  const missingMedia = [];
+  const imageUrls = [];
+
+  conversations.forEach((conv) => {
+    const convId = String(conv.ConversationId ?? conv.Id ?? conv.CustomerId);
+    const msgs = conv.ChatMessages || [];
+    msgs.forEach((msg) => {
+      const fileUrl = msg?.FileUrl;
+      const mediaId = msg?.mediaUrl || msg?.MediaUrl || msg?.mediaId;
+      const msgType = msg?.MessageType || msg?.type || '';
+      const isImage = msgType?.toLowerCase() === 'image' || (fileUrl && /\.(jpg|jpeg|png|gif|webp|bmp|svg)/i.test(fileUrl));
+
+      // Cache direct FileUrl -> mediaId mapping for instant loading
+      if (fileUrl && mediaId && typeof mediaId === 'string' && !mediaId.startsWith('http')) {
+        fileUrlCache[mediaId] = fileUrl;
+      }
+      // Collect image URLs for browser preloading (skip already-cached mediaId URLs)
+      if (fileUrl && isImage && !imageUrls.includes(fileUrl)) {
+        imageUrls.push(fileUrl);
+      }
+      // Track media without FileUrl for background fetching
+      const isMediaIdValue = mediaId && typeof mediaId === 'string' && !/^(https?:|blob:|data:)/i.test(mediaId);
+      if (isMediaIdValue && !fileUrl && (maxMissing === 0 || missingMedia.length < maxMissing)) {
+        missingMedia.push({ mediaId, convId });
+      }
+    });
+  });
+
+  return { fileUrlCache, missingMedia, imageUrls };
+};
+
+/**
+ * Limit messages to N per conversation, sorted by date descending (latest first).
+ * @param {Array} conversations - Preloaded conversations with ChatMessages
+ * @param {number} perConvLimit - Max messages per conversation (default 10)
+ * @returns {Array} - Conversations with trimmed ChatMessages
+ */
+export const limitMessagesPerConversation = (conversations = [], perConvLimit = 10) => {
+  if (!Array.isArray(conversations)) return [];
+  return conversations.map((conv) => {
+    const msgs = conv.ChatMessages || [];
+    if (msgs.length <= perConvLimit) return conv;
+    const sorted = [...msgs].sort((a, b) => {
+      const tA = new Date(a?.DateTime || a?.sentAt || a?.sent_at || 0).getTime();
+      const tB = new Date(b?.DateTime || b?.sentAt || b?.sent_at || 0).getTime();
+      return tB - tA;
+    });
+    return { ...conv, ChatMessages: sorted.slice(0, perConvLimit) };
+  });
 };
 
 export const getMessageStatusIcon = (member) => {

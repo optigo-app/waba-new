@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { getToken } from '../../../utils/storage';
 import {ChevronLeft, Plus, ArrowLeft, FileText,
     Image,
@@ -18,7 +18,7 @@ import { removeFileApi } from '../../../api/filesRemoveApi';
 import { fetchCrmTemplates } from '../../../api/CrmTemplates';
 import { fetchTemplateNameApi } from '../../../api/TemplateNameApi';
 import { urlToFile, getFilenameFromUrl, isOwnServerUrl } from '../../../utils/mediaUtils';
-import { parseTemplateError, getTemplateErrorMessage, getTemplateErrorToastMessage, getTemplateErrorTitle } from '../../../utils/templateErrorUtils';
+import { parseTemplateError, getTemplateErrorMessage, getTemplateErrorTitle } from '../../../utils/templateErrorUtils';
 import { normalizeTemplateName, validateMediaFile, MEDIA_CONFIG } from './templateBuilderUtils';
 import {
     createButtonConfig,
@@ -55,7 +55,6 @@ const CreateTemplatePage = () => {
     const searchParams = useSearchParams();
     const { auth } = useAuth();
     const [step, setStep] = useState(1);
-    const bodyTextareaRef = useRef(null);
 
     const [templateDetails, setTemplateDetails] = useState({
         templateName: '',
@@ -379,6 +378,10 @@ const CreateTemplatePage = () => {
             return `Provide a sample value for variable {{${missingVar}}}.`;
         }
 
+        if (effectiveBodyLength > 1024) {
+            return `Body with variable values exceeds 1024 characters (current: ${effectiveBodyLength}). Please shorten the text or variable values.`;
+        }
+
         // Ensure all variables map to a sequential number for Meta
         const invalidVar = variableKeys.find((k) => !variableMetaMap[k]);
         if (invalidVar !== undefined) {
@@ -408,14 +411,14 @@ const CreateTemplatePage = () => {
                 const urlCount = c.buttons.filter((b) => b.type === 'URL').length;
                 const ctaCount = phoneCount + urlCount;
 
-                if (c.buttons.length !== 2) {
-                    return `Card ${i + 1} requires exactly 2 buttons (1 Quick Reply and 1 Call-to-action).`;
+                if (c.buttons.length < 1 || c.buttons.length > 2) {
+                    return `Card ${i + 1} must have 1 or 2 buttons.`;
                 }
-                if (quickReplyCount !== 1) {
-                    return `Card ${i + 1} requires exactly 1 Quick Reply button.`;
+                if (quickReplyCount > 1) {
+                    return `Card ${i + 1} can have at most 1 Quick Reply button.`;
                 }
-                if (ctaCount !== 1) {
-                    return `Card ${i + 1} requires exactly 1 Call-to-action button (Call or Website).`;
+                if (ctaCount > 1) {
+                    return `Card ${i + 1} can have at most 1 Call-to-action button (Call or Website).`;
                 }
                 if (phoneCount > 0 && urlCount > 0) {
                     return `Card ${i + 1} can have only 1 Call-to-action button (either Call or Website, not both).`;
@@ -742,13 +745,7 @@ const CreateTemplatePage = () => {
         if (saveError.includes('body is required')) setSaveError('');
     };
 
-    const handleCardEmojiSelect = (emoji) => {
-        setCarouselCards((prev) => prev.map((card, idx) => {
-            if (idx === activeCardIndex) {
-                return { ...card, body: card.body + emoji.native };
-            }
-            return card;
-        }));
+    const handleCardEmojiSelect = () => {
         setCardEmojiPickerOpen(false);
     };
 
@@ -855,7 +852,14 @@ const CreateTemplatePage = () => {
         setCarouselCards((prev) => prev.map((c, i) => i === index ? { ...c, ...data } : c));
     };
 
-    const bodyCharCount = useMemo(() => builderData.body.length, [builderData.body]);
+    const effectiveBodyLength = useMemo(() => {
+        const body = builderData.body || '';
+        return body.replace(/\{\{([^}]+)\}\}/g, (_, k) =>
+            variableValues[k]?.trim() ? variableValues[k] : `{{${k}}}`
+        ).length;
+    }, [builderData.body, variableValues]);
+
+    const bodyCharCount = effectiveBodyLength;
     const footerCharCount = useMemo(() => builderData.footer.length, [builderData.footer]);
 
     const variableKeys = useMemo(() => {
@@ -889,46 +893,23 @@ const CreateTemplatePage = () => {
         });
     }, [variableKeys]);
 
-    const insertAtCursor = (text) => {
-        const textarea = bodyTextareaRef.current;
-        const currentBody = builderData.body || '';
-        let newBody;
-        let newCursorPos;
-
-        if (textarea && typeof textarea.selectionStart === 'number') {
-            const start = textarea.selectionStart;
-            const end = textarea.selectionEnd;
-            newBody = currentBody.substring(0, start) + text + currentBody.substring(end);
-            newCursorPos = start + text.length;
-        } else {
-            newBody = currentBody + text;
-            newCursorPos = newBody.length;
-        }
-
-        setBuilderData((prev) => ({
-            ...prev,
-            body: newBody.slice(0, 1024),
-        }));
-
-        // Restore cursor position after React re-render
-        if (textarea) {
-            setTimeout(() => {
-                textarea.focus();
-                textarea.setSelectionRange(newCursorPos, newCursorPos);
-            }, 0);
-        }
-    };
-
-    const addVariablePlaceholder = () => {
-        const nextNum = variableKeys.length + 1;
-        insertAtCursor(`{{${nextNum}}}`);
-    };
-
-    // Emoji picker handlers
-    const handleEmojiSelect = (emoji) => {
-        insertAtCursor(emoji.native);
+    // Emoji picker handler – the Lexical editor inserts the emoji itself; this just closes the picker.
+    const handleEmojiSelect = () => {
         setEmojiPickerOpen(false);
     };
+
+    const handleVariableValueChange = useCallback((key, value) => {
+        setVariableValues((prev) => ({ ...prev, [key]: value }));
+    }, []);
+
+    const handleBodyChange = useCallback((value) => {
+        setBuilderData((p) => ({ ...p, body: value }));
+        setSaveError((prev) => prev === 'Template body is required.' ? '' : prev);
+    }, []);
+
+    const handleToggleEmoji = useCallback(() => {
+        setEmojiPickerOpen((prev) => !prev);
+    }, []);
 
     const previewBody = useMemo(() =>
         (builderData.body || '').replace(/\{\{([^}]+)\}\}/g, (_, k) =>
@@ -1263,7 +1244,6 @@ const CreateTemplatePage = () => {
                     title: getTemplateErrorTitle(errorData),
                     message: getTemplateErrorMessage(errorData)
                 });
-                toast.error(getTemplateErrorToastMessage(errorData));
                 return;
             }
 
@@ -1406,7 +1386,12 @@ const CreateTemplatePage = () => {
                                                             toast('Coming soon', { icon: '🚧' });
                                                             return;
                                                         }
-                                                        setBuilderData((p) => ({ ...p, templateType: key }));
+                                                        setBuilderData((p) => ({
+                                                            ...p,
+                                                            templateType: key,
+                                                            buttons: key === 'Carousel' ? [] : p.buttons,
+                                                            footer: key === 'Carousel' ? '' : p.footer,
+                                                        }));
                                                         if (key === 'Carousel' && carouselCards.length === 0) {
                                                             setCarouselCards([
                                                                 { id: Date.now(), header: { mediaType: 'image', file: null, handle: '' }, body: '', buttons: [] },
@@ -1472,15 +1457,10 @@ const CreateTemplatePage = () => {
                                     emojiPickerOpen={emojiPickerOpen}
                                     variableKeys={variableKeys}
                                     variableValues={variableValues}
-                                    onBodyChange={(value) => {
-                                        setBuilderData((p) => ({ ...p, body: value.slice(0, 1024) }));
-                                        if (saveError === 'Template body is required.') setSaveError('');
-                                    }}
-                                    onToggleEmoji={() => setEmojiPickerOpen(!emojiPickerOpen)}
+                                    onBodyChange={handleBodyChange}
+                                    onToggleEmoji={handleToggleEmoji}
                                     onEmojiSelect={handleEmojiSelect}
-                                    onAddVariablePlaceholder={addVariablePlaceholder}
-                                    onVariableValueChange={(key, value) => setVariableValues((p) => ({ ...p, [key]: value }))}
-                                    textareaRef={bodyTextareaRef}
+                                    onVariableValueChange={handleVariableValueChange}
                                 />
 
                                 {/* Carousel Cards Section */}
@@ -1627,7 +1607,7 @@ const CreateTemplatePage = () => {
                             anchor="right"
                             open={mobilePreviewOpen}
                             onClose={() => setMobilePreviewOpen(false)}
-                            PaperProps={{ sx: { width: { xs: '100%', sm: 420 }, background: '#f8fafc', p: 2 } }}
+                            slotProps={{ paper: { sx: { width: { xs: '100%', sm: 420 }, background: '#f8fafc', p: 2 } } }}
                         >
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                                 <Typography sx={{ fontFamily: 'Poppins, sans-serif', fontWeight: 600, fontSize: '1rem', color: '#444050' }}>

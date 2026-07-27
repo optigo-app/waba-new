@@ -116,7 +116,7 @@
     :global(.MuiInputLabel-root) {
         font-size: 0.82rem !important;
         font-weight: 600 !important;
-        color: $titleColor !important;
+        color: $titleColor;
 
         &.Mui-focused {
             color: $primary-main !important;

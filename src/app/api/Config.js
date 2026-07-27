@@ -1,13 +1,14 @@
 'use client';
 
-import { getToken, getUserData } from '../utils/storage';
+import { getDecodedSession } from '../utils/session';
+import { getToken } from '../utils/storage';
 
 export const getEnvFlags = () => {
     if (typeof window === "undefined") return { isLocal: false, isNxt: false, isLocalWeb: false };
     const hostname = window.location.hostname;
     return {
         isLocal: ['localhost', '5dmjw0dg-2000.inc1.devtunnels.ms'].includes(hostname),
-        isNxt: ['nxt17.optigoapps.com'].includes(hostname),
+        isNxt: hostname.startsWith('nxt') && hostname.endsWith('.optigoapps.com'),
         isLocalWeb: ["waba.web"].includes(hostname),
     };
 };
@@ -42,6 +43,7 @@ export const LOGOUTAPI = () => `${getApiBaseUrl()}/whatsapp/chat/logout`;
 export const MESSAGEAPIURL = () => `${getApiBaseUrl()}/whatsapp/chat/send`;
 export const MESSAGEAPIURLBULK = () => `${getApiBaseUrl()}/whatsapp/chat/send-bulk`;
 export const MEDIARETRIEVED = () => `${getApiBaseUrl()}/whatsapp/media/retrieved`;
+export const READAPI = () => `${getApiBaseUrl()}/whatsapp/chat/read`;
 
 export const TEMPLATE_CREATE = () => `${getApiBaseUrl()}/whatsapp/templates/manage/create`;
 export const TEMPLATE_DELETE = () => `${getApiBaseUrl()}/whatsapp/templates/manage/delete`;
@@ -57,6 +59,8 @@ export const SENDBULK = `${getApiBaseUrl()}/whatsapp/brodcast/send-bulk`;
 
 export const ONBOARDING = `${getApiBaseUrl()}/whatsapp/onboarding/exchange-token`;
 
+export const PROFILE_UPDATE = () => `${getApiBaseUrl()}/whatsapp/profile/update`;
+
 export const UPLOADFILE = () => {
     const { isLocal } = getEnvFlags();
     return isLocal ? 'https://nxt22.optigoapps.com/api/upload' : `${Image_upload_url}/upload`;
@@ -68,7 +72,7 @@ export const REMOVE_FILE_URL = () => {
 
 const getAuthData = () => {
     try {
-        return getToken() || getUserData();
+        return getToken();
     } catch (error) {
         console.error("Error parsing AuthData:", error);
         return null;
@@ -76,16 +80,17 @@ const getAuthData = () => {
 };
 
 export const getHeaders = (init = {}) => {
+    const decodedSession = getDecodedSession();
     const { version = 'v2', token = "" } = init;
     const AuthData = getAuthData();
     const bearerToken = token || AuthData?.token || '';
 
     return {
         Authorization: `Bearer ${bearerToken}`,
-        Yearcode: (AuthData?.yc ?? AuthData?.yearcode) ?? "",
-        whatsappNumber: AuthData?.whatsappNumber || "",
-        Version: (AuthData?.cuver ?? version) ?? 'v2',
-        sv: (AuthData?.sv ?? AuthData?.svid) ?? "1",
+        Yearcode: (AuthData?.yc ?? AuthData?.yearcode) ?? decodedSession?.yc ?? "",
+        whatsappNumber: AuthData?.whatsappNumber || decodedSession?.whatsappNumber || "",
+        Version: (AuthData?.cuver ?? decodedSession?.cuver) ?? version ?? 'v2',
+        sv: (AuthData?.sv ?? AuthData?.svid) ?? decodedSession?.sv ?? "1",
         sp: "16",
     };
 };

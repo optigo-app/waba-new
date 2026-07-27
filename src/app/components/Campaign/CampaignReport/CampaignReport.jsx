@@ -15,7 +15,8 @@ import {
     Pagination as MuiPagination,
     Chip,
     TextField,
-    InputAdornment
+    InputAdornment,
+    Popover
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import {
@@ -40,11 +41,13 @@ import {
     Target,
     ChevronLeft,
     Search as SearchIcon,
-    X as CloseIcon
+    X as CloseIcon,
+    SlidersHorizontal
 } from 'lucide-react';
 import { fetchQuickReport } from '../../../api/QuickReport';
 import { fetchTemplateMessages } from '../../../api/TemplateMessages';
 import { fetchCampaignDetails } from '../../../api/FetchCampaignDetails';
+import { extractAudienceFromResponse } from '../utils/audienceMapper';
 import { useAuthToken } from '../../../hooks/useAuthToken';
 import ConfirmationModal from '../../ConfirmationModal/ConfirmationModal';
 import toast from 'react-hot-toast';
@@ -57,6 +60,7 @@ const CampaignReport = () => {
     const id = params?.id;
     const router = useRouter();
     const { userToken } = useAuthToken();
+    const userId = userToken?.userId || userToken?.userid || userToken?.appuserid || '';
     const [loading, setLoading] = useState(true);
     const [quickReportData, setQuickReportData] = useState(null);
     const [activeTab, setActiveTab] = useState('overview');
@@ -70,6 +74,8 @@ const CampaignReport = () => {
         type: 'include',
         ids: new Set()
     });
+    const [retargetMenuAnchor, setRetargetMenuAnchor] = useState(null);
+    const [headerMenuAnchor, setHeaderMenuAnchor] = useState(null);
 
     const normalizeSelectionModel = (selectionModel) => {
         if (!selectionModel) return { type: 'include', ids: new Set() };
@@ -115,7 +121,7 @@ const CampaignReport = () => {
         const baseColumns = [
             {
                 field: 'TemplateName',
-                headerName: 'TEMPLATE NAME',
+                headerName: 'Template Name',
                 flex: 1,
                 minWidth: 140,
                 renderCell: (params) => (
@@ -126,7 +132,7 @@ const CampaignReport = () => {
             },
             {
                 field: 'CustomerName',
-                headerName: 'CUSTOMER NAME',
+                headerName: 'Customer Name',
                 flex: 1,
                 minWidth: 140,
                 renderCell: (params) => (
@@ -137,7 +143,7 @@ const CampaignReport = () => {
             },
             {
                 field: 'PhoneNo',
-                headerName: 'PHONE NO',
+                headerName: 'Phone No',
                 flex: 1,
                 minWidth: 120,
                 renderCell: (params) => (
@@ -150,7 +156,7 @@ const CampaignReport = () => {
 
         const statusColumn = {
             field: 'Status',
-            headerName: 'STATUS',
+            headerName: 'Status',
             width: 120,
             minWidth: 120,
             renderCell: (params) => {
@@ -307,7 +313,7 @@ const CampaignReport = () => {
     const loadReport = async () => {
         setLoading(true);
         try {
-            const quickReportResult = await fetchQuickReport(userToken?.userId, id);
+            const quickReportResult = await fetchQuickReport(userId, id);
             if (quickReportResult.success && quickReportResult.data) {
                 setQuickReportData(...quickReportResult.data?.rd);
             } else {
@@ -325,29 +331,36 @@ const CampaignReport = () => {
         try {
             toast.loading('Preparing retarget campaign...', { id: 'retarget-campaign' });
 
-            const detailsResult = await fetchCampaignDetails(userToken?.userId, id);
+            const statusLabel = statFilter || 'Overall';
+            const chatMsgStatus = getChatMsgStatusFromFilter(statFilter);
+            const templateId = quickReportData?.TemplateId || null;
+
+            // Single call with templateId and chatMsgStatus — gets rd (campaign), rd1 (template), rd3 (audience)
+            const detailsResult = await fetchCampaignDetails(userId, id, chatMsgStatus, templateId);
             if (!detailsResult.success || !detailsResult.data?.rd?.length) {
                 toast.error('Failed to load campaign details');
                 return;
             }
 
-            const templateName = detailsResult.data?.rd1?.[0]?.TemplateName || 'Template';
-            const statusLabel = statFilter || 'Overall';
+            const templateData = detailsResult.data?.rd1?.[0];
+            const templateName = templateData?.TemplateName || 'Template';
             const sourceCampaignName = quickReportData?.CampaignName || detailsResult.data.rd[0]?.CampaignName || detailsResult.data.rd[0]?.Name || `Campaign ${id}`;
-            const chatMsgStatus = getChatMsgStatusFromFilter(statFilter);
+
+            // Map audience from rd3 (retarget) or rd2 (edit) — both handled by extractAudienceFromResponse
+            const mappedAudience = extractAudienceFromResponse(detailsResult.data);
             
             const campaignData = {
                 ...detailsResult.data.rd[0],
                 Name: `retarget-${sourceCampaignName}-${statusLabel}`,
-                templateData: detailsResult.data.rd1?.[0],
-                audienceData: [], // Will be fetched in AddCampaign Audience step
+                templateData,
+                audienceData: mappedAudience,
                 isClone: true,
                 isRetarget: true,
                 RetargetSourceCampaignName: sourceCampaignName,
                 RetargetStatusLabel: statusLabel,
                 RetargetTemplateName: templateName,
-                RetargetSourceCampaignId: id, // Pass original campaign ID for API call
-                RetargetChatMsgStatus: chatMsgStatus, // Pass status for API filtering
+                RetargetSourceCampaignId: id,
+                RetargetChatMsgStatus: chatMsgStatus,
             };
 
             setCampaignDraft(campaignData);
@@ -365,7 +378,7 @@ const CampaignReport = () => {
         setTemplateMessagesLoading(true);
         try {
             const result = await fetchTemplateMessages(
-                userToken?.userId,
+                userToken?.userId || userToken?.userid || userToken?.appuserid,
                 id,
                 quickReportData?.TemplateId || 1,
                 getChatMsgStatusFromFilter(statFilter)
@@ -389,13 +402,13 @@ const CampaignReport = () => {
     };
 
     useEffect(() => {
-        if (id && userToken?.userId) {
+        if (id && userId) {
             loadReport();
         }
-    }, [id, userToken?.userId]);
+    }, [id, userId]);
 
     useEffect(() => {
-        if (activeTab === 'template' && quickReportData && userToken?.userId) {
+        if (activeTab === 'template' && quickReportData && userId) {
             loadTemplateMessages();
         }
     }, [activeTab, statFilter, quickReportData?.TemplateId]);
@@ -521,7 +534,7 @@ const CampaignReport = () => {
                 <div className={styles.mainContent}>
                     {/* Left Sidebar Skeleton */}
                     <div className={styles.leftSidebar}>
-                        <Skeleton variant="rectangular" width="100%" height={120} sx={{ borderRadius: '12px', bgcolor: 'rgba(0, 0, 0, 0.03)' }} />
+                        <Skeleton variant="rectangular" width="100%" height={80} sx={{ borderRadius: '14px', bgcolor: 'rgba(0, 0, 0, 0.03)' }} />
                     </div>
 
                     {/* Right Content Skeleton */}
@@ -550,13 +563,12 @@ const CampaignReport = () => {
                                     {Array.from({ length: 7 }).map((_, i) => (
                                         <Grid size={{ xs: 12, sm: 6, md: 3 }} key={i}>
                                             <Box sx={{
-                                                padding: '1.25rem 1.5rem',
-                                                borderRadius: '16px',
+                                                padding: '1rem 1.1rem',
+                                                borderRadius: '12px',
                                                 display: 'flex',
                                                 justifyContent: 'space-between',
                                                 alignItems: 'center',
-                                                border: '1px solid #e4e8ee',
-                                                backgroundColor: '#fff',
+                                                backgroundColor: '#fafbfc',
                                                 position: 'relative',
                                                 overflow: 'hidden'
                                             }}>
@@ -629,7 +641,7 @@ const CampaignReport = () => {
                         <p className={styles.pageSubtitle}>
                             {activeTab === 'template' ? (
                                 <span className={styles.metaInfo}>
-                                    Channel (Optigo Apps) <span className={styles.separator}>||</span> Campaign Name ({quickReportData?.CampaignName || '-'})
+                                    Channel (Optigo Apps) <span className={styles.separator}>/</span> Campaign Name ({quickReportData?.CampaignName || '-'})
                                 </span>
                             ) : (
                                 quickReportData?.CampaignName || 'Report'
@@ -639,24 +651,65 @@ const CampaignReport = () => {
                 </div>
 
                 <div className={styles.headerActions}>
-                    <Button
-                        variant="outlined"
-                        className='varientOutlinedBtn'
-                        startIcon={<RefreshCw size={18} />}
-                        onClick={loadReport}
-                    >
-                        Refresh Report
-                    </Button>
-                    {activeTab !== 'template' && (
+                    {/* Desktop: inline buttons */}
+                    <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: '10px' }}>
                         <Button
                             variant="outlined"
-                            className='secondaryBtnClassname'
-                            startIcon={<Download size={18} />}
-                            onClick={handleExport}
+                            className='varientOutlinedBtn'
+                            startIcon={<RefreshCw size={18} />}
+                            onClick={loadReport}
                         >
-                            Export
+                            Refresh Report
                         </Button>
-                    )}
+                        {activeTab !== 'template' && (
+                            <Button
+                                variant="outlined"
+                                className='secondaryBtnClassname'
+                                startIcon={<Download size={18} />}
+                                onClick={handleExport}
+                            >
+                                Export
+                            </Button>
+                        )}
+                    </Box>
+
+                    {/* Mobile: direct icon buttons */}
+                    <Box sx={{ display: { xs: 'flex', sm: 'none' }, alignItems: 'center', gap: '8px' }}>
+                        <Tooltip title="Refresh Report" arrow>
+                            <MuiIconButton
+                                onClick={loadReport}
+                                sx={{
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: '10px',
+                                    background: '#fff',
+                                    color: '#64748b',
+                                    p: 1,
+                                    flexShrink: 0,
+                                    '&:hover': { borderColor: '#1daa61', color: '#1daa61' },
+                                }}
+                            >
+                                <RefreshCw size={18} />
+                            </MuiIconButton>
+                        </Tooltip>
+                        {activeTab !== 'template' && (
+                            <Tooltip title="Export" arrow>
+                                <MuiIconButton
+                                    onClick={handleExport}
+                                    sx={{
+                                        border: '1px solid #e2e8f0',
+                                        borderRadius: '10px',
+                                        background: '#fff',
+                                        color: '#64748b',
+                                        p: 1,
+                                        flexShrink: 0,
+                                        '&:hover': { borderColor: '#1daa61', color: '#1daa61' },
+                                    }}
+                                >
+                                    <Download size={18} />
+                                </MuiIconButton>
+                            </Tooltip>
+                        )}
+                    </Box>
                 </div>
             </div>
 
@@ -790,16 +843,22 @@ const CampaignReport = () => {
                                             </Box>
                                             <Typography className={styles.retargetTitle}>Audience Retargeting</Typography>
                                             <Box component="span" className={styles.recordBadge}>
-                                                {filteredTemplateMessages.length} records
+                                                {filteredTemplateMessages.length} record{filteredTemplateMessages.length !== 1 ? 's' : ''}
                                             </Box>
                                         </Box>
                                         <Box className={styles.retargetActions}>
+                                            {/* Search: always visible */}
                                             <TextField
                                                 size="small"
                                                 placeholder="Search by name, phone, status..."
                                                 value={templateSearchText}
                                                 onChange={(e) => setTemplateSearchText(e.target.value)}
                                                 className={styles.searchField}
+                                                sx={{
+                                                    '& .MuiInputBase-input': {
+                                                        fontSize: '0.9rem',
+                                                    },
+                                                }}
                                                 InputProps={{
                                                     startAdornment: (
                                                         <InputAdornment position="start">
@@ -813,27 +872,89 @@ const CampaignReport = () => {
                                                     ),
                                                 }}
                                             />
-                                            <Button
-                                                variant="contained"
-                                                className='buttonClassname'
-                                                startIcon={<Target size={16} />}
-                                                onClick={handleRetarget}
+
+                                            {/* Desktop: inline buttons */}
+                                            <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+                                                <Button
+                                                    variant="contained"
+                                                    className='buttonClassname'
+                                                    startIcon={<Target size={16} />}
+                                                    onClick={handleRetarget}
+                                                >
+                                                    Retarget
+                                                </Button>
+                                                <Button
+                                                    variant="contained"
+                                                    className='secondaryBtnClassname'
+                                                    startIcon={<Download size={16} />}
+                                                    onClick={handleExport}
+                                                >
+                                                    Export
+                                                </Button>
+                                            </Box>
+
+                                            {/* Mobile: filter icon button */}
+                                            <MuiIconButton
+                                                onClick={(e) => setRetargetMenuAnchor(e.currentTarget)}
+                                                sx={{
+                                                    display: { xs: 'flex', sm: 'none' },
+                                                    border: '1px solid #e2e8f0',
+                                                    borderRadius: '10px',
+                                                    background: '#fff',
+                                                    color: '#64748b',
+                                                    p: 1,
+                                                    flexShrink: 0,
+                                                }}
                                             >
-                                                Retarget
-                                            </Button>
-                                            <Button
-                                                variant="contained"
-                                                className='secondaryBtnClassname'
-                                                startIcon={<Download size={16} />}
-                                                onClick={handleExport}
+                                                <SlidersHorizontal size={18} />
+                                            </MuiIconButton>
+
+                                            {/* Mobile: popover with buttons only */}
+                                            <Popover
+                                                open={Boolean(retargetMenuAnchor)}
+                                                anchorEl={retargetMenuAnchor}
+                                                onClose={() => setRetargetMenuAnchor(null)}
+                                                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                                                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                                                slotProps={{
+                                                    paper: {
+                                                        sx: {
+                                                            p: 1.5,
+                                                            width: 200,
+                                                            borderRadius: '12px',
+                                                            boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                                                            mt: 0.5,
+                                                            display: { xs: 'block', sm: 'none' },
+                                                        },
+                                                    },
+                                                }}
                                             >
-                                                Export
-                                            </Button>
+                                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+                                                    <Button
+                                                        variant="contained"
+                                                        className='buttonClassname'
+                                                        startIcon={<Target size={16} />}
+                                                        onClick={() => { handleRetarget(); setRetargetMenuAnchor(null); }}
+                                                        fullWidth
+                                                    >
+                                                        Retarget
+                                                    </Button>
+                                                    <Button
+                                                        variant="contained"
+                                                        className='secondaryBtnClassname'
+                                                        startIcon={<Download size={16} />}
+                                                        onClick={() => { handleExport(); setRetargetMenuAnchor(null); }}
+                                                        fullWidth
+                                                    >
+                                                        Export
+                                                    </Button>
+                                                </Box>
+                                            </Popover>
                                         </Box>
                                     </Box>
                                 </Box>
 
-                                <Paper className={styles.gridPaper} sx={{ borderRadius: '12px', boxShadow: 'none', border: '1px solid #e4e8ee', overflow: 'hidden', backgroundColor: '#fff' }}>
+                                <Paper className={styles.gridPaper} sx={{ borderRadius: '12px', overflow: 'hidden', backgroundColor: '#fff' }}>
                                     <DataGrid
                                         rows={filteredTemplateMessages}
                                         columns={getTemplateMessageColumns(statFilter)}
@@ -846,7 +967,7 @@ const CampaignReport = () => {
                                         onRowSelectionModelChange={(newSelection) =>
                                             setSelectedTemplateRowSelectionModel(normalizeSelectionModel(newSelection))
                                         }
-                                        rowHeight={60}
+                                        rowHeight={48}
                                         initialState={{
                                             pagination: {
                                                 paginationModel: { pageSize: 10, page: 0 },
@@ -856,27 +977,27 @@ const CampaignReport = () => {
                                         loading={templateMessagesLoading}
                                         sx={{
                                             border: 'none',
-                                            height: { xs: 360, sm: 420, md: 520 },
+                                            height: { xs: 320, sm: 360, md: 420 },
                                             '& .MuiDataGrid-virtualScroller': {
                                                 overflowX: 'auto',
                                             },
                                             '& .MuiDataGrid-columnHeaders': {
-                                                backgroundColor: '#f8fafc',
-                                                color: 'var(--secondary-color)',
+                                                backgroundColor: '#f4f5f7',
+                                                color: 'var(--titleColor)',
                                                 fontWeight: 600,
-                                                fontSize: '0.8rem',
-                                                textTransform: 'uppercase',
-                                                letterSpacing: '0.5px',
+                                                fontSize: '0.75rem',
+                                                letterSpacing: '0.3px',
                                             },
                                             '& .MuiDataGrid-columnHeaderTitle': {
                                                 fontWeight: 600,
+                                                textTransform: 'capitalize !important',
                                             },
                                             '& .MuiDataGrid-row': {
                                                 '&:nth-of-type(odd)': {
                                                     backgroundColor: '#ffffff',
                                                 },
                                                 '&:nth-of-type(even)': {
-                                                    backgroundColor: '#f8fafc',
+                                                    backgroundColor: '#fafbfc',
                                                 },
                                             },
                                             '& .MuiDataGrid-cell': {
@@ -888,7 +1009,7 @@ const CampaignReport = () => {
                                                 textOverflow: 'ellipsis',
                                             },
                                             '& .MuiDataGrid-footerContainer': {
-                                                borderTop: '1px solid var(--sidebar-borderColor)',
+                                                borderTop: '1px solid #f0f0f2',
                                             },
                                             '& .MuiDataGrid-cell:focus, & .MuiDataGrid-cell:focus-within': { outline: 'none' },
                                             '& .MuiDataGrid-columnHeader:focus, & .MuiDataGrid-columnHeader:focus-within': { outline: 'none' },

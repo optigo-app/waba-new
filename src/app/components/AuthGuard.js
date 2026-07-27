@@ -13,6 +13,25 @@ export default function AuthGuard({ children }) {
   const hasRunRef = useRef(false);
   const [checking, setChecking] = useState(true);
   const storeAuth = useAuthStore((s) => s.auth);
+  const hadAuthRef = useRef(false);
+
+  // Track when auth goes from present → absent (logout / session expiry)
+  useEffect(() => {
+    if (storeAuth?.token) {
+      hadAuthRef.current = true;
+      return;
+    }
+    if (!hadAuthRef.current) return; // never had auth — initial mount handled below
+
+    const isPublic =
+      pathname === '/login' || pathname === '/session-check' || pathname === '/test';
+    if (isPublic) return;
+
+    // Auth was lost mid-session — cover with overlay before redirect happens
+    setChecking(true);
+    disconnectSocket(true);
+    window.location.replace(`${window.location.origin}/`);
+  }, [storeAuth, pathname]);
 
   useEffect(() => {
     if (hasRunRef.current) return;
@@ -56,6 +75,11 @@ export default function AuthGuard({ children }) {
     maxTimeout = setTimeout(() => {
       clearInterval(pollInterval);
       if (!checkAuth()) {
+        const isAtRoot = pathname === '/' || pathname === '';
+        if (isAtRoot) {
+          setChecking(false);
+          return;
+        }
         if (hasExistingSocket) {
           router.replace('/session-check');
         } else if (userData?.id) {
@@ -81,7 +105,10 @@ export default function AuthGuard({ children }) {
     }
   }, [storeAuth, checking]);
 
-  if (checking) {
+  // Let the chat page handle its own preload splash; skip generic overlay on /chat
+  const isChatRoute = pathname?.startsWith('/chat');
+
+  if (checking && !isChatRoute) {
     return (
       <Box
         sx={{

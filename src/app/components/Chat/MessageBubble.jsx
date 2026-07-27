@@ -7,6 +7,7 @@ import DynamicTemplate from './DynamicTemplate';
 import QuickReactionMenu from './QuickReactionMenu';
 import { Emoji } from 'emoji-picker-react';
 import { parseTemplateData, renderLinks } from './utils/chatUtils';
+import { extractTimeFromISO } from './utils/dateUtils';
 
 const charToUnified = (char) => {
   if (!char) return null;
@@ -73,6 +74,12 @@ const MessageBubble = memo(function MessageBubble({
   const imageSrc = resolveMediaUrl(rawImageSrc);
   const cachedDims = rawImageSrc ? imageDimsCache.get(rawImageSrc) : null;
 
+  // If the message already has a direct FileUrl, skip skeleton (image was preloaded)
+  // But still wait for onLoad before showing opacity=1 to avoid blink
+  const hasDirectFileUrl = msg?.FileUrl && typeof msg.FileUrl === 'string' && msg.FileUrl.startsWith('http');
+  const isMediaLoaded = loadedMedia[messageId];
+  const showSkeleton = !isMediaLoaded && !hasDirectFileUrl;
+
   const [hovered, setHovered] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [imageDims, setImageDims] = useState(cachedDims);
@@ -83,6 +90,30 @@ const MessageBubble = memo(function MessageBubble({
   const videoRef = useRef(null);
   const audioRef = useRef(null);
   const messageRef = useRef(null);
+  const bubbleRef = useRef(null);
+  const imgRef = useRef(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      bubbleRef.current?.classList.add('animated');
+    }, 400);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Detect browser-cached images that completed before onLoad handler was attached.
+  // This prevents the skeleton overlay from being stuck when switching conversations.
+  useEffect(() => {
+    if (imgRef.current && imgRef.current.complete && imgRef.current.naturalWidth > 0 && !isMediaLoaded) {
+      setLoadedMedia((prev) => ({ ...prev, [messageId]: true }));
+    }
+  }, [imageSrc, isMediaLoaded, messageId, setLoadedMedia]);
+
+  // Same check for cached videos
+  useEffect(() => {
+    if (videoRef.current && videoRef.current.readyState >= 2 && !isMediaLoaded) {
+      setLoadedMedia((prev) => ({ ...prev, [messageId]: true }));
+    }
+  }, [isMediaLoaded, messageId, setLoadedMedia]);
 
   const isAudio = msgType?.toLowerCase() === 'audio' || msg?.audioUrl || (msg?.mediaUrl && msg?.mediaUrl.match(/\.(mp3|ogg|wav|m4a|aac|opus|webm)$/i)) || (msg?.MediaUrl && msg?.MediaUrl.match(/\.(mp3|ogg|wav|m4a|aac|opus|webm)$/i));
   const hasMedia = msgType?.toLowerCase() === 'image' || msgType?.toLowerCase() === 'video' || msgType?.toLowerCase() === 'document' || isAudio || msg?.mediaUrl || msg?.imageUrl || msg?.documentUrl || msg?.MediaUrl;
@@ -141,6 +172,14 @@ const MessageBubble = memo(function MessageBubble({
   const isPickerOpen = reactionPickerMessageId === messageId;
   const isBlinking = blinkMessageId === messageId;
 
+  const mentionLabel = (() => {
+    const text = msg?.content || msg?.message || msg?.text || msg?.Message || '';
+    const lower = text.toLowerCase();
+    if (lower.includes('@admin')) return '@admin';
+    if (lower.includes('@all')) return '@all';
+    return null;
+  })();
+
   const handleMouseEnter = () => {
     setHovered(true);
   };
@@ -184,10 +223,17 @@ const MessageBubble = memo(function MessageBubble({
           </div>
         )}
 
-        <div
-          className={`message-bubble ${isOutgoing ? 'user' : 'customer'} ${msg?.isUploading ? 'uploading' : ''}`}
-          onContextMenu={(e) => onContextMenuOpen(e, msg)}
-        >
+        <div className="message-bubble-wrap">
+          {mentionLabel && (
+            <div className="message-mention-label">
+              <span>{mentionLabel}</span>
+            </div>
+          )}
+          <div
+            ref={bubbleRef}
+            className={`message-bubble ${isOutgoing ? 'user' : 'customer'} ${msg?.isUploading ? 'uploading' : ''}`}
+            onContextMenu={(e) => onContextMenuOpen(e, msg)}
+          >
           {/* WhatsApp-like top-right menu icon */}
           {msgType !== 'template' && (
             <button
@@ -290,7 +336,7 @@ const MessageBubble = memo(function MessageBubble({
                         })
                       }
                     >
-                      {!loadedMedia[messageId] && (
+                      {showSkeleton && (
                         <Skeleton
                           variant="rectangular"
                           width="100%"
@@ -299,9 +345,10 @@ const MessageBubble = memo(function MessageBubble({
                         />
                       )}
                       <img
+                        ref={imgRef}
                         src={imageSrc}
                         alt="media"
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8, opacity: loadedMedia[messageId] ? 1 : 0, transition: 'opacity 0.3s ease', position: 'relative', zIndex: 2 }}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8, opacity: (isMediaLoaded || hasDirectFileUrl) ? 1 : 0, transition: 'opacity 0.3s ease', position: 'relative', zIndex: 2 }}
                         onLoad={(e) => {
                           const w = e?.target?.naturalWidth || 0;
                           const h = e?.target?.naturalHeight || 0;
@@ -313,9 +360,11 @@ const MessageBubble = memo(function MessageBubble({
                           setLoadedMedia((prev) => ({ ...prev, [messageId]: true }));
                         }}
                         onError={(e) => {
-                          // Keep element in DOM (opacity:0) so it can load the real URL
-                          // once the lazy cache populates with the server/blob URL
-                          setLoadedMedia((prev) => ({ ...prev, [messageId]: true }));
+                          // If src is still a raw media ID (not a real URL), keep skeleton
+                          // visible until the cache populates with a valid URL
+                          if (imageSrc && /^(https?:|blob:|data:)/i.test(imageSrc)) {
+                            setLoadedMedia((prev) => ({ ...prev, [messageId]: true }));
+                          }
                         }}
                       />
                     </div>
@@ -348,7 +397,7 @@ const MessageBubble = memo(function MessageBubble({
                         });
                       }}
                     >
-                      {!loadedMedia[messageId] && (
+                      {showSkeleton && (
                         <Skeleton
                           variant="rectangular"
                           width="100%"
@@ -368,7 +417,12 @@ const MessageBubble = memo(function MessageBubble({
                           }
                           setLoadedMedia((prev) => ({ ...prev, [messageId]: true }));
                         }}
-                        onError={() => setLoadedMedia((prev) => ({ ...prev, [messageId]: true }))}
+                        onError={() => {
+                          const vidSrc = resolveMediaUrl(msg?.mediaUrl || msg?.videoUrl || msg?.MediaUrl);
+                          if (vidSrc && /^(https?:|blob:|data:)/i.test(vidSrc)) {
+                            setLoadedMedia((prev) => ({ ...prev, [messageId]: true }));
+                          }
+                        }}
                         onPlay={() => setIsPlaying(true)}
                         onPause={() => setIsPlaying(false)}
                         style={{
@@ -376,14 +430,14 @@ const MessageBubble = memo(function MessageBubble({
                           height: '100%',
                           objectFit: 'cover',
                           borderRadius: 8,
-                          opacity: loadedMedia[messageId] ? 1 : 0,
+                          opacity: (isMediaLoaded || hasDirectFileUrl) ? 1 : 0,
                           transition: 'opacity 0.3s ease',
                           position: 'relative',
                           zIndex: 2,
                         }}
                       />
                       {/* Play overlay */}
-                      {!isPlaying && loadedMedia[messageId] && (
+                      {!isPlaying && isMediaLoaded && (
                         <div className="video-play-overlay">
                           <div className="video-play-btn">
                             <div className="video-play-triangle" />
@@ -474,12 +528,7 @@ const MessageBubble = memo(function MessageBubble({
           <div className="message-meta">
             <span className="message-time">
               {msg?.dateTime ||
-                (msg?.DateTime &&
-                  new Date(msg.DateTime).toLocaleTimeString('en-GB', {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    hour12: true,
-                  })) ||
+                (msg?.DateTime && extractTimeFromISO(msg.DateTime)) ||
                 new Date(msg?.sentAt || msg?.sent_at).toLocaleTimeString([], {
                   hour: '2-digit',
                   minute: '2-digit',
@@ -487,11 +536,6 @@ const MessageBubble = memo(function MessageBubble({
             </span>
             <MessageStatusIcon msg={msg} />
           </div>
-
-          {/* Sender info for outgoing messages */}
-          {isOutgoing && msg?.SenderInfo && (
-            <div className="message-sender-info">@{msg.SenderInfo}</div>
-          )}
 
           {/* Reaction display — merge API ReactionEmojis + real-time messageReactions */}
           {(() => {
@@ -533,6 +577,12 @@ const MessageBubble = memo(function MessageBubble({
               </div>
             );
           })()}
+        </div>
+        {msg?.SenderInfo && (
+          <div className="message-sender-info-label">
+            <span>@{msg.SenderInfo}</span>
+          </div>
+        )}
         </div>
       </div>
     </div>

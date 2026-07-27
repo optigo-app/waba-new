@@ -81,8 +81,8 @@ export const getToken = () => storage.getJSON(STORAGE_KEYS.TOKEN);
 export const setToken = (value) => storage.setJSON(STORAGE_KEYS.TOKEN, value);
 export const removeToken = () => storage.remove(STORAGE_KEYS.TOKEN);
 
-export const getUserData = () => storage.getJSON(STORAGE_KEYS.USER_DATA);
-export const setUserData = (value) => storage.setJSON(STORAGE_KEYS.USER_DATA, value);
+export const getUserData = () => getToken();
+export const setUserData = (value) => setToken(value);
 
 export const getUserPermissions = () => storage.getJSON(STORAGE_KEYS.USER_PERMISSIONS);
 export const setUserPermissions = (value) => storage.setJSON(STORAGE_KEYS.USER_PERMISSIONS, value);

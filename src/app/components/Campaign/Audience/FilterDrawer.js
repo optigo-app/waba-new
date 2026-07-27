@@ -49,7 +49,7 @@ const FilterDrawer = ({ open, onClose, onApplyFilters, filters = {} }) => {
 
   const fetchFilterData = async () => {
     try {
-      const response = await fetchFilterMasterList(userToken?.userId);
+      const response = await fetchFilterMasterList(userToken?.userId || userToken?.userid || userToken?.appuserid);
       if (response?.data) {
         setCompanyName(response?.data?.rd || []);
         setCompanyType(response?.data?.rd1 || []);

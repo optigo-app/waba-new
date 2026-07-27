@@ -1,19 +1,20 @@
 @use '../../../globals.scss' as *;
 
+// ── Page ───────────────────────────────────────────────────────────────────
 .page {
-    padding: 0.75rem 1rem;
-    background: #f8fafc;
+    padding: 1rem 1.25rem;
+    background: #f9fafb;
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 1rem;
     flex: 1;
     min-height: 0;
     overflow: hidden;
     box-sizing: border-box;
 
     @media (max-width: 640px) {
-        padding: 0.5rem;
-        gap: 0.5rem;
+        padding: 0.75rem;
+        gap: 0.75rem;
         overflow: visible;
     }
 }
@@ -24,13 +25,12 @@
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
-    padding: 0.75rem 1.5rem;
+    padding: 0.85rem 1.25rem;
     background: #fff;
-    border-bottom: 1px solid var(--sidebar-borderColor);
-    border-radius: 12px;
+    border-radius: 14px;
     flex-shrink: 0;
     flex-wrap: nowrap;
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 
     @media (max-width: 640px) {
         padding: 0.65rem 0.85rem;
@@ -60,27 +60,27 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 34px;
-    height: 34px;
-    border: 1px solid var(--sidebar-borderColor);
+    width: 32px;
+    height: 32px;
+    border: none;
     border-radius: 8px;
-    background: #fff;
+    background: #f4f5f7;
     cursor: pointer;
-    color: #475569;
+    color: #64748b;
     transition: all 0.15s;
     flex-shrink: 0;
 
     &:hover {
-        background: #f1f5f9;
-        border-color: #cbd5e1;
+        background: rgba($primary-main, 0.08);
+        color: var(--primary-main);
     }
 }
 
 .headerIconWrap {
-    width: 36px;
-    height: 36px;
+    width: 38px;
+    height: 38px;
     border-radius: 10px;
-    background: rgba($primary-main, 0.1);
+    background: rgba($primary-main, 0.08);
     color: var(--primary-main);
     display: flex;
     align-items: center;
@@ -89,8 +89,8 @@
 }
 
 .pageTitle {
-    font-size: 1rem;
-    font-weight: 600;
+    font-size: 1.05rem;
+    font-weight: 700;
     color: $titleColor;
     margin: 0;
     font-family: $font-family;
@@ -101,7 +101,7 @@
 }
 
 .pageSubtitle {
-    font-size: 0.75rem;
+    font-size: 0.78rem;
     color: $secondaryColor;
     margin: 0;
     font-family: $font-family;
@@ -123,43 +123,10 @@
 
 .headerActions {
     display: flex;
-    gap: 12px;
+    gap: 10px;
     flex-shrink: 0;
     flex-wrap: wrap;
-
-    @media (max-width: 480px) {
-        width: 100%;
-        justify-content: flex-start;
-    }
-
-    .refreshBtn {
-        background-color: var(--primary-main) !important;
-        color: #fff !important;
-        text-transform: none;
-        font-weight: 600;
-        border-radius: 8px;
-        font-family: $font-family;
-        padding: 0.5rem 1.25rem;
-
-        &:hover {
-            background-color: #5e50ee !important;
-        }
-    }
-
-    .exportBtn {
-        border-color: var(--sidebar-borderColor) !important;
-        color: #64748b !important;
-        text-transform: none;
-        font-weight: 600;
-        border-radius: 8px;
-        font-family: $font-family;
-        padding: 0.5rem 1.25rem;
-
-        &:hover {
-            background-color: #f8fafc !important;
-            border-color: #cbd5e1 !important;
-        }
-    }
+    align-items: center;
 }
 
 // ── Main Content ────────────────────────────────────────────────────────────
@@ -179,12 +146,12 @@
 
 // ── Left Sidebar ────────────────────────────────────────────────────────────
 .leftSidebar {
-    flex: 0 0 280px;
-    max-width: 280px;
+    flex: 0 0 240px;
+    max-width: 240px;
     overflow-y: auto;
 
     &::-webkit-scrollbar {
-        width: 4px;
+        width: 3px;
     }
 
     &::-webkit-scrollbar-track {
@@ -205,23 +172,22 @@
 
 .stepperCard {
     background: #fff;
-    border-radius: 12px;
-    border: 1px solid var(--sidebar-borderColor);
-    padding: 1.5rem;
+    border-radius: 14px;
+    padding: 0.75rem;
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    gap: 0.25rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 
     @media (max-width: 768px) {
-        padding: 0.75rem 1rem;
+        padding: 0.5rem 0.75rem;
     }
 }
 
 .stepperMenu {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.25rem;
 
     @media (max-width: 768px) {
         flex-direction: row;
@@ -230,7 +196,7 @@
         padding-bottom: 4px;
 
         &::-webkit-scrollbar {
-            height: 4px;
+            height: 3px;
         }
 
         &::-webkit-scrollbar-thumb {
@@ -243,13 +209,13 @@
 .menuItem {
     display: flex;
     align-items: center;
-    gap: 0.65rem;
-    padding: 0.65rem 0.85rem;
+    gap: 0.6rem;
+    padding: 0.6rem 0.75rem;
     border-radius: 10px;
     cursor: pointer;
     transition: all 0.2s;
     color: var(--text-2nd-color);
-    font-size: 0.8rem;
+    font-size: 0.82rem;
     font-weight: 500;
     font-family: $font-family;
     position: relative;
@@ -262,11 +228,11 @@
     }
 
     &:hover {
-        background: #f1f5f9;
+        background: #f4f5f7;
     }
 
     &.active {
-        background: rgba($primary-main, 0.1);
+        background: rgba($primary-main, 0.08);
         color: var(--primary-main);
         font-weight: 600;
 
@@ -282,13 +248,13 @@
 }
 
 .menuStepBadge {
-    width: 22px;
-    height: 22px;
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
     background: #e2e8f0;
     color: $secondaryColor;
-    font-size: 0.65rem;
-    font-weight: 600;
+    font-size: 0.62rem;
+    font-weight: 700;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -308,16 +274,15 @@
     overflow-y: auto;
     overflow-x: hidden;
     background: #fff;
-    border-radius: 12px;
-    border: 1px solid var(--sidebar-borderColor);
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    border-radius: 14px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 
     @media (max-width: 768px) {
         overflow: visible;
     }
 
     &::-webkit-scrollbar {
-        width: 4px;
+        width: 3px;
     }
 
     &::-webkit-scrollbar-track {
@@ -334,43 +299,46 @@
     padding: 1.5rem;
     display: flex;
     flex-direction: column;
-    gap: 2.5rem;
+    gap: 2rem;
 
     @media (max-width: 640px) {
         padding: 1rem;
-        gap: 1.5rem;
+        gap: 1.25rem;
     }
 }
 
+// ── Section ─────────────────────────────────────────────────────────────────
 .section {
     .sectionTitle {
-        font-size: 1.1rem;
-        font-weight: 600;
+        font-size: 0.92rem;
+        font-weight: 700;
         color: $titleColor;
-        margin-bottom: 1.5rem;
+        margin-bottom: 1rem;
         font-family: $font-family;
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
 
         &::after {
             content: '';
             flex: 1;
             height: 1px;
-            background: linear-gradient(90deg, #e2e8f0 0%, transparent 100%);
+            background: #f0f0f2;
         }
     }
 }
 
+// ── Metric Cards ────────────────────────────────────────────────────────────
 .metricCard {
-    padding: 1.5rem 0.8rem;
-    border-radius: 16px;
+    padding: 1.1rem 1rem;
+    border-radius: 14px;
     display: flex;
     align-items: center;
-    gap: 1.25rem;
-    border: 1px solid var(--sidebar-borderColor);
-    background: #fff;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    gap: 0.85rem;
+    background: #fafbfc;
+    transition: all 0.25s ease;
     position: relative;
     overflow: hidden;
 
@@ -379,49 +347,41 @@
         position: absolute;
         top: 0;
         left: 0;
-        width: 100%;
+        width: 3px;
         height: 100%;
         background: currentColor;
-        opacity: 0.02;
-        pointer-events: none;
+        opacity: 0.7;
     }
 
     &:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
-        border-color: transparent;
+        background: #fff;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
     }
 
     .metricIconWrap {
-        width: 35px;
-        height: 35px;
-        border-radius: 14px;
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
-        transition: transform 0.3s ease;
-    }
-
-    &:hover .metricIconWrap {
-        transform: scale(1.1);
     }
 
     .metricLabel {
         color: $secondaryColor;
         font-weight: 600;
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         display: block;
-        margin-bottom: 4px;
+        margin-bottom: 2px;
         font-family: $font-family;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.4px;
     }
 
     .metricValue {
-        font-weight: 600;
-        font-size: 1.5rem;
+        font-weight: 700;
+        font-size: 1.35rem;
         color: $titleColor;
         line-height: 1;
         font-family: $font-family;
@@ -432,80 +392,68 @@
 
     .metricCount {
         color: var(--text-2nd-color);
-        font-size: 0.85rem;
+        font-size: 0.8rem;
         font-weight: 500;
         font-family: $font-family;
-        opacity: 0.8;
+        opacity: 0.7;
     }
 }
 
+// ── Detail Cards ────────────────────────────────────────────────────────────
 .detailCard {
-    padding: 1.25rem 1.5rem;
-    border-radius: 16px;
+    padding: 1rem 1.1rem;
+    border-radius: 12px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border: 1px solid var(--sidebar-borderColor);
-    background-color: #fff;
-    transition: all 0.3s ease;
+    background: #fafbfc;
+    transition: all 0.25s ease;
     position: relative;
     overflow: hidden;
 
-    &::after {
-        content: '';
-        position: absolute;
-        left: 0;
-        top: 0;
-        bottom: 0;
-        width: 4px;
-        background: currentColor;
-        opacity: 0.8;
-    }
-
     &:hover {
-        transform: scale(1.02);
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
-        border-color: rgba($primary-main, 0.2);
+        background: #fff;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
     }
 
     .detailContent {
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: 3px;
     }
 
     .detailLabel {
         color: $secondaryColor;
-        font-weight: 400;
-        font-size: 0.75rem;
+        font-weight: 500;
+        font-size: 0.72rem;
         font-family: $font-family;
         text-transform: capitalize;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.3px;
     }
 
     .detailValue {
         color: $titleColor;
-        font-weight: 500;
-        font-size: 1rem;
+        font-weight: 600;
+        font-size: 0.92rem;
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 8px;
         font-family: $font-family;
     }
 
     .detailIconWrap {
-        width: 44px;
-        height: 44px;
-        border-radius: 12px;
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        opacity: 0.8;
     }
 }
 
-// ── Template View Styles ───────────────────────────────────────────────────
+// ── Template View ───────────────────────────────────────────────────────────
 .templateView {
     display: flex;
     flex-direction: column;
@@ -514,17 +462,15 @@
 
 .segmentedStats {
     display: flex;
-    background: #fff;
-    border: 1px solid var(--sidebar-borderColor);
+    background: #fafbfc;
     border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
 
     @media (max-width: 640px) {
         overflow-x: auto;
 
         &::-webkit-scrollbar {
-            height: 4px;
+            height: 3px;
         }
 
         &::-webkit-scrollbar-thumb {
@@ -536,65 +482,83 @@
 
 .statBlock {
     flex: 1;
-    padding: 0.8rem;
+    padding: 0.75rem 0.5rem;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
-    border-right: 1px solid var(--sidebar-borderColor);
+    gap: 3px;
     transition: all 0.2s;
     position: relative;
     min-width: 80px;
+    cursor: pointer;
 
-    &:last-child {
-        border-right: none;
+    &:not(:last-child) {
+        border-right: 1px solid #f0f0f2;
+    }
+
+    &:hover {
+        background: rgba(0, 0, 0, 0.02);
+    }
+
+    @media (max-width: 640px) {
+        min-width: 70px;
+        padding: 0.5rem 0.4rem;
     }
 
     .statValue {
-        font-weight: 600;
-        font-size: 1.1rem;
+        font-weight: 700;
+        font-size: 1.05rem;
         color: $titleColor;
         font-family: $font-family;
         display: flex;
         align-items: baseline;
-        gap: 4px;
+        gap: 3px;
+
+        @media (max-width: 640px) {
+            font-size: 0.9rem;
+        }
     }
 
     .statCount {
-        font-size: 0.8rem;
+        font-size: 0.78rem;
         color: var(--text-2nd-color);
         font-weight: 500;
     }
 
     .statLabel {
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         font-weight: 600;
         color: $secondaryColor;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.4px;
         font-family: $font-family;
     }
 }
 
 .statActive {
-    background: rgba($primary-main, 0.03);
+    background: rgba($primary-main, 0.06);
+
+    .statLabel {
+        color: var(--primary-main);
+    }
+
+    .statValue {
+        color: var(--primary-main);
+    }
 
     &::after {
         content: '';
         position: absolute;
         bottom: 0;
-        left: 20%;
-        right: 20%;
-        height: 4px;
-        background: var(--primary-main); // Bold red underline
-        border-radius: 4px 4px 0 0;
-    }
-
-    .statLabel {
-        color: var(--primary-main);
+        left: 25%;
+        right: 25%;
+        height: 3px;
+        background: var(--primary-main);
+        border-radius: 3px 3px 0 0;
     }
 }
 
+// ── Retarget Section ────────────────────────────────────────────────────────
 .retargetSection {
     display: flex;
     flex-direction: column;
@@ -605,11 +569,9 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.85rem 1.25rem;
-    background: #fff;
-    border: 1px solid var(--sidebar-borderColor);
+    padding: 0.75rem 1rem;
+    background: #fafbfc;
     border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
     flex-wrap: nowrap;
     gap: 0.75rem;
 
@@ -619,21 +581,25 @@
 
     @media (max-width: 480px) {
         flex-direction: column;
-        align-items: flex-start;
+        align-items: stretch;
+
+        .retargetInfo {
+            width: 100%;
+        }
     }
 }
 
 .retargetInfo {
     display: flex;
     align-items: center;
-    gap: 0.65rem;
+    gap: 0.6rem;
     flex-shrink: 0;
 
     .retargetIcon {
-        width: 36px;
-        height: 36px;
-        border-radius: 10px;
-        background: rgba($primary-main, 0.1);
+        width: 34px;
+        height: 34px;
+        border-radius: 9px;
+        background: rgba($primary-main, 0.08);
         color: var(--primary-main);
         display: flex;
         align-items: center;
@@ -641,7 +607,7 @@
     }
 
     .retargetTitle {
-        font-size: 1rem;
+        font-size: 0.92rem;
         font-weight: 600;
         color: $titleColor;
         font-family: $font-family;
@@ -649,10 +615,10 @@
     }
 
     .recordBadge {
-        font-size: 0.7rem;
+        font-size: 0.68rem;
         font-weight: 600;
         color: var(--primary-main);
-        background: rgba($primary-main, 0.1);
+        background: rgba($primary-main, 0.08);
         padding: 2px 10px;
         border-radius: 99px;
         font-family: $font-family;
@@ -667,20 +633,20 @@
     flex-shrink: 0;
 
     .searchField {
-        min-width: 220px;
+        min-width: 280px;
 
         .MuiOutlinedInput-root {
             border-radius: 8px;
-            background-color: #f8fafc;
+            background-color: #fff;
             font-size: 0.85rem;
             height: 38px;
 
             fieldset {
-                border-color: #e2e8f0;
+                border-color: #e8e8ec;
             }
 
             &:hover fieldset {
-                border-color: #cbd5e1;
+                border-color: #d0d0d8;
             }
 
             &.Mui-focused fieldset {
@@ -690,43 +656,25 @@
         }
     }
 
-    .retargetBtn {
-        background-color: var(--success-main) !important;
-        color: #fff !important;
-        text-transform: none;
-        font-weight: 600;
-        border-radius: 8px;
-        font-family: $font-family;
-        padding: 0.5rem 1.25rem;
-        box-shadow: 0 4px 10px rgba(40, 199, 111, 0.2) !important;
+    @media (max-width: 600px) {
+        gap: 8px;
+        flex-wrap: nowrap;
+        width: 100%;
 
-        &:hover {
-            background-color: #1daa61 !important;
-        }
-    }
-
-    .exportBtnBlue {
-        background-color: #00cfe8 !important;
-        color: #fff !important;
-        text-transform: none;
-        font-weight: 600;
-        border-radius: 8px;
-        font-family: $font-family;
-        padding: 0.5rem 1.25rem;
-        box-shadow: 0 4px 10px rgba(0, 207, 232, 0.2) !important;
-
-        &:hover {
-            background-color: #00b8ce !important;
+        .searchField {
+            min-width: unset;
+            flex: 1;
         }
     }
 }
 
+// ── Grid ────────────────────────────────────────────────────────────────────
 .gridPaper {
     background: #fff;
     border-radius: 12px;
-    border: 1px solid #e4e8ee;
     overflow: auto;
-    box-shadow: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border: 1px solid #f0f0f2;
     display: flex;
     flex-direction: column;
 
@@ -761,7 +709,6 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    border-top: 1px solid var(--sidebar-borderColor);
     padding: 1rem;
     background: #fff;
 }
@@ -775,12 +722,12 @@
 }
 
 .statusSignal {
-    width: 8px;
-    height: 8px;
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
     background-color: var(--success-main);
     display: inline-block;
-    box-shadow: 0 0 0 4px rgba(40, 199, 111, 0.2);
+    box-shadow: 0 0 0 3px rgba(40, 199, 111, 0.15);
     animation: pulse 2s infinite;
 }
 
@@ -792,7 +739,7 @@
 
     50% {
         transform: scale(1.2);
-        opacity: 0.7;
+        opacity: 0.6;
     }
 
     100% {
@@ -803,6 +750,6 @@
 
 .loadingContainer {
     padding: 2rem;
-    background-color: #f8fafc;
+    background-color: #f9fafb;
     min-height: 100vh;
 }

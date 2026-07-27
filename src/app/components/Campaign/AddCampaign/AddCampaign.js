@@ -65,6 +65,7 @@ const AddCampaign = () => {
   const [saveProcess, setSaveProcess] = useState({ active: false, title: '', message: '', progress: null });
   const [templateData, setTemplateData] = useState(null);
   const [isRetargetFlow, setIsRetargetFlow] = useState(false);
+  const [isEditClone, setIsEditClone] = useState(false);
   const [retargetSourceCampaignName, setRetargetSourceCampaignName] = useState('');
   const [retargetStatus, setRetargetStatus] = useState('Overall');
   const [retargetSourceCampaignId, setRetargetSourceCampaignId] = useState(null);
@@ -80,6 +81,7 @@ const AddCampaign = () => {
       const campaign = draft;
       const isRetarget = !!campaign.isRetarget;
       setIsRetargetFlow(isRetarget);
+      setIsEditClone(true);
       if (isRetarget) {
         const sourceCampaignName = campaign.RetargetSourceCampaignName || campaign.CampaignName || campaign.Name || 'Campaign';
         const statusLabel = campaign.RetargetStatusLabel || 'Overall';
@@ -744,7 +746,7 @@ const AddCampaign = () => {
               customerFilters={customerFilters}
               audienceData={audience}
               audienceGridData={audienceGridData}
-              isEditClone={!!getCampaignDraft()}
+              isEditClone={isEditClone}
               campaignId={campaignId}
               isRetargetFlow={isRetargetFlow}
               retargetSourceCampaignName={retargetSourceCampaignName}

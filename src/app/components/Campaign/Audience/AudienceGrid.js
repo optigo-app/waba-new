@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useRef } from 'react';
-import { DataGrid } from '@mui/x-data-grid';
+import { DataGrid, useGridApiRef } from '@mui/x-data-grid';
 import { TextField, InputAdornment, Box, IconButton, Tooltip } from '@mui/material';
 import { Search, Delete, Download, File } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -244,7 +244,9 @@ const AudienceGrid = ({
   searchText: externalSearchText,
   onSearchChange: externalOnSearchChange,
   onDelete,
+  selectedRows = [],
 }) => {
+  const apiRef = useGridApiRef();
   const [internalSearch, setInternalSearch] = useState('');
   const searchText = externalSearchText !== undefined ? externalSearchText : internalSearch;
 
@@ -335,15 +337,19 @@ const AudienceGrid = ({
   const columns = useMemo(() => onDelete ? [...baseColumns, actionColumn] : baseColumns, [baseColumns, actionColumn, onDelete]);
 
   const handleExport = useCallback(() => {
-    if (!filteredRows || filteredRows.length === 0) {
-      toast.error('No data to export');
+    if (!selectedRows || selectedRows.length === 0) {
+      toast.error('No selected rows to export');
       return;
     }
 
-    const exportColumns = columns.filter((col) => col.field !== 'actions');
+    const exportColumns = columns.filter((col) => col.field !== 'actions' && col.field !== 'SrNo');
     const headers = exportColumns.map((col) => col.headerName);
 
-    const rows = filteredRows.map((row) => {
+    const selectedIds = new Set(selectedRows.map((r) => r.CustomerId ?? r.id ?? r.PhoneNo ?? r.Email));
+    const sortedRows = apiRef.current ? apiRef.current.getSortedRows() : filteredRows;
+    const rowsToExport = sortedRows.filter((row) => selectedIds.has(row.CustomerId ?? row.id ?? row.PhoneNo ?? row.Email));
+
+    const rows = rowsToExport.map((row) => {
       const obj = {};
       exportColumns.forEach((col) => {
         let val = row[col.field];
@@ -385,8 +391,8 @@ const AudienceGrid = ({
 
     const filename = `Audience_${source || 'data'}_${new Date().toISOString().slice(0, 10)}.xlsx`;
     XLSX.writeFile(workbook, filename);
-    toast.success(`Exported ${filteredRows.length} rows to Excel`);
-  }, [filteredRows, columns, source]);
+    toast.success(`Exported ${rowsToExport.length} selected rows to Excel`);
+  }, [selectedRows, columns, source, filteredRows, apiRef]);
 
   const slotProps = useMemo(() => ({
     toolbar: {
@@ -402,6 +408,7 @@ const AudienceGrid = ({
     <Box sx={{ width: '100%', height: '100%', overflow: 'hidden', minWidth: 0 }}>
       <Box sx={{ minWidth: 0, height: '100%', overflow: 'hidden' }}>
         <DataGrid
+          apiRef={apiRef}
           rows={filteredRows}
           columns={columns}
           checkboxSelection

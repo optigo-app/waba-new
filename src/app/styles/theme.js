@@ -5,13 +5,13 @@ import { getComponentOverrides } from './components';
 const poppinsFont = "'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif";
 
 /**
- * Build a complete MUI theme for the given mode.
+ * Build a complete MUI theme (light only).
  * - Uses design tokens for palette + app-specific values
  * - Applies component overrides for consistent UX
  * - Enables responsive font sizes across breakpoints
  */
-export const getTheme = (mode = 'light') => {
-  const tokens = getTokens(mode);
+export const getTheme = () => {
+  const tokens = getTokens();
 
   let theme = createTheme({
     palette: tokens.palette,
@@ -62,7 +62,7 @@ export const getTheme = (mode = 'light') => {
       borderRadius: 8,
     },
     spacing: 8,
-    components: getComponentOverrides(mode),
+    components: getComponentOverrides(),
   });
 
   /* Responsive font scaling across breakpoints */
@@ -74,8 +74,7 @@ export const getTheme = (mode = 'light') => {
   return theme;
 };
 
-/* Pre-built instances for direct import */
-export const lightTheme = getTheme('light');
-export const darkTheme = getTheme('dark');
+/* Pre-built instance for direct import */
+export const lightTheme = getTheme();
 
 export default getTheme; 

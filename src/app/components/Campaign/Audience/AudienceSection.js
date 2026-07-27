@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 import { fetchExcelList } from '../../api/ExcelLists';
 import { useAuthToken } from '../../../hooks/useAuthToken';
 import { getCampaignStepper, getAudienceDraft, setAudienceDraft } from '../../../utils/storage';
+import { getStaticUrl } from '../../../utils/globalFunc';
 
 const AudienceSection = ({ audience, onAudienceChange, onDataSourceChange, onNext, onPrevious, currentStep, steps }) => {
     const [source, setSource] = useState('crm');
@@ -162,7 +163,7 @@ const AudienceSection = ({ audience, onAudienceChange, onDataSourceChange, onNex
     const fetchExcelData = async (campaignId) => {
         try {
             setExcelData(prev => ({ ...prev, loading: true }));
-            const result = await fetchExcelList(userToken?.userId, campaignId, "", filters, searchTerm);
+            const result = await fetchExcelList(userToken?.userId || userToken?.userid || userToken?.appuserid, campaignId, "", filters, searchTerm);
 
             if (result) {
                 setExcelData({
@@ -361,7 +362,7 @@ const AudienceSection = ({ audience, onAudienceChange, onDataSourceChange, onNex
         setFilterDialogOpen(true);
         setIsDragging(false);
 
-        const fileUpload = await ExcelImport(excelFile, userToken?.userId, fetchCampignId);
+        const fileUpload = await ExcelImport(excelFile, userToken?.userId || userToken?.userid || userToken?.appuserid, fetchCampignId);
         if (fileUpload?.success) {
             toast.success(fileUpload?.message || 'File uploaded successfully');
             await fetchExcelData(fetchCampignId);
@@ -608,7 +609,7 @@ const AudienceSection = ({ audience, onAudienceChange, onDataSourceChange, onNex
                         }
 
                         setFile(file);
-                        const fileUpload = await ExcelImport(file, userToken?.userId, fetchCampignId);
+                        const fileUpload = await ExcelImport(file, userToken?.userId || userToken?.userid || userToken?.appuserid, fetchCampignId);
                         if (fileUpload?.success) {
                             toast.success(fileUpload?.message || 'File uploaded successfully');
                             await fetchExcelData(fetchCampignId);
@@ -689,7 +690,7 @@ const AudienceSection = ({ audience, onAudienceChange, onDataSourceChange, onNex
                             </Typography>
                             <Button
                                 component="a"
-                                href="/sampleAud.xlsx"
+                                href={getStaticUrl('/sampleAud.xlsx')}
                                 download="sample_audience.xlsx"
                                 size="small"
                                 startIcon={<Download size={16} />}

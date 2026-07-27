@@ -68,40 +68,42 @@ const TemplateVariableInput = memo(({
                 }}
                 variant="outlined"
                 size="small"
-                InputProps={{
-                    sx: { 
-                        borderRadius: '8px',
-                        backgroundColor: '#fff',
-                        '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: '#e2e8f0'
-                        }
-                    },
-                    endAdornment: (
-                        <Box sx={{ display: 'flex', gap: 0.25 }}>
-                            {onEmojiClick && (
-                                <Tooltip title="Add Emoji">
-                                    <IconButton 
-                                        size="small" 
-                                        onClick={onEmojiClick}
-                                        sx={{ color: 'var(--secondary-color)', '&:hover': { color: '#fbbf24', backgroundColor: '#fffbeb' } }}
-                                    >
-                                        <Smile size={16} />
-                                    </IconButton>
-                                </Tooltip>
-                            )}
-                            {showDynamic && onVariableClick && (
-                                <Tooltip title="Add Dynamic Variable">
-                                    <IconButton 
-                                        size="small" 
-                                        onClick={onVariableClick}
-                                        sx={{ color: 'var(--secondary-color)', '&:hover': { color: 'var(--primary-main)', backgroundColor: 'var(--primary-light-bg)' } }}
-                                    >
-                                        <Code size={16} />
-                                    </IconButton>
-                                </Tooltip>
-                            )}
-                        </Box>
-                    ),
+                slotProps={{
+                    input: {
+                        sx: { 
+                            borderRadius: '8px',
+                            backgroundColor: '#fff',
+                            '& .MuiOutlinedInput-notchedOutline': {
+                                borderColor: '#e2e8f0'
+                            }
+                        },
+                        endAdornment: (
+                            <Box sx={{ display: 'flex', gap: 0.25 }}>
+                                {onEmojiClick && (
+                                    <Tooltip title="Add Emoji">
+                                        <IconButton 
+                                            size="small" 
+                                            onClick={onEmojiClick}
+                                            sx={{ color: 'var(--secondary-color)', '&:hover': { color: '#fbbf24', backgroundColor: '#fffbeb' } }}
+                                        >
+                                            <Smile size={16} />
+                                        </IconButton>
+                                    </Tooltip>
+                                )}
+                                {showDynamic && onVariableClick && (
+                                    <Tooltip title="Add Dynamic Variable">
+                                        <IconButton 
+                                            size="small" 
+                                            onClick={onVariableClick}
+                                            sx={{ color: 'var(--secondary-color)', '&:hover': { color: 'var(--primary-main)', backgroundColor: 'var(--primary-light-bg)' } }}
+                                        >
+                                            <Code size={16} />
+                                        </IconButton>
+                                    </Tooltip>
+                                )}
+                            </Box>
+                        ),
+                    }
                 }}
             />
         </Box>

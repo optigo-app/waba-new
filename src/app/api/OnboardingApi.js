@@ -2,12 +2,13 @@ import { ONBOARDING } from "./Config";
 import { postJson } from "./postJson";
 import { callCommonApi } from "./CommonApi";
 
-export const exchangeToken = async (code, redirectUri = '', phoneNumberId = '') => {
+export const exchangeToken = async (code, redirectUri = '', phoneNumberId = '', wabaId = '') => {
     try {
         const data = await postJson(ONBOARDING, {
             code,
             redirect_uri: redirectUri,
             phone_number_id: phoneNumberId,
+            waba_id: wabaId,
         });
         if (data && typeof data.success === 'boolean') {
             return data;

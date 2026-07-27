@@ -54,7 +54,6 @@ const Message = ({ onNext, onBack, onMessageConfigured, showError, messageError,
   const router = useRouter();
   const [messageType, setMessageType] = useState('preApprovedTemplate');
   const [template, setTemplate] = useState(null);
-  const [deleteTemplate, setDeleteTemplate] = useState(false);
   const [variables, setVariables] = useState({});
   const [autoFillDialogOpen, setAutoFillDialogOpen] = useState(false);
   const [autoFillText, setAutoFillText] = useState('');
@@ -96,10 +95,10 @@ const Message = ({ onNext, onBack, onMessageConfigured, showError, messageError,
   // Fetch templates on mount
   useEffect(() => {
     const fetchTemplates = async () => {
-      if (!userToken?.userId) return;
+      if (!userToken?.userId && !userToken?.userid && !userToken?.appuserid) return;
       setTemplatesLoading(true);
       try {
-        const response = await fetchTemplateLists(userToken.userId);
+        const response = await fetchTemplateLists(userToken?.userId || userToken?.userid || userToken?.appuserid);
         if (response?.data) {
           setTemplates(response.data);
         }

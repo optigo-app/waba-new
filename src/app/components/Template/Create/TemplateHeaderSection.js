@@ -84,7 +84,25 @@ const TemplateHeaderSection = ({
                             value={builderData.headerTextExample}
                             onChange={(e) => onHeaderTextExampleChange(e.target.value)}
                             placeholder="e.g. Summer Sale"
-                            sx={{ mt: 1 }}
+                            sx={{
+                                mt: 1,
+                                '& .MuiOutlinedInput-input': {
+                                    color: '#444050',
+                                    fontWeight: 500,
+                                },
+                                '& .MuiOutlinedInput-input::placeholder': {
+                                    color: '#9e9ba8',
+                                    opacity: '1 !important',
+                                    fontWeight: 400,
+                                },
+                                '& .MuiInputLabel-root': {
+                                    color: '#7D7f85',
+                                    fontWeight: 500,
+                                },
+                                '& .Mui-focused .MuiInputLabel-root': {
+                                    color: '#1daa61',
+                                },
+                            }}
                         />
                     )}
                 </Box>

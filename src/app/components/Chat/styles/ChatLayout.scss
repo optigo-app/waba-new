@@ -1,4 +1,4 @@
-/* ChatLayout — structural chrome: conversation shell, header, messages area, input area */
+@use '../../../globals.scss' as *;
 
 /* ─── Conversation shell ─────────────────────────────────────────────────── */
 .chat-conversation {
@@ -18,9 +18,55 @@
 
 .chat-empty-center {
   text-align: center;
-  color: var(--chat-placeholder-color);
+  color: #6b7280;
   font-family: var(--chat-font);
-  font-size: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 24px;
+  position: relative;
+  z-index: 1;
+  animation: chat-empty-fade-in 0.4s ease-out;
+}
+
+.chat-empty-logo {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+  border-radius: 28px;
+  padding: 12px;
+  transition: transform 0.3s ease;
+}
+
+.chat-empty-logo:hover {
+  transform: scale(1.05);
+}
+
+.chat-empty-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: $titleColor;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.chat-empty-subtitle {
+  font-size: 0.95rem;
+  color: #9ca3af;
+  margin: 0;
+  font-weight: 400;
+}
+
+@keyframes chat-empty-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ─── Header ─────────────────────────────────────────────────────────────── */
@@ -247,13 +293,6 @@
   overflow: hidden;
   min-height: 0;
   position: relative;
-  background-image:
-    linear-gradient(rgba(249, 250, 251, 0.88), rgba(249, 250, 251, 0.88)),
-    url('/bg-3.jpg');
-  background-size: auto, contain;
-  background-position: center, center;
-  background-repeat: repeat, repeat;
-  background-attachment: scroll, fixed;
 }
 
 .chat-messages-list {
@@ -263,12 +302,17 @@
   gap: 10px;
   height: 100%;
   overflow-y: auto;
-  background-image:
-    linear-gradient(rgba(249, 250, 251, 0.80), rgba(249, 250, 251, 0.80)),
-    url(/bg-3.jpg);
-  background-size: auto, contain;
-  background-position: center, center;
-  background-repeat: repeat, repeat;
+  overflow-x: hidden;
+}
+
+/* Fade-in animation when switching conversations */
+@keyframes chatFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.chat-messages-list.fade-in {
+  animation: chatFadeIn 0.3s ease-out;
 }
 
 .chat-messages-loading {

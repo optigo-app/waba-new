@@ -1,39 +1,37 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Box, IconButton, Typography } from '@mui/material';
-import { Bell, X, MessageCircle, User, Lock, Heart } from 'lucide-react';
+import { Box, IconButton } from '@mui/material';
+import { X, Bell, MessageCircle, Smile, UserPlus, LogOut } from 'lucide-react';
+import { getStaticUrl } from '../../utils/globalFunc';
 
 const MAX_TOASTS = 4;
 const DISMISS_DELAY = 6000;
 
 const ICON_MAP = {
   MESSAGE: MessageCircle,
-  REACTION: Heart,
-  ASSIGNMENT: User,
-  AUTH: Lock,
+  REACTION: Smile,
+  ASSIGNMENT: UserPlus,
+  AUTH: LogOut,
   OTHER: Bell,
-  TEST: Bell,
 };
 
 const THEME = {
-  MESSAGE:  { color: '#1daa61', iconBg: '#d1f5e0', cardBg: '#f0fdf6', bar: '#1daa61', glow: 'rgba(29,170,97,0.14)' },
-  REACTION: { color: '#db2777', iconBg: '#fce7f3', cardBg: '#fdf2f8', bar: '#ec4899', glow: 'rgba(236,72,153,0.14)' },
-  ASSIGNMENT:{ color: '#2563eb', iconBg: '#dbeafe', cardBg: '#eff6ff', bar: '#3b82f6', glow: 'rgba(59,130,246,0.14)' },
-  AUTH:     { color: '#dc2626', iconBg: '#fee2e2', cardBg: '#fef2f2', bar: '#ef4444', glow: 'rgba(239,68,68,0.14)' },
-  OTHER:    { color: '#4b5563', iconBg: '#f3f4f6', cardBg: '#f9fafb', bar: '#6b7280', glow: 'rgba(107,114,128,0.14)' },
-  TEST:     { color: '#1daa61', iconBg: '#d1f5e0', cardBg: '#f0fdf6', bar: '#1daa61', glow: 'rgba(29,170,97,0.14)' },
+  MESSAGE: { color: '#25d366' },
+  REACTION: { color: '#f59e0b' },
+  ASSIGNMENT: { color: '#3b82f6' },
+  AUTH: { color: '#ef4444' },
+  OTHER: { color: '#6366f1' },
 };
 
 function ToastItem({ toast, onRemove }) {
   const [progress, setProgress] = useState(100);
   const [isPaused, setIsPaused] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);  
+  const [isHovered, setIsHovered] = useState(false);
   const rafRef = useRef(null);
   const startRef = useRef(Date.now());
   const elapsedRef = useRef(0);
-  const theme = THEME[toast.typeGroup] || THEME.OTHER;
 
   useEffect(() => {
     startRef.current = Date.now();
@@ -53,8 +51,6 @@ function ToastItem({ toast, onRemove }) {
   const handleResume = () => { if (isPaused) { startRef.current = Date.now(); setIsPaused(false); } };
   const handleClose = () => { setIsExiting(true); setTimeout(() => onRemove(toast.id), 400); };
 
-  const Icon = toast.icon;
-
   return (
     <Box
       onMouseEnter={() => { setIsHovered(true); handlePause(); }}
@@ -63,25 +59,20 @@ function ToastItem({ toast, onRemove }) {
         pointerEvents: 'auto',
         position: 'relative',
         display: 'flex',
-        alignItems: 'flex-start',
-        gap: 1.5,
-        p: '16px 20px',
-        borderRadius: '16px',
-        background: theme.cardBg,
-        border: `1.5px solid ${theme.color}18`,
-        boxShadow: isHovered
-          ? `0 20px 40px ${theme.glow}, 0 6px 12px rgba(15,23,42,0.06)`
-          : `0 10px 24px ${theme.glow}, 0 2px 4px rgba(15,23,42,0.04)`,
+        alignItems: 'center',
+        gap: 1.75,
+        p: '14px 18px',
+        width: 360,
+        borderRadius: '14px',
+        background: '#fff',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.08)',
         animation: isExiting
           ? 'toastOut 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards'
           : 'toastIn 0.55s cubic-bezier(0.22, 1, 0.36, 1)',
         transformOrigin: 'bottom center',
-        transition: 'box-shadow 0.3s ease, transform 0.3s ease, border-color 0.3s ease',
-        transform: isHovered ? 'translateY(-3px)' : 'translateY(0)',
         overflow: 'hidden',
         '@keyframes toastIn': {
           '0%':  { opacity: 0, transform: 'translateY(20px) scale(0.96)' },
-          '60%': { opacity: 1, transform: 'translateY(-2px) scale(1.01)' },
           '100%':{ opacity: 1, transform: 'translateY(0) scale(1)' },
         },
         '@keyframes toastOut': {
@@ -90,80 +81,39 @@ function ToastItem({ toast, onRemove }) {
         },
       }}
     >
-      {/* Background effect: soft radial glow on the right */}
-      <Box
-        sx={{
-          position: 'absolute',
-          top: '-40%',
-          right: '-10%',
-          width: 140,
-          height: 140,
-          borderRadius: '50%',
-          background: `radial-gradient(circle, ${theme.color}12 0%, transparent 70%)`,
-          pointerEvents: 'none',
-          zIndex: 0,
-        }}
-      />
-
-      {/* Background effect: diagonal gradient stripe */}
-      <Box
-        sx={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: `linear-gradient(135deg, transparent 60%, ${theme.color}08 100%)`,
-          pointerEvents: 'none',
-          zIndex: 0,
-        }}
-      />
-
-      {/* Left accent bar */}
-      <Box sx={{ position: 'absolute', left: 0, top: 12, bottom: 12, width: '4px', borderRadius: '0 4px 4px 0', background: theme.bar, zIndex: 1 }} />
-
-      {/* Icon */}
-      <Box sx={{ position: 'relative', flexShrink: 0, zIndex: 1 }}>
-        <Box sx={{
-          width: 40, height: 40, borderRadius: '12px',
-          background: theme.iconBg,
-          border: `1px solid ${theme.color}20`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <Icon size={18} color={theme.color} strokeWidth={2} />
-        </Box>
+      {/* Logo thumb */}
+      <Box sx={{
+        width: 42, height: 42, borderRadius: '10px',
+        background: '#ffdfd0',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
+      }}>
+        <Box
+          component="img"
+          src={getStaticUrl('/waba_logo.png')}
+          alt="WABA"
+          sx={{ width: 26, height: 26, objectFit: 'contain' }}
+        />
       </Box>
 
-      {/* Body */}
-      <Box sx={{ flex: 1, minWidth: 0, pt: 0.1, zIndex: 1 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mb: 0.4 }}>
-          <Typography sx={{
-            fontFamily: 'var(--font-poppins), Poppins, sans-serif',
-            fontWeight: 600, fontSize: '0.88rem', color: '#0f172a',
-            lineHeight: 1.35, overflow: 'hidden',
-            textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.01em',
-          }}>
-            {toast.title}
-          </Typography>
-
-          <Typography sx={{
-            fontFamily: 'var(--font-poppins), Poppins, sans-serif',
-            fontWeight: 500, fontSize: '0.65rem', color: '#94a3b8',
-            textTransform: 'uppercase', letterSpacing: '0.04em',
-            flexShrink: 0, ml: 'auto',
-          }}>
-            {toast.timeLabel}
-          </Typography>
+      {/* Content */}
+      <Box sx={{ flex: 1, minWidth: 0, pr: 2.5 }}>
+        <Box sx={{
+          fontFamily: 'Inter, Arial, sans-serif',
+          fontWeight: 600, fontSize: '15px', color: '#222',
+          lineHeight: 1.2, mb: '4px',
+        }}>
+          {toast.title}
         </Box>
-
-        <Typography sx={{
-          fontFamily: 'var(--font-poppins), Poppins, sans-serif',
-          fontWeight: 400, fontSize: '0.8rem', color: '#475569',
-          lineHeight: 1.45, display: '-webkit-box',
+        <Box sx={{
+          fontFamily: 'Inter, Arial, sans-serif',
+          fontWeight: 400, fontSize: '12px', color: '#6b7280',
+          lineHeight: 1.45,
+          display: '-webkit-box',
           WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
         }}>
           {toast.body}
-        </Typography>
+        </Box>
       </Box>
 
       {/* Close */}
@@ -171,22 +121,23 @@ function ToastItem({ toast, onRemove }) {
         onClick={handleClose}
         size="small"
         sx={{
-          p: 0.45, color: '#94a3b8', flexShrink: 0, mt: -0.3, mr: -0.5,
-          opacity: isHovered ? 1 : 0.55,
-          transition: 'all 0.2s ease',
+          position: 'absolute',
+          top: 12, right: 14,
+          p: 0.45, color: '#9ca3af',
+          lineHeight: 1,
+          transition: 'color 0.15s ease',
           zIndex: 1,
-          '&:hover': { color: theme.color, background: `${theme.color}10` },
+          '&:hover': { color: '#4b5563' },
         }}
       >
         <X size={14} strokeWidth={2.5} />
       </IconButton>
 
       {/* Progress line */}
-      <Box sx={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '3px', background: `${theme.color}15`, borderRadius: '0 0 16px 16px', overflow: 'hidden', zIndex: 1 }} >
+      <Box sx={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '3px', background: 'rgba(0,0,0,0.04)', borderRadius: '0 0 14px 14px', overflow: 'hidden', zIndex: 1 }} >
         <Box sx={{
           height: '100%', width: `${progress}%`,
-          background: `linear-gradient(90deg, ${theme.color}70, ${theme.color})`,
-          borderRadius: '0 3px 3px 0',
+          background: toast.accentColor || '#25d366',
           transition: isPaused ? 'none' : 'width 0.1s linear',
         }} />
       </Box>

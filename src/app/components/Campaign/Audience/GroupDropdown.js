@@ -53,7 +53,7 @@ const GroupDropdown = ({
   // Fetch group list only if GroupData is not provided
   const fetchGroupData = async () => {
     try {
-      const result = await fetchGroupList(userToken?.userId);
+      const result = await fetchGroupList(userToken?.userId || userToken?.userid || userToken?.appuserid);
       if (result?.data) {
         setGroupOptions(result.data);
       }

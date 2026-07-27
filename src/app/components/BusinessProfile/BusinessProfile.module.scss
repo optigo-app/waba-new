@@ -1,0 +1,372 @@
+@use '../../globals.scss' as *;
+
+// ── Color Tokens ───────────────────────────────────────────────────────────────
+$primary-main: #1daa61;
+$primary-emerald: #25D366;
+$titleColor: #444050;
+$secondaryColor: #7d7f85;
+$border-color: #e4e8ee;
+$bg-light: #f8f9fa;
+$font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+// ── Dialog Header ──
+.dialogHeader {
+    display: flex !important;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px !important;
+    border-bottom: 1px solid $border-color;
+}
+
+.dialogHeaderLeft {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.dialogContent {
+    padding: 0 !important;
+}
+
+.pageHeaderIcon {
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    background: rgba($primary-main, 0.1);
+    color: $primary-main;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.pageTitle {
+    font-family: $font-family !important;
+    font-weight: 600 !important;
+    font-size: 1.15rem !important;
+    color: $titleColor;
+    line-height: 1.2 !important;
+    margin: 0 !important;
+}
+
+.pageSubtitle {
+    font-family: $font-family !important;
+    font-size: 0.85rem !important;
+    color: $secondaryColor;
+    line-height: 1.3 !important;
+    margin: 0 !important;
+}
+
+// ── Form Layout ──
+.formLayout {
+    display: flex;
+    gap: 32px;
+    align-items: flex-start;
+    padding: 30px 44px;
+
+    @media (max-width: 768px) {
+        flex-direction: column;
+        gap: 20px;
+        padding: 20px;
+    }
+}
+
+// ── Logo Section ──
+.logoSection {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    position: relative;
+    width: 140px;
+}
+
+.logoUploadArea {
+    position: relative;
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+        .logoEditBadge {
+            opacity: 1;
+        }
+    }
+}
+
+.logoAvatar {
+    border: 3px solid #e4e8ee !important;
+    object-fit: cover;
+}
+
+.logoPlaceholder {
+    background: #f1f5f9 !important;
+    border: 3px solid #e4e8ee !important;
+}
+
+.logoEditBadge {
+    position: absolute;
+    bottom: 6px;
+    right: 6px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: $primary-main;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    opacity: 0.85;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+}
+
+.logoRemoveBtn {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: #fff !important;
+    border: 1px solid $border-color !important;
+    border-radius: 10px !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+
+    &:hover {
+        background: #fef2f2 !important;
+        border-color: #fca5a5 !important;
+    }
+}
+
+.logoHint {
+    font-family: $font-family !important;
+    font-size: 0.78rem !important;
+    color: #a0a0a0;
+    text-align: center;
+    line-height: 1.4;
+}
+
+// ── Form Fields ──
+.formFields {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.fieldLabel {
+    display: block;
+    font-family: $font-family !important;
+    font-size: 0.9rem !important;
+    font-weight: 600 !important;
+    color: $titleColor;
+    margin-bottom: 8px;
+}
+
+.textField {
+    :global(.MuiOutlinedInput-root) {
+        background: #fff;
+        border-radius: 10px;
+        transition: all 0.2s ease;
+
+        &:hover {
+            border-color: #c8c8c8;
+        }
+
+        &.Mui-focused {
+            border-color: $primary-main;
+            box-shadow: 0 0 0 3px rgba(29, 170, 97, 0.1);
+        }
+    }
+
+    :global(.MuiInputBase-input) {
+        font-size: 0.9rem;
+        font-family: $font-family;
+        color: $titleColor;
+    }
+
+    :global(.MuiInputBase-input::placeholder) {
+        color: #9a9ca2;
+        opacity: 1;
+    }
+
+    :global(textarea) {
+        font-size: 0.9rem;
+        font-family: $font-family;
+        color: $titleColor;
+        line-height: 1.6;
+    }
+}
+
+// ── Action Row ──
+.actionRow {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid #f0f0f0;
+}
+
+.updateBtn {
+    text-transform: none !important;
+    font-family: $font-family !important;
+    font-weight: 600 !important;
+    font-size: 0.9rem !important;
+    background: $primary-main !important;
+    color: #fff !important;
+    border: none !important;
+    border-radius: 16px !important;
+    padding: 10px 30px !important;
+    box-shadow: 0 4px 12px rgba(29, 170, 97, 0.25);
+    transition: all 0.3s ease;
+
+    &:hover {
+        background: #1a9a57 !important;
+        box-shadow: 0 6px 16px rgba(29, 170, 97, 0.3);
+        transform: translateY(-1px);
+    }
+
+    &:active {
+        transform: translateY(0);
+    }
+
+    &:disabled {
+        background: #b0d8c4 !important;
+        box-shadow: none;
+        transform: none;
+    }
+}
+
+.cancelBtn {
+    text-transform: none !important;
+    font-family: $font-family !important;
+    font-weight: 600 !important;
+    font-size: 0.9rem !important;
+    border-radius: 16px !important;
+    padding: 10px 22px !important;
+    border-color: #e4e8ee !important;
+    color: #7d7f85 !important;
+    transition: all 0.2s ease;
+
+    &:hover {
+        border-color: #ef4444 !important;
+        color: #ef4444 !important;
+        background: rgba(239, 68, 68, 0.04) !important;
+    }
+}
+
+// ── Responsive ──
+@media (max-width: 1024px) {
+    .formLayout {
+        gap: 24px;
+        padding: 24px;
+    }
+}
+
+@media (max-width: 768px) {
+    .dialogHeader {
+        padding: 16px 20px !important;
+    }
+
+    .pageTitle {
+        font-size: 1.05rem !important;
+    }
+
+    .pageSubtitle {
+        font-size: 0.8rem !important;
+    }
+
+    .formLayout {
+        flex-direction: column;
+        gap: 20px;
+        padding: 20px;
+    }
+
+    .logoSection {
+        width: 100%;
+        align-items: center;
+    }
+
+    .logoUploadArea {
+        width: 120px;
+        height: 120px;
+    }
+
+    .fieldLabel {
+        font-size: 0.85rem !important;
+    }
+
+    .textField {
+        :global(.MuiInputBase-input) {
+            font-size: 0.85rem;
+        }
+
+        :global(textarea) {
+            font-size: 0.85rem;
+        }
+    }
+
+    .actionRow {
+        flex-direction: column-reverse;
+        gap: 10px;
+        margin-top: 24px;
+        padding-top: 20px;
+    }
+
+    .updateBtn,
+    .cancelBtn {
+        width: 100%;
+        font-size: 0.85rem !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .dialogHeader {
+        padding: 14px 16px !important;
+    }
+
+    .pageTitle {
+        font-size: 0.95rem !important;
+    }
+
+    .pageSubtitle {
+        font-size: 0.75rem !important;
+    }
+
+    .formLayout {
+        padding: 16px;
+    }
+
+    .fieldLabel {
+        font-size: 0.8rem !important;
+        margin-bottom: 6px;
+    }
+
+    .textField {
+        :global(.MuiInputBase-input) {
+            font-size: 0.82rem;
+        }
+
+        :global(textarea) {
+            font-size: 0.82rem;
+        }
+    }
+
+    .logoUploadArea {
+        width: 100px;
+        height: 100px;
+    }
+
+    .updateBtn,
+    .cancelBtn {
+        font-size: 0.82rem !important;
+        padding: 8px 16px !important;
+    }
+}

@@ -68,6 +68,15 @@ const TEMPLATE_ERRORS = {
     action: 'Contact your administrator or check your account permissions.'
   },
   
+  // Category change restriction while existing content is being deleted
+  CATEGORY_CHANGE_BLOCKED: {
+    subcode: 2388025,
+    title: 'Template Category Cannot Be Changed',
+    message: 'The category for this message template cannot be changed right now.',
+    details: 'WhatsApp is currently deleting the existing English content for this template.',
+    action: 'Try again in 4 weeks, or use MARKETING as the template category.'
+  },
+
   // Generic errors
   GENERIC_ERROR: {
     title: 'Template creation failed',
@@ -82,75 +91,91 @@ const TEMPLATE_ERRORS = {
  * @param {Object} error - Error object from API response
  * @returns {Object} - { title, message, details, action, isKnownError }
  */
+function extractErrorPayload(error) {
+  if (!error) return null;
+  let payload = error;
+  if (typeof payload === 'string') {
+    try {
+      payload = JSON.parse(payload);
+    } catch {
+      return { originalMessage: payload };
+    }
+  }
+  if (payload && payload.error) {
+    payload = payload.error;
+  }
+  return payload;
+}
+
 export const parseTemplateError = (error) => {
-  if (!error) {
+  const payload = extractErrorPayload(error);
+
+  if (!payload || typeof payload === 'string') {
     return {
       ...TEMPLATE_ERRORS.GENERIC_ERROR,
-      isKnownError: false
+      isKnownError: false,
+      originalError: payload || 'Unknown error'
     };
   }
 
-  const errorCode = error.code;
-  const errorSubcode = error.error_subcode;
-  const errorMessage = (error.message || '').toLowerCase();
-  const errorUserMsg = (error.error_user_msg || '').toLowerCase();
+  const errorCode = payload.code;
+  const errorSubcode = payload.error_subcode;
+  const errorMessage = (payload.message || '').toLowerCase();
+  const errorUserMsg = (payload.error_user_msg || '').toLowerCase();
+  const errorUserTitle = payload.error_user_title || '';
+  const originalServerMessage = payload.error_user_msg || payload.message || '';
+
+  const withUserMsg = (base) => ({
+    ...base,
+    isKnownError: true,
+    title: errorUserTitle || base.title,
+    message: payload.error_user_msg || base.message,
+    details: payload.error_user_msg ? base.details : errorMessage || base.details,
+    originalError: originalServerMessage,
+  });
 
   // Check for character limit error (auto-classified as Marketing)
   if (errorSubcode === TEMPLATE_ERRORS.CHARACTER_LIMIT_EXCEEDED.subcode ||
       errorMessage.includes('550 characters') ||
       errorUserMsg.includes('550 characters')) {
-    return {
-      ...TEMPLATE_ERRORS.CHARACTER_LIMIT_EXCEEDED,
-      isKnownError: true
-    };
+    return withUserMsg(TEMPLATE_ERRORS.CHARACTER_LIMIT_EXCEEDED);
+  }
+
+  // Check for category change restriction (existing content being deleted)
+  if (errorSubcode === TEMPLATE_ERRORS.CATEGORY_CHANGE_BLOCKED.subcode ||
+      (errorCode === TEMPLATE_ERRORS.INVALID_PARAMETER.code &&
+       (errorMessage.includes('category') || errorUserMsg.includes('category')))) {
+    return withUserMsg(TEMPLATE_ERRORS.CATEGORY_CHANGE_BLOCKED);
   }
 
   // Check for invalid parameter errors
   if (errorCode === TEMPLATE_ERRORS.INVALID_PARAMETER.code) {
     // Check if it's specifically about template name
     if (errorMessage.includes('name') || errorUserMsg.includes('name')) {
-      return {
-        ...TEMPLATE_ERRORS.INVALID_TEMPLATE_NAME,
-        isKnownError: true
-      };
+      return withUserMsg(TEMPLATE_ERRORS.INVALID_TEMPLATE_NAME);
     }
-    return {
-      ...TEMPLATE_ERRORS.INVALID_PARAMETER,
-      isKnownError: true
-    };
+    return withUserMsg(TEMPLATE_ERRORS.INVALID_PARAMETER);
   }
 
   // Check for authentication errors
   if (errorCode === TEMPLATE_ERRORS.AUTHENTICATION_ERROR.code) {
-    return {
-      ...TEMPLATE_ERRORS.AUTHENTICATION_ERROR,
-      isKnownError: true
-    };
+    return withUserMsg(TEMPLATE_ERRORS.AUTHENTICATION_ERROR);
   }
 
   // Check for rate limit errors
   if (errorCode === TEMPLATE_ERRORS.RATE_LIMIT_EXCEEDED.code) {
-    return {
-      ...TEMPLATE_ERRORS.RATE_LIMIT_EXCEEDED,
-      isKnownError: true
-    };
+    return withUserMsg(TEMPLATE_ERRORS.RATE_LIMIT_EXCEEDED);
   }
 
   // Check for permission errors
   if (errorCode === TEMPLATE_ERRORS.PERMISSION_DENIED.code) {
-    return {
-      ...TEMPLATE_ERRORS.PERMISSION_DENIED,
-      isKnownError: true
-    };
+    return withUserMsg(TEMPLATE_ERRORS.PERMISSION_DENIED);
   }
 
   // Check for media/carousel category mismatch
   if (errorMessage.includes('media') || errorMessage.includes('carousel')) {
     if (errorMessage.includes('category') || errorMessage.includes('utility')) {
-      return {
-        ...TEMPLATE_ERRORS.MEDIA_CAROUSEL_CATEGORY_MISMATCH,
-        isKnownError: true
-      };
+      return withUserMsg(TEMPLATE_ERRORS.MEDIA_CAROUSEL_CATEGORY_MISMATCH);
     }
   }
 
@@ -158,7 +183,9 @@ export const parseTemplateError = (error) => {
   return {
     ...TEMPLATE_ERRORS.GENERIC_ERROR,
     isKnownError: false,
-    originalError: error.message || 'Unknown error'
+    title: errorUserTitle || TEMPLATE_ERRORS.GENERIC_ERROR.title,
+    message: payload.error_user_msg || errorMessage || TEMPLATE_ERRORS.GENERIC_ERROR.message,
+    originalError: originalServerMessage || 'Unknown error'
   };
 };
 
@@ -169,11 +196,15 @@ export const parseTemplateError = (error) => {
  */
 export const getTemplateErrorMessage = (error) => {
   const parsed = parseTemplateError(error);
-  
+
   if (parsed.isKnownError) {
     return `${parsed.message}\n\n${parsed.details}\n\n${parsed.action}`;
   }
-  
+
+  if (parsed.originalError && parsed.originalError !== parsed.message) {
+    return `${parsed.message}\n\n${parsed.originalError}\n\n${parsed.action}`;
+  }
+
   return `${parsed.message}\n\n${parsed.action}`;
 };
 

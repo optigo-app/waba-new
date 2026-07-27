@@ -2,10 +2,10 @@ import React, { useMemo } from 'react';
 import { Typography } from '@mui/material';
 import { ArrowLeft, Users, Phone, MoreVertical, CheckCheck, ChevronLeft, ChevronRight, FileText, Image, Video, ExternalLink, PhoneCall, Reply } from 'lucide-react';
 import styles from './MessagePreview.module.scss';
-import { previewBg } from '../../utils/globalFunc';
+import { previewBg, getStaticUrl } from '../../utils/globalFunc';
 import { isOwnServerUrl } from '../../utils/mediaUtils';
 import { useObjectUrl, useObjectUrls } from '../../utils/useObjectUrl';
-const imagePlaceholder = '/imagePlaceholder.png';
+const imagePlaceholder = getStaticUrl('/imagePlaceholder.png');
 
 const MessagePreview = ({
     headerType = 'None',

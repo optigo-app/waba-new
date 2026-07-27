@@ -145,9 +145,10 @@ const EmbeddedSignupStep = ({ onSuccess, onBack }) => {
                     ? `${window.location.origin}${isLocalhost ? '' : (auth?.redirect_version || '')}/onboarding`
                     : '';
                 const exchangeRes = await exchangeToken(
-                    signupData.authCode,
-                    redirectUri,
-                    signupData.phoneNumberId || ''
+                    signupData.authCode || '',
+                    redirectUri || '',
+                    signupData.phoneNumberId || '',
+                    signupData.wabaId || ''
                 );
                 console.log('[EmbeddedSignup] exchangeToken response:', exchangeRes);
 
@@ -173,11 +174,11 @@ const EmbeddedSignupStep = ({ onSuccess, onBack }) => {
 
                 const credentials = {
                     companycode: auth?.companycode || auth?.CompanyCode || '',
-                    verified_name:signupData.verified_name,
-                    UserPhone: signupData.display_phone_number,
-                    is_official_business_account:signupData.is_official_business_account,
-                    WabaId: signupData.wabaId,
-                    WabaPhoneNo: signupData.phoneNumberId,
+                    verified_name:signupData.verified_name || '',
+                    UserPhone: signupData.display_phone_number || '',
+                    is_official_business_account:signupData.is_official_business_account || '',
+                    WabaId: signupData.wabaId || '',
+                    WabaPhoneNo: signupData.phoneNumberId || '',
                     AppId: process.env.NEXT_PUBLIC_WABA_APP_ID || '',
                     WabaKey: token,
                 };

@@ -23,13 +23,13 @@ import { Upload, FileText, X, Download, Building2, Search } from 'lucide-react';
 import SelectAutocomplete from './SelectAutocomplete';
 import { fetchGroupList } from '../../../api/GroupLists';
 import { fetchBranchListsApi } from '../../../api/GetBranchListApi';
-import { formatMobileNumber, normalizeMobileNumber } from '../../../utils/globalFunc';
+import { formatMobileNumber, normalizeMobileNumber, getStaticUrl } from '../../../utils/globalFunc';
 import { fetchFilterMasterList } from '../../../api/FilterMaster';
 import { useAuthToken } from '../../../hooks/useAuthToken';
 import ConfirmationModal from '../../ConfirmationModal/ConfirmationModal';
 import { fetchGroupFilterList } from '@/app/api/GroupFilterData';
 
-const sampleExcelFile = '/sampleAud.xlsx';
+const sampleExcelFile = () => getStaticUrl('/sampleAud.xlsx');
 
 const EMPTY_LOCAL_FILTERS = {
   companyName: null,
@@ -536,7 +536,7 @@ const FilterSelectionDialog = ({
         || appliedGroup?.id
         || '';
 
-      const result = await fetchGroupFilterList(userToken?.userId, {
+      const result = await fetchGroupFilterList(userToken?.userId || userToken?.userid || userToken?.appuserid, {
         groupFilter,
         branchFilter,
       });
@@ -1115,7 +1115,7 @@ const FilterSelectionDialog = ({
               </Typography>
               <Button
                 component="a"
-                href={sampleExcelFile}
+                href={sampleExcelFile()}
                 download="sample_audience.xlsx"
                 size="small"
                 startIcon={<Download size={14} />}

@@ -10,6 +10,12 @@
     height: 100vh;
     overflow: hidden;
     box-sizing: border-box;
+
+    @media (max-width: 600px) {
+        height: auto;
+        min-height: 100vh;
+        overflow: visible;
+    }
 }
 
 // ── Top bar ───────────────────────────────────────────────────────────────────
@@ -90,6 +96,10 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+
+    @media (max-width: 600px) {
+        overflow: visible;
+    }
 }
 
 // ── Highlighting ──────────────────────────────────────────────────────────────

@@ -1,15 +1,14 @@
-import { fetchChatMediaBlob, saveMediaUrl } from '../api/chat/conversationApi';
-import { filesUploadApi } from '../api/filesUploadApi';
-import { generateMediaFolderName } from './generateMediaFolderName';
+import { saveMediaUrl } from '../api/chat/conversationApi';
+import { fetchAndCacheMedia } from './mediaCacheService';
 import { getUserData } from './storage';
 
 const MEDIA_TYPES = ['image', 'video', 'document', 'audio'];
 
 /**
  * Process incoming media messages from customers:
- * 1. Fetch actual media blob from Meta using media ID
- * 2. Upload the blob to our own server
- * 3. Save the server URL to backend via wa_save_media_url API
+ * 1. Use fetchAndCacheMedia (shared with UI) to fetch from Meta + upload to own server
+ *    — deduplicated via mediaCacheService.inFlight so the UI lazy-loader won't double-fetch
+ * 2. Save the server URL to backend via wa_save_media_url API
  *
  * @param {object} data - Incoming socket message payload
  * @returns {Promise<{serverUrl: string, messageId: string, conversationId: string} | null>}
@@ -47,53 +46,14 @@ export const processIncomingMedia = async (data) => {
   }
 
   try {
-    // 1. Fetch media from Meta
-    const mediaResult = await fetchChatMediaBlob(mediaUrl);
-    if (!mediaResult) {
-      console.warn('[processIncomingMedia] Failed to fetch media from Meta');
-      return null;
-    }
-
-    let blobToUpload = null;
-    let mimeType = '';
-
-    if (mediaResult.blob) {
-      blobToUpload = mediaResult.blob;
-      mimeType = mediaResult.blob.type || 'application/octet-stream';
-    } else if (mediaResult.url) {
-      const resp = await fetch(mediaResult.url);
-      if (!resp.ok) {
-        console.warn('[processIncomingMedia] Failed to fetch media URL content');
-        return null;
-      }
-      blobToUpload = await resp.blob();
-      mimeType = blobToUpload.type || 'application/octet-stream';
-    }
-
-    if (!blobToUpload) {
-      console.warn('[processIncomingMedia] No blob to upload');
-      return null;
-    }
-
-    // 2. Upload to own server
-    const ext = (mimeType.split('/')[1] || 'bin').replace(/[^a-z0-9]/gi, '');
-    const fileName = `media_${mediaUrl}.${ext}`;
-    const file = new File([blobToUpload], fileName, { type: mimeType });
-
-    const folderName = generateMediaFolderName(conversationId, 'chat_media');
-    const uploadResult = await filesUploadApi({
-      attachments: [{ file }],
-      folderName,
-      uniqueNo: conversationId,
-    });
-
-    const serverUrl = uploadResult?.files?.[0]?.url;
+    // 1. Fetch + upload via shared cache service (deduplicated with UI lazy-loader)
+    const serverUrl = await fetchAndCacheMedia(mediaUrl, conversationId);
     if (!serverUrl) {
-      console.warn('[processIncomingMedia] Upload did not return URL');
+      console.warn('[processIncomingMedia] Failed to fetch/cache media');
       return null;
     }
 
-    // 3. Save media URL to backend
+    // 2. Save media URL to backend
     if (messageId) {
       await saveMediaUrl({ fileUrl: serverUrl, messageId, userId });
     }

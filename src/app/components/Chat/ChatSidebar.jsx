@@ -72,9 +72,11 @@ function ChatSidebar({
   onConversationList,
   selectedTag,
   onTagSelect,
+  onFileDrop,
 }) {
   const auth = useAuthStore((s) => s.auth);
   const can = useAuthStore((s) => s.can);
+  const userId = auth?.userId || auth?.userid || auth?.appuserid || '';
   const conversations = useChatStore((s) => s.conversations);
   const allConversationsCache = useChatStore((s) => s.allConversationsCache);
   const setConversations = useChatStore.getState().setConversations;
@@ -97,6 +99,7 @@ function ChatSidebar({
   const [addCustomerDialogOpen, setAddCustomerDialogOpen] = useState(false);
   const [addCustomerMember, setAddCustomerMember] = useState(null);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [dragOverId, setDragOverId] = useState(null);
   const listRef = useRef(null);
   const itemRefs = useRef({});
   const searchInputRef = useRef(null);
@@ -114,13 +117,13 @@ function ChatSidebar({
   });
 
   const loadConversations = useCallback(async (targetPage = 1, append = false) => {
-    if (!auth?.userId) return;
+    if (!userId) return;
     if (targetPage === 1) setLoading(true);
     else setIsLoadingMore(true);
 
     try {
       const normalizedSearch = searchTerm ? searchTerm.replace(/[+\-\s()]/g, '') : searchTerm;
-      const response = await fetchConversationLists(targetPage, 100, auth?.userId, normalizedSearch);
+      const response = await fetchConversationLists(targetPage, 100, userId, normalizedSearch);
       let rawList = response?.data?.rd || [];
       const rd1List = response?.data?.rd1 || [];
 
@@ -185,11 +188,11 @@ function ChatSidebar({
       setLoading(false);
       setIsLoadingMore(false);
     }
-  }, [auth?.userId, onConversationList, searchTerm]);
+  }, [userId, onConversationList, searchTerm]);
 
   // Handle search term changes: wait for tags first, then load conversations
   useEffect(() => {
-    if (!auth?.token || !auth?.userId) return;
+    if (!auth?.token || !userId) return;
     if (tagsLoading) return; // tags API first
 
     if (!searchTerm.trim()) {
@@ -209,7 +212,7 @@ function ChatSidebar({
       loadConversations(1, false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth?.token, auth?.userId, searchTerm, tagsLoading]);
+  }, [auth?.token, userId, searchTerm, tagsLoading]);
 
   const filtered = useMemo(() => {
     const term = searchTerm.toLowerCase().replace(/[+\-\s()]/g, '');
@@ -435,6 +438,32 @@ function ChatSidebar({
     }
     onCustomerSelect?.(customer);
   }, [onCustomerSelect]);
+
+  const handleItemDragOver = useCallback((e, member) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverId(member.Id);
+  }, []);
+
+  const handleItemDragLeave = useCallback((e, member) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverId((prev) => (prev === member.Id ? null : prev));
+  }, []);
+
+  const handleItemDrop = useCallback((e, member) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverId(null);
+    const files = e.dataTransfer?.files;
+    if (files?.length) {
+      // Only switch conversation if dropping on a different one
+      if (selectedCustomer?.Id !== member.Id) {
+        handleSelectCustomer(member);
+      }
+      onFileDrop?.(files);
+    }
+  }, [handleSelectCustomer, onFileDrop, selectedCustomer]);
 
   const handleAddCustomerSuccess = async () => {
     // Refresh conversation list after adding customer
@@ -868,12 +897,17 @@ function ChatSidebar({
               const shouldShowUnread = member.unreadCount > 0;
               const name = member.name || getCustomerDisplayName(member);
 
+              const isDragOver = dragOverId === member.Id;
+
               return (
                 <li
                   key={member.Id}
                   ref={(el) => { itemRefs.current[index] = el; }}
-                  className={`${isSelected ? 'active' : ''} ${member?.isReading ? 'reading' : ''} ${isMenuOpen ? 'menu-open' : ''} ${isKeyboardHighlighted ? 'keyboard-highlight' : ''}`}
+                  className={`${isSelected ? 'active' : ''} ${member?.isReading ? 'reading' : ''} ${isMenuOpen ? 'menu-open' : ''} ${isKeyboardHighlighted ? 'keyboard-highlight' : ''} ${isDragOver ? 'drag-over' : ''}`}
                   onContextMenu={(e) => handleContextMenu(e, member)}
+                  onDragOver={(e) => handleItemDragOver(e, member)}
+                  onDragLeave={(e) => handleItemDragLeave(e, member)}
+                  onDrop={(e) => handleItemDrop(e, member)}
                 >
                   <div
                     className={`member-item ${isSelected ? 'active' : ''} ${member?.isReading ? 'reading' : ''} ${isMenuOpen ? 'menu-open' : ''} ${isKeyboardHighlighted ? 'keyboard-highlight' : ''}`}

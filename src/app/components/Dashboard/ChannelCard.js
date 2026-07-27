@@ -1,12 +1,14 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Box, Typography, Button, Paper } from '@mui/material';
-import { FileText, Wallet } from 'lucide-react';
+import { FileText, Wallet, Building2 } from 'lucide-react';
 import { Whatsapp } from '../../assests/svg';
 
-const ChannelCard = ({ channel, onWalletOpen, onTemplatesClick }) => {
+const ChannelCard = ({ channel, onWalletOpen, onTemplatesClick, onBusinessProfileClick }) => {
     const progressPercent = channel.progressPercent || 0;
+    const [activeAction, setActiveAction] = useState('templates');
+    const [hoveredAction, setHoveredAction] = useState(null);
 
     return (
         <Paper
@@ -20,10 +22,9 @@ const ChannelCard = ({ channel, onWalletOpen, onTemplatesClick }) => {
                 flexDirection: 'column',
                 gap: '1.25rem',
                 overflow: 'hidden',
-                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                transition: 'box-shadow 0.2s ease, border-color 0.2s ease',
                 '&:hover': {
-                    boxShadow: '0 12px 24px rgba(0, 0, 0, 0.08)',
-                    transform: 'translateY(-4px)',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.06)',
                     borderColor: 'rgba(29, 170, 97, 0.25)',
                 },
             }}
@@ -185,54 +186,105 @@ const ChannelCard = ({ channel, onWalletOpen, onTemplatesClick }) => {
             </Box>
 
             {/* Actions */}
-            <Box sx={{ display: 'flex', gap: '0.75rem', width: '100%', pt: '0.25rem', flexDirection: { xs: 'column', sm: 'row' } }}>
-                <Button
-                    variant="contained"
-                    disableElevation
-                    onClick={onTemplatesClick}
-                    startIcon={<FileText size={16} />}
-                    fullWidth
-                    sx={{
-                        textTransform: 'none',
-                        borderRadius: '12px',
-                        fontFamily: 'Poppins, sans-serif',
-                        fontWeight: 600,
-                        fontSize: '0.8rem',
-                        background: '#1daa61',
-                        color: '#fff',
-                        py: '8px',
-                        boxShadow: 'none',
-                        '&:hover': {
-                            background: '#1a9a57',
-                            boxShadow: 'none',
-                        },
-                    }}
-                >
-                    Templates
-                </Button>
-                <Button
-                    variant="outlined"
-                    onClick={onWalletOpen}
-                    startIcon={<Wallet size={16} />}
-                    fullWidth
-                    sx={{
-                        textTransform: 'none',
-                        borderRadius: '12px',
-                        fontFamily: 'Poppins, sans-serif',
-                        fontWeight: 600,
-                        fontSize: '0.8rem',
-                        color: '#444050',
-                        borderColor: '#e4e8ee',
-                        py: '8px',
-                        '&:hover': {
-                            borderColor: '#1daa61',
-                            color: '#1daa61',
-                            background: 'rgba(29, 170, 97, 0.04)',
-                        },
-                    }}
-                >
-                    Wallet Log
-                </Button>
+            <Box 
+                sx={{ 
+                    display: 'flex', 
+                    gap: '0.5rem', 
+                    width: '100%', 
+                    pt: '0.25rem', 
+                    alignItems: 'center',
+                }}
+                onMouseLeave={() => setHoveredAction(null)}
+            >
+                {[
+                    { 
+                        key: 'templates', 
+                        label: 'Templates', 
+                        icon: <FileText size={16} />, 
+                        isPrimary: true,
+                        onClick: () => { setActiveAction('templates'); onTemplatesClick(); },
+                    },
+                    { 
+                        key: 'businessProfile', 
+                        label: 'Business Profile', 
+                        icon: <Building2 size={16} />, 
+                        isPrimary: false,
+                        onClick: () => { setActiveAction('businessProfile'); onBusinessProfileClick(); },
+                    },
+                    { 
+                        key: 'wallet', 
+                        label: 'Wallet Log', 
+                        icon: <Wallet size={16} />, 
+                        isPrimary: false,
+                        onClick: () => { setActiveAction('wallet'); onWalletOpen(); },
+                    },
+                ].map((action) => {
+                    const isExpanded = hoveredAction === action.key || activeAction === action.key;
+                    const isActive = activeAction === action.key;
+                    return (
+                        <Button
+                            key={action.key}
+                            variant="outlined"
+                            disableElevation
+                            onClick={action.onClick}
+                            onMouseEnter={() => setHoveredAction(action.key)}
+                            sx={{
+                                textTransform: 'none',
+                                borderRadius: '12px',
+                                fontFamily: 'Poppins, sans-serif',
+                                fontWeight: 600,
+                                fontSize: '0.8rem',
+                                height: '36px',
+                                py: 0,
+                                px: '10px',
+                                minWidth: '40px',
+                                flex: isExpanded ? '1 1 0%' : '0 0 40px',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                background: isActive ? '#1daa61' : 'transparent',
+                                color: isActive ? '#fff' : '#444050',
+                                borderColor: isActive ? '#1daa61' : '#e4e8ee',
+                                boxShadow: 'none',
+                                transition: 'flex 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s ease, color 0.2s ease, border-color 0.2s ease',
+                                '&:hover': {
+                                    background: isActive ? '#1a9a57' : 'rgba(29, 170, 97, 0.04)',
+                                    borderColor: '#1daa61',
+                                    color: isActive ? '#fff' : '#1daa61',
+                                    boxShadow: 'none',
+                                },
+                                '& .MuiButton-startIcon': {
+                                    margin: 0,
+                                    marginRight: 0,
+                                    transition: 'margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                },
+                            }}
+                        >
+                            <Box
+                                component="span"
+                                sx={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    overflow: 'hidden',
+                                }}
+                            >
+                                {action.icon}
+                                <Box
+                                    component="span"
+                                    sx={{
+                                        maxWidth: isExpanded ? '200px' : 0,
+                                        opacity: isExpanded ? 1 : 0,
+                                        marginLeft: isExpanded ? '8px' : 0,
+                                        overflow: 'hidden',
+                                        whiteSpace: 'nowrap',
+                                        transition: 'max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease 0.05s, margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                    }}
+                                >
+                                    {action.label}
+                                </Box>
+                            </Box>
+                        </Button>
+                    );
+                })}
             </Box>
         </Paper>
     );

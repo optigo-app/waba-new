@@ -1,4 +1,20 @@
 
+import { useAuthStore } from '../store/authStore';
+
+/**
+ * Build a static asset URL that respects redirect_version on production.
+ * @param {string} path - e.g. '/bg-3.jpg' or '/waba_logo.png'
+ * @returns {string} Full absolute URL
+ */
+export const getStaticUrl = (path) => {
+    if (typeof window === 'undefined') return path;
+    const auth = useAuthStore.getState().auth;
+    const isLocalhost = window.location.origin.includes('localhost');
+    const basePath = isLocalhost ? '' : (auth?.redirect_version || '');
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    return `${window.location.origin}${basePath}${cleanPath}`;
+};
+
 const hashString = (value) => {
     const str = String(value ?? '');
     let hash = 0;
@@ -79,7 +95,6 @@ export const getWhatsAppAvatarConfig = (name, size = 40) => {
         children: getInitials(cleaned),
     };
 };
-
 
 export const formatDate = (dateString) => {
     if (!dateString) return '';
@@ -220,3 +235,5 @@ export const normalizeMobileNumber = (rawMobile = '') => {
 
   return '';
 };
+
+

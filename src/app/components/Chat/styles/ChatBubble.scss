@@ -1,4 +1,4 @@
-/* ChatBubble — per-message content: bubbles, media, replies, reactions, actions, tags */
+@use '../../../globals.scss' as *;
 
 /* ─── Message item ───────────────────────────────────────────────────────── */
 .message-item {
@@ -36,6 +36,40 @@
   justify-content: flex-start;
 }
 
+/* ─── Bubble wrapper ───────────────────────────────────────────────────────── */
+.message-bubble-wrap {
+  display: inline-flex;
+  flex-direction: column;
+}
+
+.message-mention-label {
+  align-self: flex-start;
+  font-size: 11px;
+  color: #53bdeb;
+  background: rgba(83, 189, 235, 0.12);
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+.message-item.user-message .message-mention-label {
+  align-self: flex-end;
+}
+
+.message-sender-info-label {
+  align-self: flex-start;
+  font-size: 11px;
+  color: #8696a0;
+  padding: 2px 8px;
+  margin-top: 2px;
+  font-weight: 500;
+}
+
+.message-item.user-message .message-sender-info-label {
+  align-self: flex-end;
+}
+
 /* ─── Bubble ─────────────────────────────────────────────────────────────── */
 .message-bubble {
   padding: 8px 12px;
@@ -45,6 +79,10 @@
   width: auto;
   vertical-align: bottom;
   animation: messageBubbleFadeIn 0.35s ease-out;
+}
+
+.message-bubble.animated {
+  animation: none;
 }
 
 @keyframes messageBubbleFadeIn {
@@ -70,7 +108,7 @@
 
 .message-bubble.customer {
   background-color: #ffffff;
-  color: #111b21;
+  color: $titleColor;
   border-radius: 16px 16px 16px 4px;
   box-shadow: 0 1px 0.5px rgba(0, 0, 0, 0.13);
 }
@@ -692,7 +730,7 @@
 }
 
 .message-bubble.user .message-reaction-badge {
-  right: 12px;
+  left: 20px;
 }
 
 .message-bubble.customer .message-reaction-badge {
@@ -790,16 +828,15 @@
 .whatsapp-template .template-button,
 .whatsapp-template .template-header,
 .whatsapp-template .document-link,
-.whatsapp-template .template-carousel-card {
+.whatsapp-template .carousel-card {
   pointer-events: auto;
 }
 
 .whatsapp-template .template-header.image img,
 .whatsapp-template .template-header.video video {
   width: 100%;
-  object-fit: contain;
+  object-fit: cover;
   display: block;
-  background: #111b21;
 }
 
 .whatsapp-template .template-header-text {
@@ -827,25 +864,11 @@
 }
 
 .whatsapp-template .template-carousel {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding: 8px 14px;
   scrollbar-width: none;
 }
 
 .whatsapp-template .template-carousel::-webkit-scrollbar {
   display: none;
-}
-
-.whatsapp-template .template-carousel-card {
-  min-width: min(200px, 55vw);
-  max-width: min(240px, 60vw);
-  background: #f9fafb;
-  border-radius: 10px;
-  border: 1px solid #e5e7eb;
-  overflow: hidden;
-  flex-shrink: 0;
 }
 
 .whatsapp-template .template-buttons {
@@ -939,8 +962,11 @@
     width: 100%;
   }
 
-  .whatsapp-template .template-carousel-card {
-    min-width: 160px;
-    max-width: 200px;
+  .whatsapp-template.has-carousel {
+    max-width: min(380px, 85vw);
+  }
+
+  .whatsapp-template .carousel-card {
+    width: 170px;
   }
 }

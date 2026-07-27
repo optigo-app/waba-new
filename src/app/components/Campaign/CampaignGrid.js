@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { DataGrid } from '@mui/x-data-grid';
-import { Paper, Chip, Box, Typography, Button, ToggleButtonGroup, ToggleButton, Grid, Card, CardContent, Tooltip, CircularProgress } from '@mui/material';
-import { BarChart3, Copy, Rocket, Edit2, Plus, RefreshCw, Megaphone, LayoutGrid, List, AlertTriangle, Trash2 } from 'lucide-react';
+import { Paper, Chip, Box, Typography, Button, ToggleButtonGroup, ToggleButton, Grid, Card, CardContent, Tooltip, CircularProgress, Popover } from '@mui/material';
+import { BarChart3, Copy, Rocket, Edit2, Plus, RefreshCw, Megaphone, LayoutGrid, List, AlertTriangle, Trash2, SlidersHorizontal } from 'lucide-react';
 import FilterBar from '../Common/FilterBar/FilterBar';
 import IconButton from '../Common/IconButton';
 import Pagination from '../Common/Pagination/Pagination';
@@ -11,6 +11,7 @@ import { fetchCampaignLists } from '../../api/CampaignList';
 import { deleteCampaign } from '../../api/DeleteCampaign';
 import { getCampaignTimers, setCampaignTimers, setCampaignDraft } from '../../utils/storage';
 import { fetchCampaignDetails } from '../../api/FetchCampaignDetails';
+import { extractAudienceFromResponse } from './utils/audienceMapper';
 import { sendBulk } from '../../api/SendBulk';
 import { useAuthToken } from '../../hooks/useAuthToken';
 import styles from './CampaignGrid.module.scss';
@@ -192,6 +193,8 @@ const buildColumns = (onAnalytics, onDuplicate, onDownload, onLaunch, onStop, on
 const CampaignGrid = () => {
   const router = useRouter();
   const { userToken } = useAuthToken();
+  const userId = userToken?.userId || userToken?.userid || userToken?.appuserid || '';
+  const username = userToken?.username || userToken?.userName || userToken?.userid || userToken?.appuserid || '';
 
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -213,6 +216,7 @@ const CampaignGrid = () => {
   const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 100 });
   const [cardPage, setCardPage] = useState(0);
   const [cardRowsPerPage, setCardRowsPerPage] = useState(15);
+  const [headerMenuAnchor, setHeaderMenuAnchor] = useState(null);
 
   const [activeTimers, setActiveTimers] = useState(() => {
     try {
@@ -234,9 +238,9 @@ const CampaignGrid = () => {
   useEffect(() => { activeTimersRef.current = activeTimers; }, [activeTimers]);
 
   const loadCampaigns = useCallback(async () => {
-    if (!userToken?.username) return;
+    if (!username) return;
     setLoading(true);
-    const result = await fetchCampaignLists(userToken.username);
+    const result = await fetchCampaignLists(username);
     const raw = result.data || [];
     // Deduplicate by Id to prevent DataGrid duplicate key errors
     const seen = new Set();
@@ -250,7 +254,7 @@ const CampaignGrid = () => {
     }
     setCampaigns(deduped);
     setLoading(false);
-  }, [userToken?.username]);
+  }, [username]);
 
   useEffect(() => { loadCampaigns(); }, [loadCampaigns]);
 
@@ -266,7 +270,7 @@ const CampaignGrid = () => {
 
     try {
       const response = await sendBulk({
-        appuserid: userToken?.userId || '',
+        appuserid: userId || '',
         userId: userToken?.id || '',
         campaignId,
         whatsappNumber: userToken?.whatsappNumber,
@@ -300,7 +304,7 @@ const CampaignGrid = () => {
       // Update UI state after
       setLaunchingCampaignIds(new Set(launchingCampaignIdsRef.current));
     }
-  }, [userToken?.userId, userToken?.id, userToken?.whatsappNumber, loadCampaigns]);
+  }, [userId, userToken?.id, userToken?.whatsappNumber, loadCampaigns]);
 
   const triggerSendBulkRef = useRef(triggerSendBulk);
 
@@ -340,14 +344,14 @@ const CampaignGrid = () => {
     onDuplicate: async (row) => {
       try {
         toast.loading('Fetching campaign data...', { id: 'fetch-campaign' });
-        const result = await fetchCampaignDetails(userToken?.userId, row.Id);
+        const result = await fetchCampaignDetails(userId, row.Id);
         toast.dismiss('fetch-campaign');
 
         if (result.success && result.data) {
           const campaignData = {
             ...result.data.rd[0],
             templateData: result.data.rd1[0],
-            audienceData: result.data.rd2,
+            audienceData: extractAudienceFromResponse(result.data),
             isClone: true
           };
           setCampaignDraft(campaignData);
@@ -382,14 +386,14 @@ const CampaignGrid = () => {
     onEdit: async (row) => {
       try {
         toast.loading('Fetching campaign data...', { id: 'fetch-campaign' });
-        const result = await fetchCampaignDetails(userToken?.userId, row.Id);
+        const result = await fetchCampaignDetails(userId, row.Id);
         toast.dismiss('fetch-campaign');
 
         if (result.success && result.data) {
           const campaignData = {
             ...result.data.rd[0],
             templateData: result.data.rd1[0],
-            audienceData: result.data.rd2,
+            audienceData: extractAudienceFromResponse(result.data),
             isEdit: true
           };
           setCampaignDraft(campaignData);
@@ -420,7 +424,7 @@ const CampaignGrid = () => {
       });
       toast.success(`Campaign "${row.Name}" stopped`);
     }
-  }), [router, userToken?.userId]);
+  }), [router, userId]);
 
   const handleLaunchConfirm = () => {
     if (campaignToLaunch) {
@@ -567,26 +571,68 @@ const CampaignGrid = () => {
           </div>
         </div>
         <div className={styles.topActions}>
-          <ToggleButtonGroup
-            value={viewMode}
-            exclusive
-            onChange={(e, newMode) => newMode && setViewMode(newMode)}
-            className='toggle-button-group'
-            size="medium"
-          >
-            <Tooltip title="Grid View" arrow>
-              <ToggleButton value="grid"><LayoutGrid size={16} /></ToggleButton>
+          {/* Desktop: inline buttons */}
+          <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: '0.6rem' }}>
+            <ToggleButtonGroup
+              value={viewMode}
+              exclusive
+              onChange={(e, newMode) => newMode && setViewMode(newMode)}
+              className='toggle-button-group'
+              size="medium"
+            >
+              <Tooltip title="Grid View" arrow>
+                <ToggleButton value="grid"><LayoutGrid size={16} /></ToggleButton>
+              </Tooltip>
+              <Tooltip title="Card View" arrow>
+                <ToggleButton value="card"><List size={16} /></ToggleButton>
+              </Tooltip>
+            </ToggleButtonGroup>
+            <Button variant="outlined" className='varientOutlinedBtn' startIcon={<RefreshCw size={15} className={loading ? styles.spinning : ''} />} onClick={loadCampaigns} disabled={loading}>
+              Refresh
+            </Button>
+            <Button variant="contained" className='buttonClassname' startIcon={<Plus size={16} />} onClick={() => router.push('/campaign/create')}>
+              Add Campaign
+            </Button>
+          </Box>
+
+          {/* Mobile: direct icon buttons */}
+          <Box sx={{ display: { xs: 'flex', sm: 'none' }, alignItems: 'center', gap: '0.4rem' }}>
+            <ToggleButtonGroup
+              value={viewMode}
+              exclusive
+              onChange={(e, newMode) => newMode && setViewMode(newMode)}
+              className='toggle-button-group'
+              size="small"
+            >
+              <Tooltip title="Grid View" arrow>
+                <ToggleButton value="grid"><LayoutGrid size={14} /></ToggleButton>
+              </Tooltip>
+              <Tooltip title="Card View" arrow>
+                <ToggleButton value="card"><List size={14} /></ToggleButton>
+              </Tooltip>
+            </ToggleButtonGroup>
+            <Tooltip title="Refresh" arrow>
+              <Button
+                variant="outlined"
+                className='varientOutlinedBtn'
+                onClick={loadCampaigns}
+                disabled={loading}
+                sx={{ minWidth: 'auto', px: 1, py: 0.5 }}
+              >
+                <RefreshCw size={16} className={loading ? styles.spinning : ''} />
+              </Button>
             </Tooltip>
-            <Tooltip title="Card View" arrow>
-              <ToggleButton value="card"><List size={16} /></ToggleButton>
+            <Tooltip title="Add Campaign" arrow>
+              <Button
+                variant="contained"
+                className='buttonClassname'
+                onClick={() => router.push('/campaign/create')}
+                sx={{ minWidth: 'auto', px: 1, py: 0.5 }}
+              >
+                <Plus size={16} />
+              </Button>
             </Tooltip>
-          </ToggleButtonGroup>
-          <Button variant="outlined" className='varientOutlinedBtn' startIcon={<RefreshCw size={15} className={loading ? styles.spinning : ''} />} onClick={loadCampaigns} disabled={loading}>
-            Refresh
-          </Button>
-          <Button variant="contained" className='buttonClassname' startIcon={<Plus size={16} />} onClick={() => router.push('/campaign/create')}>
-            Add Campaign
-          </Button>
+          </Box>
         </div>
       </div>
 
@@ -601,6 +647,55 @@ const CampaignGrid = () => {
         activeFilter={filterStatus}
         onFilterChange={setFilterStatus}
       />
+
+      {/* Status Tabs - tablet and mobile only */}
+      <Box sx={{
+        display: { xs: 'flex', md: 'none' },
+        gap: 0.5,
+        px: 0.5,
+        py: 0.5,
+        background: '#fff',
+        borderRadius: '12px',
+        border: '1px solid var(--sidebar-borderColor)',
+        flexShrink: 0,
+        overflowX: 'auto',
+        WebkitOverflowScrolling: 'touch',
+        '&::-webkit-scrollbar': { height: '3px' },
+        '&::-webkit-scrollbar-thumb': { background: '#e2e8f0', borderRadius: '99px' },
+      }}>
+        {filterChips.map((chip) => {
+          const isActive = filterStatus === chip.value;
+          return (
+            <Box
+              key={chip.value}
+              onClick={() => setFilterStatus(chip.value)}
+              sx={{
+                flex: '0 0 auto',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 0.5,
+                px: 1.25,
+                py: 0.6,
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontFamily: 'Poppins, sans-serif',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                whiteSpace: 'nowrap',
+                transition: 'all 0.2s',
+                background: isActive ? '#1daa61' : 'transparent',
+                color: isActive ? '#fff' : '#64748b',
+                '&:hover': {
+                  background: isActive ? '#1a9a57' : '#f1f5f9',
+                },
+              }}
+            >
+              {chip.label}
+            </Box>
+          );
+        })}
+      </Box>
 
       {/* Grid */}
       <div className={styles.contentArea}>

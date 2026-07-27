@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
+import { useAuthStore } from '../../store/authStore';
 
 const NotificationContext = createContext(null);
 
@@ -38,14 +39,37 @@ export const NotificationProvider = ({ children }) => {
     // Register service worker for reliable background notifications
     useEffect(() => {
         if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+        const auth = useAuthStore.getState().auth;
+        const isLocalhost = window.location.origin.includes('localhost');
+        const basePath = isLocalhost ? '' : (auth?.redirect_version || '');
+        const swPath = `${basePath}/sw.js`;
+        const swScope = `${basePath}/`;
+        console.log('[SW] Registering:', swPath, 'scope:', swScope);
         navigator.serviceWorker
-            .register('/sw.js', { scope: '/', updateViaCache: 'none' })
+            .register(swPath, { scope: swScope, updateViaCache: 'none' })
             .then((reg) => {
                 console.log('[SW] Service Worker registered:', reg.scope);
             })
             .catch((err) => {
                 console.warn('[SW] Service Worker registration failed:', err);
             });
+
+        // Bridge SW postMessage → window CustomEvent for notification clicks
+        const swMessageHandler = (event) => {
+            console.log('[SW] Message from SW:', event.data);
+            if (event.data?.type === 'SELECT_CONVERSATION' && event.data?.conversationId) {
+                window.dispatchEvent(
+                    new CustomEvent('SELECT_CONVERSATION', {
+                        detail: { conversationId: event.data.conversationId },
+                    })
+                );
+            }
+        };
+        navigator.serviceWorker.addEventListener('message', swMessageHandler);
+
+        return () => {
+            navigator.serviceWorker.removeEventListener('message', swMessageHandler);
+        };
     }, []);
 
     const requestPermission = useCallback(async () => {

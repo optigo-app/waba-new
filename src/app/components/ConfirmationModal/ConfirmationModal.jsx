@@ -1,3 +1,4 @@
+import React from 'react';
 import ReactDOM from 'react-dom';
 import { ExternalLink, X, Loader2 } from 'lucide-react';
 import './ConfimationModal.scss';
@@ -15,7 +16,14 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, description, ico
                 </div>
 
                 <h2>{title}</h2>
-                <p>{description}</p>
+                <p>
+                    {description && description.split('\n').map((line, index) => (
+                        <React.Fragment key={index}>
+                            {line}
+                            {index < description.split('\n').length - 1 && <br />}
+                        </React.Fragment>
+                    ))}
+                </p>
 
                 <div className="modal-actions">
                     {!hideCancel && (

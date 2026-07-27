@@ -1,10 +1,8 @@
 'use client';
 
 import { callCommonApi } from '../CommonApi';
-import { MESSAGEAPIURL, MESSAGEAPIURLBULK, MEDIARETRIEVED, getHeaders } from '../Config';
+import { MESSAGEAPIURL, MESSAGEAPIURLBULK, MEDIARETRIEVED, READAPI, getHeaders } from '../Config';
 import { getUserData } from '../../utils/storage';
-import { filesUploadApi } from '../filesUploadApi';
-import { generateMediaFolderName } from '../../utils/generateMediaFolderName';
 
 export const fetchConversationLists = async (page = 1, pageSize = 20, userId, search = '') => {
   try {
@@ -652,18 +650,23 @@ export const deleteAssignedTags = async (customerId, tagId, userId) => {
   }
 };
 
-export const readMessage = async (conversationId, userId) => {
+export const readMessage = async (conversationId, userId, messageId = '') => {
   try {
-    const response = await callCommonApi({
-      mode: 'wa_read_chat',
-      f: 'Chat ( Read Message )',
-      p: JSON.stringify({ ConversationId: Number(conversationId) }),
-      userId,
+    const headers = getHeaders();
+    const response = await fetch(READAPI(), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...headers,
+      },
+      body: JSON.stringify({
+        ConversationId: Number(conversationId),
+        MessageId: messageId || '',
+        UserId: String(userId),
+      }),
     });
-    if (response?.Data) {
-      return response.Data;
-    }
-    return null;
+    const data = await response.json();
+    return data;
   } catch (error) {
     console.error('Error reading message:', error);
     return null;

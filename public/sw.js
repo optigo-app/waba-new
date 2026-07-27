@@ -12,7 +12,12 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('notificationclick', (event) => {
+  console.log('[SW] notificationclick fired:', event.notification.data);
   event.notification.close();
+  const data = event.notification.data || {};
+  const basePath = data.redirectVersion || '';
+  const chatUrl = `${basePath}/chat`;
+  console.log('[SW] Opening/focusing:', chatUrl, 'conversationId:', data.conversationId);
   event.waitUntil(
     clients
       .matchAll({ type: 'window', includeUncontrolled: true })
@@ -22,22 +27,26 @@ self.addEventListener('notificationclick', (event) => {
           if (client.focus) {
             client.focus();
             // Notify the client to select the conversation if data exists
-            if (event.notification.data?.conversationId) {
+            if (data.conversationId) {
               client.postMessage({
                 type: 'SELECT_CONVERSATION',
-                conversationId: event.notification.data.conversationId,
+                conversationId: data.conversationId,
               });
             }
             return;
           }
         }
-        // No open window — open the app root
-        return clients.openWindow('/');
+        // No open window — open the app chat page with redirect_version
+        return clients.openWindow(chatUrl);
       })
       .catch(() => {
-        return clients.openWindow('/');
+        return clients.openWindow(chatUrl);
       })
   );
+});
+
+self.addEventListener('notificationclose', (event) => {
+  console.log('[SW] notificationclose:', event.notification.data);
 });
 
 self.addEventListener('message', (event) => {

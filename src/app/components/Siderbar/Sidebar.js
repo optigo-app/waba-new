@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import './Sidebar.scss'
-import { HomeIcon, MessageCircle, ChevronLeft, LogOut, RefreshCw, User, LayoutGrid, X } from 'lucide-react'
+import { HomeIcon, MessageCircle, ChevronLeft, LogOut, RefreshCw, User, LayoutGrid, X, QrCode } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { disconnectSocket, broadcastLogout } from '../../socket'
+import { logoutApi } from '../../api/LogoutConfig'
 import {Menu, MenuItem, Tooltip, IconButton, Avatar } from '@mui/material'
 import { getWhatsAppAvatarConfig } from '@/app/utils/globalFunc'
 import { useAuth } from '../../hooks/useAuth'
@@ -32,13 +33,23 @@ const Sidebar = ({isCollapsed = false, onCollapsedChange = () => { }, mobileOpen
         setTimeout(() => setIsSyncing(false), 3000);
     };
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
         handleCloseUserMenu();
+        try {
+            await logoutApi({ UserId: auth?.id }, auth?.whatsappNumber);
+        } catch {
+            // ignore API errors — still proceed with local logout
+        }
         disconnectSocket(true);
         broadcastLogout();
         logout();
+        if (typeof window !== 'undefined') {
+            sessionStorage.removeItem('waba_preload_done');
+        }
         window.location.replace(`${window.location.origin}${basePath}/`);
     };
+
+    const displayName = auth?.username || [auth?.firstname, auth?.lastname].filter(Boolean).join(' ') || 'User';
 
     const ICON_PROPS = { size: 20, strokeWidth: 2 };
 
@@ -53,6 +64,7 @@ const Sidebar = ({isCollapsed = false, onCollapsedChange = () => { }, mobileOpen
         { path: "/", icon: <HomeIcon {...ICON_PROPS} />, label: "Dashboard" },
         ...(hasWabaData ? [
             { path: "/campaign", icon: <LayoutGrid {...ICON_PROPS} />, label: "Campaign" },
+            { path: "/qr-generator", icon: <QrCode {...ICON_PROPS} />, label: "QR Generator" },
             { path: chatPath, icon: <MessageCircle {...ICON_PROPS} />, label: "Chat", external: true },
         ] : []),
     ];
@@ -161,18 +173,18 @@ const Sidebar = ({isCollapsed = false, onCollapsedChange = () => { }, mobileOpen
 
                 {/* User avatar section */}
                 <div className={isCollapsed ? "sidebar-user collapsed" : "sidebar-user"}>
-                    <Tooltip title={auth?.username || 'User'} placement="right" arrow disableHoverListener={!isCollapsed}>
+                    <Tooltip title={displayName} placement="right" arrow disableHoverListener={!isCollapsed}>
                         <div
                             className={isCollapsed ? "sidebar-user-trigger_cl sidebar-user-trigger" : "sidebar-user-trigger"}
                             onClick={handleOpenUserMenu}
                             style={{ cursor: 'pointer' }}
                         >
                             <Avatar
-                                alt={auth?.username || "User"}
-                                {...getWhatsAppAvatarConfig(auth?.username, 40)}
+                                alt={displayName}
+                                {...getWhatsAppAvatarConfig(displayName, 40)}
                             />
                              {!isCollapsed && (
-                                <span className="sidebar-user-name">{auth?.username || 'User'}</span>
+                                <span className="sidebar-user-name">{displayName}</span>
                             )}
                         </div>
                     </Tooltip>

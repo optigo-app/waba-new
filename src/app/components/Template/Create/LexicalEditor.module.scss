@@ -1,0 +1,99 @@
+.editorWrapper {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fff;
+}
+
+.editorInner {
+    min-height: 120px;
+    padding: 12px 14px;
+    position: relative;
+}
+
+.editorInput {
+    min-height: 120px;
+    outline: none;
+    font-size: 1rem;
+    line-height: 1.5;
+    color: #1e293b;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.editorPlaceholder {
+    position: absolute;
+    top: 12px;
+    left: 14px;
+    color: #94a3b8;
+    pointer-events: none;
+    user-select: none;
+    font-size: 1rem;
+}
+
+.editorParagraph {
+    margin: 0 0 8px 0;
+    padding: 0;
+}
+
+.editorParagraph:last-child {
+    margin-bottom: 0;
+}
+
+.editorTextBold {
+    font-weight: 700;
+}
+
+.editorTextItalic {
+    font-style: italic;
+}
+
+.editorTextStrikethrough {
+    text-decoration: line-through;
+}
+
+.editorTextCode {
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    background: #f1f5f9;
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.bodyFooterRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 0;
+    position: relative;
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+    border-radius: 0 0 8px 8px;
+    padding: 6px 10px;
+}
+
+.formattingButtons {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 4px;
+    align-items: center;
+    flex-wrap: nowrap !important;
+    width: fit-content;
+}
+
+.charCounter {
+    color: var(--secondary-color);
+    font-size: 0.78rem;
+}
+
+.emojiPickerWrapper {
+    position: absolute;
+    right: 0;
+    bottom: 100%;
+    margin-bottom: 8px;
+    z-index: 9999;
+}
+
+.charCounterDisplay {
+    display: none;
+}

@@ -44,6 +44,10 @@ export default function ChatInputArea({
     adjustHeight();
   }, [input, adjustHeight]);
 
+  useEffect(() => {
+    textareaRef.current?.focus();
+  }, []);
+
   // Close attachment menu on click outside
   useEffect(() => {
     if (!attachMenuOpen) return;

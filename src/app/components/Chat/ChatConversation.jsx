@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
 import { useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { getCustomerDisplayName, getCustomerAvatarSeed, getWhatsAppAvatarConfig } from './utils/chatUtils';
 import { fetchConversationView, sendChatText, sendChatMedia, sendReplyMessage, sendForwardMessage, fetchCustomerTags, fetchAgentLists, uploadChatMedia, deleteAssignedTags, sendMessageReaction, readMessage } from '../../api/chat/conversationApi';
 import { filesUploadApi } from '../../api/filesUploadApi';
 import { generateMediaFolderName } from '../../utils/generateMediaFolderName';
+import { getStaticUrl } from '../../utils/globalFunc';
 import { fetchAndCacheMedia, preloadCacheIntoState, setCachedMediaUrl, setCachedMediaUrls } from '../../utils/mediaCacheService';
 import ChatHeader from './ChatHeader';
 import ChatMessagesArea from './ChatMessagesArea';
@@ -16,7 +17,7 @@ import ForwardMessageModal from './ForwardMessageModal';
 import { useAuth } from '../../hooks/useAuth';
 import { useAuthStore } from '../../store/authStore';
 import { useChatStore } from '../../store/chatStore';
-import { emitReaction, addMessageReactionHandler } from '../../socket';
+import { emitReaction, addMessageReactionHandler, addStatusHandler } from '../../socket';
 import TagsModal from './TagsModal';
 import MediaViewer from './MediaViewer';
 import RedirectionModal from './RedirectionModal';
@@ -34,6 +35,8 @@ export default function ChatConversation({
   isConversationRead,
   setIsConversationRead,
   onToggleDetailsPanel,
+  pendingDropFiles,
+  onClearPendingDropFiles,
 }) {
   const [loading, setLoading] = useState(false);
   const [input, setInput] = useState('');
@@ -159,6 +162,11 @@ export default function ChatConversation({
       return;
     }
 
+    // Clear media preview immediately on conversation switch so that
+    // a sidebar drop-files effect (which fires after this effect) can
+    // safely repopulate it without being wiped by the async load() below.
+    setMediaPreview([]);
+
     // Debounce to prevent rapid clicks / StrictMode double-fire
     debounceTimerRef.current = setTimeout(() => {
       const controller = new AbortController();
@@ -182,16 +190,19 @@ export default function ChatConversation({
         setMediaCache(preloadCacheIntoState());
         setUnreadCount(0);
         setForwardMessage(null);
-        setMediaPreview([]);
         setReactionPickerMessageId(null);
         setMessageReactions({});
 
+        const existing = useChatStore.getState().messagesByConversationId[conversationId] || [];
         if (cached) {
           setLoading(false);
           setMessages(cached);
+        } else if (existing.length > 0) {
+          // Preloaded messages available — show instantly, fetch fresh in background
+          setLoading(false);
+          setMessages(existing);
         } else {
           setLoading(true);
-          const existing = useChatStore.getState().messagesByConversationId[conversationId] || [];
           setMessages(existing);
         }
 
@@ -309,8 +320,9 @@ export default function ChatConversation({
     if (!conversationId || !auth?.userId) return;
     const handler = (e) => {
       const cid = e?.detail?.conversationId;
+      const mid = e?.detail?.messageId || '';
       if (cid && String(cid) === String(conversationId)) {
-        readMessage(cid, auth.userId).catch(() => {});
+        readMessage(cid, auth.userId, mid).catch(() => {});
       }
     };
     window.addEventListener('waba:markConversationRead', handler);
@@ -372,11 +384,7 @@ export default function ChatConversation({
 
     // Check duplicates against existing previews
     const existingNames = new Set(mediaPreview.map((p) => `${p.name}-${p.size}`));
-    const duplicates = validFiles.filter((f) => existingNames.has(`${f.name}-${f.size}`));
-    if (duplicates.length > 0) {
-      toast.error(`Ignored duplicate file(s): ${duplicates.map((f) => f.name).join(', ')}`);
-      validFiles = validFiles.filter((f) => !existingNames.has(`${f.name}-${f.size}`));
-    }
+    validFiles = validFiles.filter((f) => !existingNames.has(`${f.name}-${f.size}`));
 
     // Check total count
     const currentCount = mediaPreview.length;
@@ -469,7 +477,7 @@ export default function ChatConversation({
             direction: 1,
             sentAt: new Date().toISOString(),
             Date: new Date().toISOString().split('T')[0],
-            status: 'sending',
+            status: 'pending',
             isUploading: true,
             percent: 0,
             ...(isReply && { ContextType: 2, ReplyContext: replyToMessage }),
@@ -503,7 +511,7 @@ export default function ChatConversation({
           const serverResp = await filesUploadApi({
             attachments: [{ file: preview.file }],
             folderName,
-            uniqueNo: conversationId,
+            uniqueNo: metaMediaId || tempId,
           });
           serverUrl = serverResp?.files?.[0]?.url ?? null;
 
@@ -547,13 +555,44 @@ export default function ChatConversation({
           }
 
           // Mark sent
+          const mediaApiStatus = sendResp?.data?.messageStatus || sendResp?.Data?.messageStatus;
+          const mediaMsgId = sendResp?.data?.messageId || sendResp?.Data?.messageId || sendResp?.Data?.autoid;
           setMessages((prev) =>
             prev.map((msg) =>
               msg.id === tempId
-                ? { ...msg, isUploading: false, status: 'sent', autoid: sendResp?.Data?.autoid }
+                ? { ...msg, isUploading: false, status: mediaApiStatus || 'sent', id: mediaMsgId || tempId, autoid: mediaMsgId, MessageId: mediaMsgId || msg.MessageId }
                 : msg
             )
           );
+
+          // If still pending, check status after delay
+          if (mediaApiStatus === 'pending' && mediaMsgId) {
+            setTimeout(async () => {
+              try {
+                const result = await fetchConversationView(conversationId, 1, 10, auth?.userId);
+                if (result?.data) {
+                  const list = Array.isArray(result.data) ? result.data : (result.data?.rd || []);
+                  const found = list.find((m) =>
+                    String(m.id ?? m.Id ?? m.autoid ?? m.MessageId) === String(mediaMsgId)
+                  );
+                  if (found) {
+                    const newStatus = found?.Status ?? found?.status;
+                    if (newStatus !== undefined && newStatus !== 'pending' && newStatus !== 0) {
+                      setMessages((prev) =>
+                        prev.map((msg) =>
+                          msg.id === mediaMsgId || msg.autoid === mediaMsgId
+                            ? { ...msg, status: newStatus, Status: newStatus }
+                            : msg
+                        )
+                      );
+                    }
+                  }
+                }
+              } catch (e) {
+                console.error('Status check error:', e);
+              }
+            }, 3000);
+          }
         } catch (err) {
           console.error('Media send error:', err);
           setMessages((prev) =>
@@ -583,7 +622,7 @@ export default function ChatConversation({
         direction: 1,
         sentAt: new Date().toISOString(),
         Date: new Date().toISOString().split('T')[0],
-        status: 'sending',
+        status: 'pending',
         ...(isReply && {
           ContextType: 2,
           ReplyContext: replyToMessage,
@@ -611,11 +650,44 @@ export default function ChatConversation({
       }
 
       if (response) {
+        const apiStatus = response?.data?.messageStatus || response?.Data?.messageStatus;
+        const serverMsgId = response?.data?.messageId || response?.Data?.messageId || response?.Data?.autoid;
         setMessages((prev) =>
           prev.map((msg) =>
-            msg.id === tempId ? { ...msg, status: 'sent', id: response?.Data?.autoid || tempId } : msg
+            msg.id === tempId
+              ? { ...msg, status: apiStatus || 'sent', id: serverMsgId || tempId, MessageId: serverMsgId || msg.MessageId, autoid: serverMsgId || msg.autoid }
+              : msg
           )
         );
+
+        // If still pending, check status after delay
+        if (apiStatus === 'pending' && serverMsgId) {
+          setTimeout(async () => {
+            try {
+              const result = await fetchConversationView(conversationId, 1, 10, auth?.userId);
+              if (result?.data) {
+                const list = Array.isArray(result.data) ? result.data : (result.data?.rd || []);
+                const found = list.find((m) =>
+                  String(m.id ?? m.Id ?? m.autoid ?? m.MessageId) === String(serverMsgId)
+                );
+                if (found) {
+                  const newStatus = found?.Status ?? found?.status;
+                  if (newStatus !== undefined && newStatus !== 'pending' && newStatus !== 0) {
+                    setMessages((prev) =>
+                      prev.map((msg) =>
+                        msg.id === serverMsgId || msg.autoid === serverMsgId
+                          ? { ...msg, status: newStatus, Status: newStatus }
+                          : msg
+                      )
+                    );
+                  }
+                }
+              }
+            } catch (e) {
+              console.error('Status check error:', e);
+            }
+          }, 3000);
+        }
       } else {
         setMessages((prev) =>
           prev.map((msg) =>
@@ -782,6 +854,19 @@ export default function ChatConversation({
     return () => removeHandler();
   }, []);
 
+  // Listen for message status changes via socket
+  useEffect(() => {
+    const removeHandler = addStatusHandler((data) => {
+      if (!data) return;
+      try {
+        useChatStore.getState().handleSocketStatusChange(data);
+      } catch (e) {
+        console.error('Status change handler error:', e);
+      }
+    });
+    return () => removeHandler();
+  }, []);
+
   // Scroll handling for showScrollToBottom (column-reverse mode)
   const handleScroll = useCallback(() => {
     const container = messagesListRef.current;
@@ -797,11 +882,49 @@ export default function ChatConversation({
     }
   }, [messages.length]);
 
-  // Load older messages on scroll-to-top
+  // Ref to track scroll position that needs restoration after prepending older messages
+  const scrollRestoreRef = useRef(null);
+  // Track whether new items were actually added in the last loadMoreMessages call
+  const addedCountRef = useRef(0);
+
+  // Restore scroll position synchronously after DOM updates (before browser paint)
+  // This prevents the visual jump to bottom when older messages are prepended
+  useLayoutEffect(() => {
+    if (!scrollRestoreRef.current || !messagesListRef.current) return;
+    // Only restore if new items were actually added
+    if (addedCountRef.current === 0) {
+      scrollRestoreRef.current = null;
+      return;
+    }
+    const { prevScrollHeight, prevScrollTop } = scrollRestoreRef.current;
+    const container = messagesListRef.current;
+    const newScrollHeight = container.scrollHeight;
+    const heightDiff = newScrollHeight - prevScrollHeight;
+    // In column-reverse, scrollTop increases as user scrolls up.
+    // Prepending older messages adds height at the visual top, so we must
+    // increase scrollTop by the added height to keep the same visual position.
+    container.scrollTop = prevScrollTop + heightDiff;
+    scrollRestoreRef.current = null;
+    addedCountRef.current = 0;
+  }, [messages.length]);
+
+  // Ref-based guard to prevent double loadMoreMessages calls from IntersectionObserver + onScroll
+  const isLoadingMoreRef = useRef(false);
+
+  // Load older messages on scroll-to-top (30 per page for smooth pagination)
   const loadMoreMessages = useCallback(async () => {
-    if (isLoadingMore || !hasMore || !conversationId || !auth?.userId) return;
+    if (isLoadingMoreRef.current || !hasMore || !conversationId || !auth?.userId) return;
+    isLoadingMoreRef.current = true;
     const nextPage = page + 1;
     setIsLoadingMore(true);
+
+    // Save scroll position before fetching — will be restored in useLayoutEffect after DOM update
+    const container = messagesListRef.current;
+    scrollRestoreRef.current = {
+      prevScrollHeight: container?.scrollHeight || 0,
+      prevScrollTop: container?.scrollTop || 0,
+    };
+    addedCountRef.current = 0;
 
     try {
       const response = await fetchConversationView(conversationId, nextPage, 30, auth?.userId);
@@ -826,21 +949,36 @@ export default function ChatConversation({
           setMediaCache((prev) => ({ ...prev, ...FileUrlCache }));
         }
 
+        let newCount = 0;
         setMessages((prev) => {
           const existingIds = new Set(prev.map((m) => m.id || m.Id || m.autoid));
-          const newItems = list.filter((m) => !existingIds.has(m.id || m.Id || m.autoid));
+          const newItems = list.filter((m) => {
+            const id = m.id || m.Id || m.autoid;
+            if (!existingIds.has(id)) {
+              newCount++;
+              return true;
+            }
+            return false;
+          });
           return [...newItems, ...prev];
         });
+        addedCountRef.current = newCount;
+        // Scroll position is restored by useLayoutEffect watching messages.length
+      } else {
+        // No new items — clear restore ref so useLayoutEffect doesn't fire
+        scrollRestoreRef.current = null;
       }
 
       setHasMore(response?.hasMore ?? (list.length === 30));
       setPage(nextPage);
     } catch (err) {
+      scrollRestoreRef.current = null;
       console.error('Failed to load older messages:', err);
     } finally {
+      isLoadingMoreRef.current = false;
       setIsLoadingMore(false);
     }
-  }, [isLoadingMore, hasMore, conversationId, auth?.userId, page]);
+  }, [hasMore, conversationId, auth?.userId, page]);
 
   // Drag & drop handlers (counter-based to avoid child-element flicker)
   const handleDragEnter = useCallback((e) => {
@@ -900,6 +1038,16 @@ export default function ChatConversation({
     return () => container.removeEventListener('scroll', handleScroll);
   }, [handleScroll, conversationId]);
 
+  // Auto-load more messages when content doesn't fill the viewport (no scrollbar to scroll)
+  useEffect(() => {
+    if (loading || isLoadingMore || !hasMore || !conversationId) return;
+    const container = messagesListRef.current;
+    if (!container) return;
+    if (container.scrollHeight <= container.clientHeight) {
+      loadMoreMessages();
+    }
+  }, [messages.length, hasMore, isLoadingMore, loading, conversationId, loadMoreMessages]);
+
   // Close emoji picker on click outside
   useEffect(() => {
     if (!emojiPickerOpen) return;
@@ -911,6 +1059,14 @@ export default function ChatConversation({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [emojiPickerOpen]);
+
+  // Process files dropped on a sidebar conversation item
+  useEffect(() => {
+    if (pendingDropFiles?.length) {
+      addMediaFiles(pendingDropFiles);
+      onClearPendingDropFiles?.();
+    }
+  }, [pendingDropFiles, addMediaFiles, onClearPendingDropFiles]);
 
   // Lazy media fetch — called by MessageBubble when media enters viewport
   const requestMediaFetch = useCallback(async (mediaId) => {
@@ -942,7 +1098,9 @@ export default function ChatConversation({
     return (
       <div className="chat-conversation empty-state">
         <div className="chat-empty-center">
-          <p>Select a conversation to start chatting</p>
+          <img src={getStaticUrl('/waba_logo.png')} alt="Logo" className="chat-empty-logo" />
+          <h2 className="chat-empty-title">Welcome to WABA-Chat</h2>
+          <p className="chat-empty-subtitle">Select a conversation to start chatting</p>
         </div>
       </div>
     );
@@ -978,6 +1136,7 @@ export default function ChatConversation({
       />
 
       <ChatMessagesArea
+        conversationId={conversationId}
         messages={messages}
         loading={loading}
         isDragOver={isDragOver}
@@ -1036,6 +1195,7 @@ export default function ChatConversation({
 
       {can(6) && mediaPreview.length === 0 && (
         <ChatInputArea
+          key={selectedCustomer?.CustomerId || selectedCustomer?.autoid}
           replyToMessage={replyToMessage}
           setReplyToMessage={setReplyToMessage}
           fileInputRef={fileInputRef}

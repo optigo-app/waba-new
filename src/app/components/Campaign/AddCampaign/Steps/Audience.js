@@ -11,12 +11,13 @@ import { fetchExcelList } from '../../../../api/ExcelLists';
 import { fetchCampaignDetails } from '../../../../api/FetchCampaignDetails';
 import { useAuthToken } from '../../../../hooks/useAuthToken';
 import ConfirmationModal from '../../../ConfirmationModal/ConfirmationModal';
-import { normalizeMobileNumber } from '../../../../utils/globalFunc';
+import { normalizeMobileNumber, getStaticUrl } from '../../../../utils/globalFunc';
 import { getCampaignStepper, getAudienceDraft, setAudienceDraft } from '../../../../utils/storage';
+import { extractAudienceFromResponse } from '../../utils/audienceMapper';
 
-const sampleExcelFile = '/sampleAud.xlsx';
+const sampleExcelFile = () => getStaticUrl('/sampleAud.xlsx');
 
-const Audience = ({ onNext, onBack, onAudienceChange, onDataSourceChange, onFilterChange, showError, audienceError, customerFilters, audienceData, audienceGridData, isEditClone, campaignId, isRetargetFlow = false, retargetSourceCampaignName = '', retargetStatus = 'Overall', retargetStatusOptions = [], onRetargetStatusChange, retargetSourceCampaignId = null, retargetChatMsgStatus = null, retemplateData = {} }) => {
+const Audience = ({ onNext, onBack, onAudienceChange, onDataSourceChange, onFilterChange, showError, audienceError, customerFilters, audienceData, audienceGridData, isEditClone, campaignId, isRetargetFlow = false, retargetSourceCampaignId = null, retargetChatMsgStatus = null, retemplateData = {} }) => {
     const [source, setSource] = useState('crm');
     const [file, setFile] = useState(null);
     const [filterDialogOpen, setFilterDialogOpen] = useState(false);
@@ -45,76 +46,79 @@ const Audience = ({ onNext, onBack, onAudienceChange, onDataSourceChange, onFilt
     const searchTimeoutRef = useRef(null);
 
 
-    // Fetch audience data for retarget flow
+    // Use pre-fetched audience data for retarget flow (audienceGridData is populated by handleRetarget)
     useEffect(() => {
-        const fetchRetargetAudience = async () => {
-            if (isRetargetFlow && retargetSourceCampaignId && !hasLoadedCustomersRef.current) {
-                setRetargetLoading(true);
-                try {
-                    toast.loading('Loading audience data...', { id: 'retarget-audience' });
-                    const detailsResult = await fetchCampaignDetails(userToken?.userId, retargetSourceCampaignId, retargetChatMsgStatus, retemplateData?.TemplateId);
+        if (isRetargetFlow && !hasLoadedCustomersRef.current) {
+            if (audienceGridData && audienceGridData.length > 0) {
+                // Use pre-fetched data from handleRetarget — no duplicate API call
+                const source = audienceGridData[0]?.Source || 'optigo';
+                setSource(source === 'optigo' ? 'crm' : 'excel');
+                onDataSourceChange(source === 'optigo' ? 'crm' : 'excel');
 
-                    if (detailsResult.success && detailsResult.data?.rd3) {
-                        const apiAudience = detailsResult.data.rd3;
+                setFilteredDataFromDialog(audienceGridData);
+                const selectedIds = audienceGridData.map(row => row.CustomerId || row.MessageId || row.id);
+                setRowSelectionModel(selectedIds);
 
-                        if (apiAudience.length > 0) {
-                            const mappedAudience = apiAudience.map((item) => ({
-                                CustomerId: item.CustomerId || item.MessageId || '',
-                                CustomerCode: item.CustomerCode || item.CustomerId || '',
-                                CustomerName: item.CustomerName || item.FirstName || '',
-                                CompanyType: item.CompanyType || item.Company || '',
-                                CustomerEmail: item.CustomerEmail || item.Email || '',
-                                CustomerPhone: item.CustomerPhone || item.PhoneNo || '',
-                                PhoneNo: item.PhoneNo || item.CustomerPhone || '',
-                                Email: item.Email || item.CustomerEmail || '',
-                                Country: item.Country || '',
-                                State: item.State || '',
-                                City: item.City || '',
-                                Company: item.Company || item.CompanyType || '',
-                                CustomerType: item.CustomerType || '',
-                                Category: item.Category || '',
-                                FirstName: item.FirstName || '',
-                                LastName: item.LastName || '',
-                                Source: item.DataSource || 'optigo'
-                            }));
-
-                            const source = mappedAudience[0]?.Source || 'optigo';
-                            setSource(source === 'optigo' ? 'crm' : 'excel');
-                            onDataSourceChange(source === 'optigo' ? 'crm' : 'excel');
-
-                            setFilteredDataFromDialog(mappedAudience);
-                            const selectedIds = mappedAudience.map(row => row.CustomerId || row.MessageId || row.id);
-                            setRowSelectionModel(selectedIds);
-
-                            const rowMap = {};
-                            mappedAudience.forEach(row => {
-                                const rowId = row.CustomerId || row.MessageId || row.id;
-                                if (rowId) {
-                                    rowMap[rowId] = row;
-                                }
-                            });
-                            setSelectedRowMap(rowMap);
-
-                            onAudienceChange(mappedAudience);
-                        } else {
-                            toast.error('No audience found for the selected status');
-                        }
-                    } else {
-                        toast.error('Failed to load audience data');
+                const rowMap = {};
+                audienceGridData.forEach(row => {
+                    const rowId = row.CustomerId || row.MessageId || row.id;
+                    if (rowId) {
+                        rowMap[rowId] = row;
                     }
-                } catch (error) {
-                    console.error('Error fetching retarget audience:', error);
-                    toast.error('Error loading audience data');
-                } finally {
-                    toast.dismiss('retarget-audience');
-                    hasLoadedCustomersRef.current = true;
-                    setRetargetLoading(false);
-                }
-            }
-        };
+                });
+                setSelectedRowMap(rowMap);
 
-        fetchRetargetAudience();
-    }, [isRetargetFlow, retargetSourceCampaignId, retargetChatMsgStatus, userToken?.userId, onDataSourceChange, onAudienceChange]);
+                onAudienceChange(audienceGridData);
+                hasLoadedCustomersRef.current = true;
+            } else if (retargetSourceCampaignId) {
+                // Fallback: fetch from API if audienceGridData is empty
+                const fetchRetargetAudience = async () => {
+                    setRetargetLoading(true);
+                    try {
+                        toast.loading('Loading audience data...', { id: 'retarget-audience' });
+                        const detailsResult = await fetchCampaignDetails(userToken?.userId || userToken?.userid || userToken?.appuserid, retargetSourceCampaignId, retargetChatMsgStatus, retemplateData?.TemplateId);
+
+                        if (detailsResult.success) {
+                            const mappedAudience = extractAudienceFromResponse(detailsResult.data);
+
+                            if (mappedAudience.length > 0) {
+                                const source = mappedAudience[0]?.Source || 'optigo';
+                                setSource(source === 'optigo' ? 'crm' : 'excel');
+                                onDataSourceChange(source === 'optigo' ? 'crm' : 'excel');
+
+                                setFilteredDataFromDialog(mappedAudience);
+                                const selectedIds = mappedAudience.map(row => row.CustomerId || row.MessageId || row.id);
+                                setRowSelectionModel(selectedIds);
+
+                                const rowMap = {};
+                                mappedAudience.forEach(row => {
+                                    const rowId = row.CustomerId || row.MessageId || row.id;
+                                    if (rowId) {
+                                        rowMap[rowId] = row;
+                                    }
+                                });
+                                setSelectedRowMap(rowMap);
+
+                                onAudienceChange(mappedAudience);
+                            } else {
+                                toast.error('No audience found for the selected status');
+                            }
+                        } else {
+                            toast.error('Failed to load audience data');
+                        }
+                    } catch (error) {
+                        console.error('Error fetching retarget audience:', error);
+                        toast.error('Error loading audience data');
+                    } finally {
+                        toast.dismiss('retarget-audience');
+                        hasLoadedCustomersRef.current = true;
+                        setRetargetLoading(false);
+                    }
+                };
+                fetchRetargetAudience();
+            }
+        }
+    }, [isRetargetFlow, retargetSourceCampaignId, retargetChatMsgStatus, audienceGridData, retemplateData, userToken?.userId, userToken?.userid, userToken?.appuserid, onDataSourceChange, onAudienceChange]);
 
     // Handle audience data when editing/cloning
     useEffect(() => {
@@ -290,7 +294,7 @@ const Audience = ({ onNext, onBack, onAudienceChange, onDataSourceChange, onFilt
     const fetchExcelData = async (campaignId) => {
         try {
             setExcelData(prev => ({ ...prev, loading: true }));
-            const result = await fetchExcelList(userToken?.userId, campaignId, "", filters, searchTerm);
+            const result = await fetchExcelList(userToken?.userId || userToken?.userid || userToken?.appuserid, campaignId, "", filters, searchTerm);
 
             if (result) {
                 setExcelData({
@@ -343,14 +347,14 @@ const Audience = ({ onNext, onBack, onAudienceChange, onDataSourceChange, onFilt
             return;
         }
         setFile(uploadedFile);
-        const fileUpload = await ExcelImport(uploadedFile, userToken?.userId, fetchCampignId);
+        const fileUpload = await ExcelImport(uploadedFile, userToken?.userId || userToken?.userid || userToken?.appuserid, fetchCampignId);
         if (fileUpload?.success) {
             toast.success(fileUpload?.message || 'File uploaded successfully');
             await fetchExcelData(fetchCampignId);
         } else {
             toast.error(fileUpload?.message || 'Failed to upload file');
         }
-    }, [userToken?.userId, fetchCampignId]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [userToken?.userId, userToken?.userid, userToken?.appuserid, fetchCampignId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const isNextDisabled = rowSelectionData.length === 0;
 
@@ -468,7 +472,7 @@ const Audience = ({ onNext, onBack, onAudienceChange, onDataSourceChange, onFilt
         setFilterDialogOpen(true);
         setIsDragging(false);
 
-        const fileUpload = await ExcelImport(excelFile, userToken?.userId, fetchCampignId);
+        const fileUpload = await ExcelImport(excelFile, userToken?.userId || userToken?.userid || userToken?.appuserid, fetchCampignId);
         if (fileUpload?.success) {
             toast.success(fileUpload?.message || 'File uploaded successfully');
             await fetchExcelData(fetchCampignId);
@@ -552,7 +556,7 @@ const Audience = ({ onNext, onBack, onAudienceChange, onDataSourceChange, onFilt
         setSelectedGroup(null);
         setClearConfirmOpen(false);
         onAudienceChange(remainingRows);
-        toast.success('Selected audience cleared');
+        toast.success(`Cleared ${idsToRemove.size} selected rows`);
     };
 
     const handleDeleteRow = useCallback((row) => {
@@ -586,13 +590,12 @@ const Audience = ({ onNext, onBack, onAudienceChange, onDataSourceChange, onFilt
     }, [onAudienceChange]);
 
     const handleExport = useCallback(() => {
-        if (!dedupeStats.rows || dedupeStats.rows.length === 0) {
-            toast.error('No data to export');
+        if (!rowSelectionData || rowSelectionData.length === 0) {
+            toast.error('No selected rows to export');
             return;
         }
 
         const exportColumns = [
-            { header: 'Sr #', field: 'SrNo' },
             { header: 'Customer Name', field: 'CustomerName' },
             { header: 'Email', field: 'CustomerEmail' },
             { header: 'Phone', field: 'CustomerPhone' },
@@ -606,8 +609,8 @@ const Audience = ({ onNext, onBack, onAudienceChange, onDataSourceChange, onFilt
 
         const headers = exportColumns.map((col) => col.header);
 
-        const rows = dedupeStats.rows.map((row, index) => {
-            const obj = { 'Sr #': index + 1 };
+        const rows = rowSelectionData.map((row) => {
+            const obj = {};
             exportColumns.forEach((col) => {
                 let val = row[col.field];
                 if (col.field === 'CustomerName') {
@@ -634,8 +637,8 @@ const Audience = ({ onNext, onBack, onAudienceChange, onDataSourceChange, onFilt
 
         const filename = `Audience_${source || 'data'}_${new Date().toISOString().slice(0, 10)}.xlsx`;
         XLSX.writeFile(workbook, filename);
-        toast.success(`Exported ${dedupeStats.rows.length} rows to Excel`);
-    }, [dedupeStats.rows, source]);
+        toast.success(`Exported ${rowSelectionData.length} selected rows to Excel`);
+    }, [rowSelectionData, source]);
 
     return (
         <div className={styles.formCard}>
@@ -858,8 +861,9 @@ const Audience = ({ onNext, onBack, onAudienceChange, onDataSourceChange, onFilt
                                         onClick={handleExport}
                                         sx={{ mr: 1 }}
                                         className='varientOutlinedBtn'
+                                        disabled={rowSelectionData.length === 0}
                                     >
-                                        Export
+                                        Export Selected
                                     </Button>
                                     <Button
                                         variant='contained'
@@ -869,8 +873,9 @@ const Audience = ({ onNext, onBack, onAudienceChange, onDataSourceChange, onFilt
                                         onClick={handleClearAudience}
                                         sx={{ mr: 1 }}
                                         className='dangerbtnClassName'
+                                        disabled={rowSelectionData.length === 0}
                                     >
-                                        Clear Audience
+                                        Clear Selected
                                     </Button>
                                 </>
                             )}
@@ -898,6 +903,7 @@ const Audience = ({ onNext, onBack, onAudienceChange, onDataSourceChange, onFilt
                                 searchText={searchInput}
                                 onSearchChange={handleGridSearchChange}
                                 onDelete={handleDeleteRow}
+                                selectedRows={rowSelectionData}
                             />
                         ) : (
                             <Box
@@ -976,7 +982,7 @@ const Audience = ({ onNext, onBack, onAudienceChange, onDataSourceChange, onFilt
                     onClose={() => setClearConfirmOpen(false)}
                     onConfirm={handleClearConfirm}
                     title="Clear Audience"
-                    description="Are you sure you want to remove the selected contacts from the audience? This action cannot be undone."
+                    description={`Are you sure you want to remove ${rowSelectionData.length} selected ${rowSelectionData.length === 1 ? 'contact' : 'contacts'} from the audience? This action cannot be undone.`}
                     icon={Trash2}
                     isDanger={true}
                     confirmLabel="Clear"
@@ -1054,7 +1060,7 @@ const Audience = ({ onNext, onBack, onAudienceChange, onDataSourceChange, onFilt
                             </Typography>
                             <Button
                                 component="a"
-                                href={sampleExcelFile}
+                                href={sampleExcelFile()}
                                 download="sample_audience.xlsx"
                                 size="small"
                                 startIcon={<Download size={16} />}

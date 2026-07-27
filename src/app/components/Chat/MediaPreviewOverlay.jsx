@@ -25,6 +25,10 @@ export default function MediaPreviewOverlay({
   sending,
   emojiPickerOpen,
   setEmojiPickerOpen,
+  onDragEnter,
+  onDragOver,
+  onDragLeave,
+  onDrop,
 }) {
   const swiperRef = useRef(null);
   const thumbRowRef = useRef(null);
@@ -93,7 +97,13 @@ export default function MediaPreviewOverlay({
   };
 
   return (
-    <div className="media-preview-overlay">
+    <div
+      className="media-preview-overlay"
+      onDragEnter={onDragEnter}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
       {/* Header */}
       <div className="media-preview-header">
         <div className="media-preview-file-info">

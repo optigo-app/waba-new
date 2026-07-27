@@ -43,16 +43,29 @@ const getSortTime = (item) => {
 const SX_WABA_CHIP = {
     display: 'inline-flex',
     alignItems: 'center',
-    gap: '4px',
-    px: '8px',
-    py: '2px',
-    borderRadius: '6px',
-    backgroundColor: 'rgba(29, 170, 97, 0.08)',
-    border: '1px solid rgba(29, 170, 97, 0.2)',
+    gap: '6px',
+    px: '10px',
+    py: '4px',
+    borderRadius: '8px',
+    backgroundColor: 'rgba(29, 170, 97, 0.06)',
+    border: '1px solid rgba(29, 170, 97, 0.18)',
     color: '#1daa61',
     fontSize: '0.72rem',
     fontWeight: 600,
     fontFamily: 'Poppins, sans-serif',
+    whiteSpace: 'nowrap',
+    '& .waba-id-icon': {
+        opacity: 0.7,
+        flexShrink: 0,
+    },
+    '& .waba-id-label': {
+        opacity: 0.75,
+        fontWeight: 500,
+    },
+    '& .waba-id-value': {
+        fontWeight: 700,
+        letterSpacing: '0.02em',
+    },
 };
 
 const SX_EMPTY_OUTER = {
@@ -292,10 +305,12 @@ const TemplatesPage = () => {
                             </p>
                         </div>
                         {walletInfo?.wabaId && (
-                            <Box sx={SX_WABA_CHIP}>
-                                <Hash size={10} />
-                                {walletInfo.wabaId}
-                            </Box>
+                            <Tooltip title="WhatsApp Business Account ID" arrow>
+                                <Box sx={SX_WABA_CHIP}>
+                                    <span className="waba-id-label">WABA ID</span>
+                                    <span className="waba-id-value">{walletInfo.wabaId}</span>
+                                </Box>
+                            </Tooltip>
                         )}
                     </div>
                     <div className={styles.topBarRight}>

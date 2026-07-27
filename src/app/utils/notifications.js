@@ -2,6 +2,8 @@
 
 import toast from 'react-hot-toast';
 import { playNotificationSound } from './notificationSound';
+import { useAuthStore } from '../store/authStore';
+import { getStaticUrl } from './globalFunc';
 
 // Cache the service worker registration so we can use it synchronously
 // (awaiting inside a click handler consumes the user gesture in some browsers)
@@ -13,8 +15,7 @@ if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
     }).catch(() => {});
 }
 
-// Inline chat-bubble SVG as data URL (green)
-const APP_ICON = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzI1ZDM2NiI+PHBhdGggZD0iTTIwIDJINGMtMS4xIDAtMiAuOS0yIDJ2MThsNC00aDE0YzEuMSAwIDItLjkgMi0yVjRjMC0xLjEtLjktMi0yLTJ6Ii8+PC9zdmc+';
+const getAppIcon = () => getStaticUrl('/waba_logo.png');
 
 const capitalizeWords = (str) =>
     str
@@ -46,51 +47,79 @@ const showInPageNotification = ({ title, body, tag, group = 'OTHER' }) => {
 export const showBrowserNotification = async ({
     title,
     body,
-    icon = APP_ICON,
-    badge = APP_ICON,
+    icon = getAppIcon(),
+    badge = getAppIcon(),
     data,
     tag,
 }) => {
+    const isChatRoute = typeof window !== 'undefined' && window.location.pathname.includes('/chat');
+    const notifType = data?.type || '';
+    // NEW_MESSAGE → only show when user is on /chat; all other types → show everywhere
+    const shouldPlaySound = notifType === 'NEW_MESSAGE' ? isChatRoute : true;
+
+    // Suppress NEW_MESSAGE notifications when user is not on /chat
+    if (notifType === 'NEW_MESSAGE' && !isChatRoute) {
+        return;
+    }
+
     // Not in browser or API not supported
     if (typeof window === 'undefined' || !('Notification' in window)) {
-        playNotificationSound();
+        if (shouldPlaySound) playNotificationSound();
         toast(body, { icon: 'ðŸ””' });
         return;
     }
 
-    const isTabVisible = typeof document !== 'undefined' && document.visibilityState === 'visible' && document.hasFocus();
-    console.log('[Notification] showBrowserNotification called:', { title, body, isTabVisible, permission: Notification.permission });
+    const isTabVisible = typeof document !== 'undefined' && document.visibilityState === 'visible';
+    console.log('[Notification] showBrowserNotification called:', { title, body, isTabVisible, isChatRoute, notifType, shouldPlaySound, permission: Notification.permission });
 
-    // Always show the in-page notification card (bottom-right)
-    showInPageNotification({ title, body, tag, group: data?.group || 'OTHER' });
-
-    // Permission not granted
-    if (Notification.permission !== 'granted') {
-        console.log('[Notification] Permission not granted:', Notification.permission);
-        playNotificationSound();
+    // Tab active → show inline notification only, no browser notification
+    if (isTabVisible) {
+        console.log('[Notification] Tab visible — showing inline notification');
+        showInPageNotification({ title, body, tag, group: data?.group || 'OTHER' });
+        if (shouldPlaySound) playNotificationSound();
         return;
     }
 
+    // Tab not active → show browser notification only, no inline notification
+    if (Notification.permission !== 'granted') {
+        console.log('[Notification] Permission not granted:', Notification.permission);
+        return;
+    }
+
+    console.log('[Notification] Showing browser notification (hidden tab)');
+    if (shouldPlaySound) playNotificationSound();
+
+    const iconUrl = icon || getStaticUrl('/waba_logo.png');
+    const badgeUrl = badge || getStaticUrl('/waba_logo.png');
+
+    console.log('[Notification] Icon URL:', iconUrl);
+    console.log('[Notification] Badge URL:', badgeUrl);
+
     const options = {
         body,
-        icon,
-        badge,
+        icon: iconUrl,
+        badge: badgeUrl,
         data,
         tag: tag || `msg-${data?.conversationId || data?.ConversationId || Date.now()}`,
-        vibrate: [200, 100, 200],
         requireInteraction: false,
-        renotify: true,
         silent: true, // We play our own sound for consistency
     };
 
+    console.log('[Notification] Full options:', JSON.stringify(options));
+
     const showViaNative = (opts) => {
-        console.log('[Notification] Using new Notification()', opts);
+        const nativeOpts = { ...options, ...opts };
+        console.log('[Notification] Using new Notification()', nativeOpts);
         try {
-            const notification = new Notification(title, opts);
+            const notification = new Notification(title, nativeOpts);
             notification.onclick = (e) => {
                 e.preventDefault();
                 window.focus();
                 const conversationId = data?.conversationId || data?.ConversationId;
+                const chatUrl = data?.chatUrl || '/chat';
+                if (!window.location.pathname.includes('/chat')) {
+                    window.location.href = `${window.location.origin}${chatUrl}`;
+                }
                 if (conversationId) {
                     window.dispatchEvent(
                         new CustomEvent('SELECT_CONVERSATION', {
@@ -106,64 +135,66 @@ export const showBrowserNotification = async ({
         }
     };
 
-    // Show browser notification only when tab is hidden (user on another tab or minimized)
-    if (!isTabVisible) {
-        console.log('[Notification] Showing browser notification (hidden tab)');
-        playNotificationSound();
-
-        // Use cached Service Worker registration synchronously
-        if ('serviceWorker' in navigator && cachedSwReg && cachedSwReg.active) {
-            console.log('[Notification] Using cached SW registration synchronously');
-            try {
-                cachedSwReg.showNotification(title, options);
-                console.log('[Notification] Service Worker notification shown (sync)');
-            } catch (swErr) {
-                console.warn('[Notification] SW showNotification failed (sync):', swErr?.name, swErr?.message);
-                showViaNative({ body });
+    // Use cached Service Worker registration synchronously
+    if ('serviceWorker' in navigator && cachedSwReg && cachedSwReg.active) {
+        console.log('[Notification] Using cached SW registration:', cachedSwReg.scope);
+        try {
+            const result = cachedSwReg.showNotification(title, options);
+            if (result && typeof result.then === 'function') {
+                result
+                    .then(() => console.log('[Notification] SW showNotification resolved OK'))
+                    .catch((err) => {
+                        console.error('[Notification] SW showNotification rejected:', err?.name, err?.message, err);
+                        showViaNative({ body });
+                    });
+            } else {
+                console.log('[Notification] SW showNotification returned synchronously (no promise)');
             }
-            return;
+            console.log('[Notification] Service Worker notification called (sync)');
+        } catch (swErr) {
+            console.warn('[Notification] SW showNotification failed (sync):', swErr?.name, swErr?.message, swErr);
+            showViaNative({ body });
         }
+        return;
+    }
 
-        // Fallback async path for socket-driven notifications
-        console.log('[Notification] No cached SW reg — trying async path');
-        if ('serviceWorker' in navigator) {
-            try {
-                const reg = await Promise.race([
-                    navigator.serviceWorker.ready,
-                    new Promise((_, reject) => setTimeout(() => reject(new Error('SW ready timeout')), 2000)),
-                ]);
-                console.log('[Notification] Service Worker ready:', reg?.scope, 'active=', !!reg?.active);
-                if (reg && reg.active) {
-                    cachedSwReg = reg; // cache for next time
+    // Fallback async path for socket-driven notifications
+    console.log('[Notification] No cached SW reg — trying async path');
+    if ('serviceWorker' in navigator) {
+        try {
+            const reg = await Promise.race([
+                navigator.serviceWorker.ready,
+                new Promise((_, reject) => setTimeout(() => reject(new Error('SW ready timeout')), 2000)),
+            ]);
+            console.log('[Notification] Service Worker ready:', reg?.scope, 'active=', !!reg?.active);
+            if (reg && reg.active) {
+                cachedSwReg = reg; // cache for next time
+                console.log('[Notification] SW active, calling showNotification with:', { title, options });
+                try {
+                    await reg.showNotification(title, options);
+                    console.log('[Notification] Service Worker notification shown');
+                } catch (swErr) {
+                    console.warn('[Notification] SW showNotification failed:', swErr?.name, swErr?.message, swErr);
+                    const minimalOpts = { body, data: options.data, tag: options.tag };
+                    console.log('[Notification] Retrying with minimal options:', minimalOpts);
                     try {
-                        await reg.showNotification(title, options);
-                        console.log('[Notification] Service Worker notification shown');
-                    } catch (swErr) {
-                        console.warn('[Notification] SW showNotification failed:', swErr?.name, swErr?.message);
-                        const minimalOpts = { body };
-                        console.log('[Notification] Retrying with minimal options:', minimalOpts);
-                        try {
-                            await reg.showNotification(title, minimalOpts);
-                            console.log('[Notification] Service Worker notification shown (minimal)');
-                        } catch (swErr2) {
-                            console.warn('[Notification] SW minimal also failed:', swErr2?.name, swErr2?.message);
-                            showViaNative(minimalOpts);
-                        }
+                        await reg.showNotification(title, minimalOpts);
+                        console.log('[Notification] Service Worker notification shown (minimal)');
+                    } catch (swErr2) {
+                        console.warn('[Notification] SW minimal also failed:', swErr2?.name, swErr2?.message);
+                        showViaNative(minimalOpts);
                     }
-                } else {
-                    throw new Error('No active service worker');
                 }
-            } catch (e) {
-                console.warn('[Notification] Service Worker path failed:', e?.name, e?.message);
-                showViaNative({ body });
+            } else {
+                throw new Error('No active service worker');
             }
-        } else {
-            console.log('[Notification] Service Worker not supported');
+        } catch (e) {
+            console.warn('[Notification] Service Worker path failed:', e?.name, e?.message);
             showViaNative({ body });
         }
     } else {
-        console.log('[Notification] Tab visible — only playing sound');
-        playNotificationSound();
+        console.log('[Notification] Service Worker not supported');
+        showViaNative({ body });
     }
 };
 
@@ -177,8 +208,8 @@ export const NOTIFICATION_TEMPLATES = {
         return {
             title: name,
             body,
-            icon: APP_ICON,
-            badge: APP_ICON,
+            icon: getAppIcon(),
+            badge: getAppIcon(),
             tag: `msg-${data?.conversationId || data?.ConversationId || data?.customerId || data?.CustomerId}`,
         };
     },
@@ -201,8 +232,8 @@ export const NOTIFICATION_TEMPLATES = {
         return {
             title: `${name} reacted`,
             body: `${emoji} ${data?.messagePreview || 'Reacted to your message'}`,
-            icon: APP_ICON,
-            badge: APP_ICON,
+            icon: getAppIcon(),
+            badge: getAppIcon(),
         };
     },
 
@@ -212,16 +243,16 @@ export const NOTIFICATION_TEMPLATES = {
         body: `A conversation with ${capitalizeWords(
             data?.CustomerName || data?.customerName || 'a customer'
         )} has been assigned to you.`,
-        icon: APP_ICON,
-        badge: APP_ICON,
+        icon: getAppIcon(),
+        badge: getAppIcon(),
     }),
 
     // Session logged out from another device
     SESSION_LOGOUT: () => ({
         title: 'ðŸ”’ Session Logged Out',
         body: 'Your account was logged in from another device.',
-        icon: APP_ICON,
-        badge: APP_ICON,
+        icon: getAppIcon(),
+        badge: getAppIcon(),
     }),
 };
 
@@ -241,12 +272,19 @@ export const notify = (data, templateId) => {
     if (templateId === 'CONVERSATION_ASSIGNED') typeGroup = 'ASSIGNMENT';
     if (templateId === 'SESSION_LOGOUT') typeGroup = 'AUTH';
 
+    const auth = useAuthStore.getState().auth;
+    const isLocalhost = typeof window !== 'undefined' && window.location.origin.includes('localhost');
+    const basePath = isLocalhost ? '' : (auth?.redirect_version || '');
+
     showBrowserNotification({
         ...notificationOptions,
         data: {
-            ...data,
+            conversationId: data?.conversationId || data?.ConversationId || data?.ConversationId,
+            customerId: data?.customerId || data?.CustomerId,
             type: templateId,
             group: typeGroup,
+            redirectVersion: basePath,
+            chatUrl: `${basePath}/chat`,
         },
     });
 };

@@ -1,13 +1,15 @@
 'use client';
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { CircularProgress } from '@mui/material';
 import { Paperclip, ArrowDown } from 'lucide-react';
 import { formatDateHeader } from './utils/dateUtils';
 import MessageBubble from './MessageBubble';
 import MediaPreviewOverlay from './MediaPreviewOverlay';
+import { getStaticUrl } from '../../utils/globalFunc';
 
 export default function ChatMessagesArea({
+  conversationId,
   messages,
   loading,
   isDragOver,
@@ -53,6 +55,25 @@ export default function ChatMessagesArea({
   hasMore,
   loadMoreMessages,
 }) {
+  const sentinelRef = useRef(null);
+
+  // IntersectionObserver-based infinite scroll — more reliable than scroll event in column-reverse
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    const container = messagesListRef.current;
+    if (!sentinel || !container) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isLoadingMore && !loading) {
+          loadMoreMessages();
+        }
+      },
+      { root: container, rootMargin: '300px 0px 0px 0px', threshold: 0 }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, isLoadingMore, loading, loadMoreMessages, conversationId, messages.length]);
+
   const groupMessagesByDate = useCallback(() => {
     const grouped = {};
     messages.forEach((msg) => {
@@ -70,6 +91,16 @@ export default function ChatMessagesArea({
     return grouped;
   }, [messages]);
 
+  const bgStyle = useMemo(() => {
+    if (typeof window === 'undefined') return {};
+    const bgUrl = getStaticUrl('/bg-3.jpg');
+    return {
+      backgroundImage: `linear-gradient(rgba(249, 250, 251, 0.80), rgba(249, 250, 251, 0.80)), url(${bgUrl})`,
+      backgroundSize: 'auto, contain',
+      backgroundPosition: 'center, center',
+      backgroundRepeat: 'repeat, repeat',
+    };
+  }, []);
 
   return (
     <div
@@ -91,26 +122,11 @@ export default function ChatMessagesArea({
       )}
 
       <div
-        className="chat-messages-list"
+        className="chat-messages-list fade-in"
+        key={conversationId}
         ref={messagesListRef}
-        onScroll={() => {
-          const el = messagesListRef.current;
-          if (!el || isLoadingMore || !hasMore || loading) return;
-          // In column-reverse, visual top = large scrollTop (near max)
-          const nearVisualTop = el.scrollTop > el.scrollHeight - el.clientHeight - 150;
-          if (nearVisualTop) {
-            loadMoreMessages();
-          }
-        }}
+        style={bgStyle}
       >
-        {/* Skeleton placeholders at top while loading older messages */}
-        {isLoadingMore && (
-          <div className="chat-messages-loading-more" style={{ padding: '8px 0', display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
-            <CircularProgress size={18} thickness={4} sx={{ color: '#1daa61' }} />
-            <span style={{ fontSize: 12, color: '#888' }}>Loading older messages...</span>
-          </div>
-        )}
-
         {/* Blur overlay + CircularProgress while loading initial conversation */}
         {loading && messages.length === 0 && (
           <div className="chat-messages-loading-overlay">
@@ -161,6 +177,19 @@ export default function ChatMessagesArea({
             })}
           </div>
         ))}
+
+        {/* Sentinel for IntersectionObserver — placed last in DOM so it appears at visual top in column-reverse */}
+        {hasMore && !loading && (
+          <div ref={sentinelRef} style={{ height: 1, width: '100%', flexShrink: 0 }} />
+        )}
+
+        {/* Loading indicator at visual top (last in DOM = top in column-reverse) */}
+        {isLoadingMore && (
+          <div className="chat-messages-loading-more" style={{ padding: '8px 0', display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
+            <CircularProgress size={18} thickness={4} sx={{ color: '#1daa61' }} />
+            <span style={{ fontSize: 12, color: '#888' }}>Loading older messages...</span>
+          </div>
+        )}
       </div>
 
       {/* Scroll to bottom button */}
@@ -197,6 +226,10 @@ export default function ChatMessagesArea({
           sending={sending}
           emojiPickerOpen={emojiPickerOpen}
           setEmojiPickerOpen={setEmojiPickerOpen}
+          onDragEnter={handleDragEnter}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
         />
       )}
     </div>

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { getTemplateBaseUrl } from '../../api/Config';
+import { fetchTemplateByName } from '../../api/TemplateApi';
+import { useChatStore } from '../../store/chatStore';
 import MediaViewer from './MediaViewer';
 import { Skeleton } from '@mui/material';
 import {
@@ -10,6 +11,9 @@ import {
 import './styles/TemplateStyles.scss';
 
 const MEDIA_FORMATS = ['IMAGE', 'VIDEO'];
+
+// Local cache for individually-fetched templates (survives re-renders)
+const localTemplateCache = new Map();
 
 export default function DynamicTemplate({
   templateName = '',
@@ -28,40 +32,55 @@ export default function DynamicTemplate({
     ? JSON.parse(sessionStorage.getItem('token') || '{}')
     : {};
 
+  // Check preloaded templates from store first
+  const preloadedTemplates = useChatStore((s) => s.templates);
+  const templatesLoaded = useChatStore((s) => s.templatesLoaded);
+
   useEffect(() => {
+    if (!templateName || !token?.whatsappPhoneNo) return;
+
+    // 1. Check local cache first (individually fetched templates)
+    if (localTemplateCache.has(templateName)) {
+      setTemplateData(localTemplateCache.get(templateName));
+      setLoading(false);
+      return;
+    }
+
+    // 2. Check if template is already preloaded in store (case-insensitive)
+    const cached = preloadedTemplates.find(
+      (t) => t.name?.toLowerCase() === templateName?.toLowerCase()
+    );
+    if (cached) {
+      setTemplateData(cached);
+      setLoading(false);
+      return;
+    }
+
+    // 3. If preloader hasn't finished yet, wait — don't fire individual API calls
+    if (!templatesLoaded) {
+      setLoading(true);
+      return;
+    }
+
+    // 4. Preloader finished but this template wasn't preloaded — fetch individually
     const fetchTemplate = async () => {
-      if (!templateName || !token?.whatsappPhoneNo) return;
       setLoading(true);
       setError(null);
-      try {
-        const baseUrl = getTemplateBaseUrl(token?.isMeta);
-        const url = `${baseUrl}/${token.whatsappPhoneNo}/message_templates?name=${encodeURIComponent(templateName)}`;
-        const response = await fetch(url, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token?.whatsappKey || ''}`,
-          },
-        });
-        if (!response.ok) {
-          setError('Failed to load template');
-          return;
-        }
-        const data = await response.json();
-        if (data?.data?.length > 0) {
-          setTemplateData(data.data[0]);
-        } else {
-          setError('Template not found');
-        }
-      } catch (err) {
-        console.error('Template fetch error:', err);
+      const data = await fetchTemplateByName(templateName, {
+        whatsappPhoneNo: token?.whatsappPhoneNo,
+        whatsappKey: token?.whatsappKey,
+        isMeta: token?.isMeta,
+      });
+      if (data) {
+        localTemplateCache.set(templateName, data);
+        setTemplateData(data);
+      } else {
         setError('Failed to load template');
-      } finally {
-        setLoading(false);
       }
+      setLoading(false);
     };
     fetchTemplate();
-  }, [templateName, token?.whatsappPhoneNo, token?.whatsappKey]);
+  }, [templateName, token?.whatsappPhoneNo, token?.whatsappKey, preloadedTemplates, templatesLoaded]);
 
   const carouselRef = useRef(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
@@ -252,65 +271,65 @@ export default function DynamicTemplate({
       case 'CAROUSEL':
         return (
           <div className="template-carousel-wrapper">
-            <button
-              className={`carousel-nav-btn left ${!showLeftArrow ? 'hidden' : ''}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                scrollCarousel('left');
-              }}
-              type="button"
-              aria-label="Previous card"
-            >
-              <ChevronLeft size={20} />
-            </button>
-
-            <div
-              className="template-carousel"
-              ref={carouselRef}
-              onScroll={handleScroll}
-            >
-              <div className="carousel-container">
-                {component.cards?.map((card, cardIndex) => (
-                  <div key={cardIndex} className="carousel-card">
-                    {card.components?.map((cardComp, compIndex) => {
-                      if (cardComp.type === 'HEADER' && MEDIA_FORMATS.includes(cardComp.format)) {
-                        const cMediaUrl = getMediaUrl(cardComp);
+            <div className="template-carousel-nav-row">
+              <button
+                className={`carousel-nav-btn left ${!showLeftArrow ? 'hidden' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  scrollCarousel('left');
+                }}
+                type="button"
+                aria-label="Previous card"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <div
+                className="template-carousel"
+                ref={carouselRef}
+                onScroll={handleScroll}
+              >
+                <div className="carousel-container">
+                  {component.cards?.map((card, cardIndex) => (
+                    <div key={cardIndex} className="carousel-card">
+                      {card.components?.map((cardComp, compIndex) => {
+                        if (cardComp.type === 'HEADER' && MEDIA_FORMATS.includes(cardComp.format)) {
+                          const cMediaUrl = getMediaUrl(cardComp);
+                          return (
+                            <div
+                              key={compIndex}
+                              className="card-component-wrapper"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (cMediaUrl) handleMediaClick(cMediaUrl, cardComp.format.toLowerCase());
+                              }}
+                              style={{ cursor: cMediaUrl ? 'pointer' : 'default' }}
+                            >
+                              {renderComponent(cardComp, true)}
+                            </div>
+                          );
+                        }
                         return (
-                          <div
-                            key={compIndex}
-                            className="card-component-wrapper"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (cMediaUrl) handleMediaClick(cMediaUrl, cardComp.format.toLowerCase());
-                            }}
-                            style={{ cursor: cMediaUrl ? 'pointer' : 'default' }}
-                          >
+                          <div key={compIndex} className="card-component-wrapper">
                             {renderComponent(cardComp, true)}
                           </div>
                         );
-                      }
-                      return (
-                        <div key={compIndex} className="card-component-wrapper">
-                          {renderComponent(cardComp, true)}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))}
+                      })}
+                    </div>
+                  ))}
+                </div>
               </div>
+              <button
+                className={`carousel-nav-btn right ${!showRightArrow ? 'hidden' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  scrollCarousel('right');
+                }}
+                type="button"
+                aria-label="Next card"
+              >
+                <ChevronRight size={18} />
+              </button>
             </div>
-
-            <button
-              className={`carousel-nav-btn right ${!showRightArrow ? 'hidden' : ''}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                scrollCarousel('right');
-              }}
-              type="button"
-              aria-label="Next card"
-            >
-              <ChevronRight size={20} />
-            </button>
           </div>
         );
 
@@ -319,12 +338,12 @@ export default function DynamicTemplate({
     }
   };
 
-  if (loading) {
+  if (loading || (!templateData && !error)) {
     return (
       <div className="whatsapp-template-skeleton">
         <Skeleton
           variant="rounded"
-          sx={{ width: 380, height: 180, borderRadius: '12px' }}
+          sx={{ width: 320, maxWidth: '100%', height: 200, borderRadius: '12px' }}
         />
       </div>
     );
@@ -334,13 +353,11 @@ export default function DynamicTemplate({
     return <div className="whatsapp-template-error">{error}</div>;
   }
 
-  if (!templateData) {
-    return null;
-  }
+  const hasCarousel = templateData.components?.some((c) => c.type === 'CAROUSEL');
 
   return (
     <>
-      <div className="whatsapp-template">
+      <div className={`whatsapp-template whatsapp-template-fade-in${hasCarousel ? ' has-carousel' : ''}`}>
         {templateData.components?.map((component, index) => (
           <div key={`${component.type}-${index}`}>
             {renderComponent(component)}

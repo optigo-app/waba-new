@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
     Box,
     InputBase,
@@ -9,8 +9,11 @@ import {
     FormControl,
     Select,
     MenuItem,
+    MenuList,
+    Popover,
+    IconButton,
 } from '@mui/material';
-import { Search, ArrowDownUp } from 'lucide-react';
+import { Search, ArrowDownUp, SlidersHorizontal, ListFilter } from 'lucide-react';
 
 const FilterBar = ({
     search,
@@ -27,112 +30,270 @@ const FilterBar = ({
     activeFilter,
     onFilterChange,
 }) => {
+    const [anchorEl, setAnchorEl] = useState(null);
+    const [sortAnchorEl, setSortAnchorEl] = useState(null);
+    const open = Boolean(anchorEl);
+    const sortOpen = Boolean(sortAnchorEl);
+
+    const searchEl = (
+        <Paper
+            elevation={0}
+            sx={{
+                display: 'flex',
+                alignItems: 'center',
+                borderRadius: '10px',
+                border: '1px solid #e2e8f0',
+                px: '0.875rem',
+                py: '5px',
+                flex: 1,
+                minWidth: { xs: 0, sm: 200 },
+                maxWidth: { xs: '100%', sm: 320 },
+                background: '#fff',
+                transition: 'border-color 0.2s',
+                '&:focus-within': {
+                    borderColor: '#1daa61',
+                    boxShadow: '0 0 0 3px rgba(29, 170, 97, 0.08)',
+                },
+            }}
+        >
+            <Search size={16} color="#94a3b8" />
+            <InputBase
+                placeholder={searchPlaceholder}
+                value={search}
+                onChange={(e) => onSearchChange(e.target.value)}
+                sx={{
+                    ml: '0.5rem',
+                    flex: 1,
+                    fontFamily: 'Poppins, sans-serif',
+                    fontSize: '0.82rem',
+                    color: '#444050',
+                    '& input::placeholder': { color: '#94a3b8', opacity: 1 },
+                }}
+            />
+        </Paper>
+    );
+
+    const sortEl = (
+        <FormControl size="small" sx={{ minWidth: { xs: 120, sm: 140 } }}>
+            <Select
+                value={sortBy}
+                onChange={(e) => onSortChange(e.target.value)}
+                displayEmpty
+                IconComponent={() => <ArrowDownUp size={14} color="#6b7280" style={{ marginRight: 8 }} />}
+                sx={{
+                    borderRadius: '10px',
+                    fontFamily: 'Poppins, sans-serif',
+                    fontSize: '0.82rem',
+                    color: '#444050',
+                    '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e2e8f0' },
+                    '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#cbd5e1' },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#1daa61' },
+                }}
+            >
+                {sortOptions.map((opt) => (
+                    <MenuItem key={opt.value} value={opt.value} sx={{ fontFamily: 'Poppins, sans-serif', fontSize: '0.82rem' }}>
+                        {opt.label}
+                    </MenuItem>
+                ))}
+            </Select>
+        </FormControl>
+    );
+
+    const chipsEl = filterChips.length > 0 && (
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.6, alignItems: 'center' }}>
+            {filterChips.map((chip) => {
+                const isActive = activeFilter === chip.value;
+                return (
+                    <Chip
+                        key={chip.value}
+                        label={chip.label}
+                        onClick={() => onFilterChange(chip.value)}
+                        sx={{
+                            borderRadius: '8px',
+                            fontFamily: 'Poppins, sans-serif',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            height: 28,
+                            cursor: 'pointer',
+                            background: isActive ? '#1daa61' : '#f1f5f9',
+                            color: isActive ? '#fff' : '#64748b',
+                            '&:hover': {
+                                background: isActive ? '#1a9a57' : '#e2e8f0',
+                            },
+                        }}
+                    />
+                );
+            })}
+        </Box>
+    );
+
+    const filtersEl = (
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.6, alignItems: 'center', width: { xs: '100%', sm: 'auto' } }}>
+            {sortEl}
+            {chipsEl}
+        </Box>
+    );
+
     return (
         <Box
             sx={{
                 display: 'flex',
-                alignItems: { xs: 'flex-start', sm: 'center' },
+                alignItems: 'center',
                 justifyContent: 'space-between',
                 gap: 1.5,
-                flexWrap: 'wrap',
                 px: { xs: 1, sm: 1.5 },
                 py: 1,
                 background: '#fff',
                 borderRadius: '12px',
                 border: '1px solid var(--sidebar-borderColor)',
                 flexShrink: 0,
-                flexDirection: { xs: 'column', sm: 'row' },
             }}
         >
-            <Paper
-                elevation={0}
-                sx={{
-                    display: 'flex',
+            {/* Search: always visible */}
+            {searchEl}
+
+            {/* Desktop: inline sort + chips */}
+            <Box sx={{
+                display: { xs: 'none', sm: 'flex' },
+                alignItems: 'center',
+                gap: 1.5,
+                flexWrap: 'nowrap',
+                flexShrink: 0,
+                maxWidth: '100%',
+                overflowX: 'auto',
+                '&::-webkit-scrollbar': { height: '3px' },
+                '&::-webkit-scrollbar-thumb': { background: '#e2e8f0', borderRadius: '99px' },
+            }}>
+                {sortEl}
+                <Box sx={{
+                    display: { xs: 'none', md: 'flex' },
                     alignItems: 'center',
-                    borderRadius: '10px',
-                    border: '1px solid #e2e8f0',
-                    px: '0.875rem',
-                    py: '5px',
-                    flex: 1,
-                    minWidth: { xs: '100%', sm: 200 },
-                    maxWidth: { xs: '100%', sm: 320 },
-                    background: '#fff',
-                    transition: 'border-color 0.2s',
-                    '&:focus-within': {
-                        borderColor: '#1daa61',
-                        boxShadow: '0 0 0 3px rgba(29, 170, 97, 0.08)',
+                    gap: 0.6,
+                    flexWrap: 'nowrap',
+                    flexShrink: 0,
+                }}>
+                    {chipsEl}
+                </Box>
+            </Box>
+
+            {/* Mobile/Tablet: sort + filter icon buttons */}
+            <Box sx={{ display: { xs: 'flex', sm: 'none' }, alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                <IconButton
+                    onClick={(e) => setSortAnchorEl(e.currentTarget)}
+                    sx={{
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '10px',
+                        background: '#fff',
+                        color: '#64748b',
+                        p: 1,
+                    }}
+                >
+                    <ArrowDownUp size={18} />
+                </IconButton>
+                {filterChips.length > 0 && (
+                    <IconButton
+                        onClick={(e) => setAnchorEl(e.currentTarget)}
+                        sx={{
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '10px',
+                            background: '#fff',
+                            color: '#64748b',
+                            p: 1,
+                        }}
+                    >
+                        <SlidersHorizontal size={18} />
+                    </IconButton>
+                )}
+            </Box>
+
+            {/* Mobile: sort popover */}
+            <Popover
+                open={sortOpen}
+                anchorEl={sortAnchorEl}
+                onClose={() => setSortAnchorEl(null)}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                slotProps={{
+                    paper: {
+                        sx: {
+                            p: 0.5,
+                            borderRadius: '12px',
+                            boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                            mt: 0.5,
+                            display: { xs: 'block', sm: 'none' },
+                            minWidth: 160,
+                        },
                     },
                 }}
             >
-                <Search size={16} color="#94a3b8" />
-                <InputBase
-                    placeholder={searchPlaceholder}
-                    value={search}
-                    onChange={(e) => onSearchChange(e.target.value)}
-                    sx={{
-                        ml: '0.5rem',
-                        flex: 1,
-                        fontFamily: 'Poppins, sans-serif',
-                        fontSize: '0.82rem',
-                        color: '#444050',
-                        '& input::placeholder': { color: '#94a3b8', opacity: 1 },
-                    }}
-                />
-            </Paper>
+                <MenuList>
+                    {sortOptions.map((opt) => (
+                        <MenuItem
+                            key={opt.value}
+                            value={opt.value}
+                            onClick={() => { onSortChange(opt.value); setSortAnchorEl(null); }}
+                            selected={sortBy === opt.value}
+                            sx={{
+                                fontFamily: 'Poppins, sans-serif',
+                                fontSize: '0.82rem',
+                                borderRadius: '8px',
+                                mx: 0.5,
+                                my: 0.25,
+                            }}
+                        >
+                            {opt.label}
+                        </MenuItem>
+                    ))}
+                </MenuList>
+            </Popover>
 
-            {
-                filterChips.length > 0 && (
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.6, alignItems: 'center', width: { xs: '100%', sm: 'auto' } }}>
-                        <FormControl size="small" sx={{ minWidth: { xs: 120, sm: 140 }, mr: 1 }}>
-                            <Select
-                                value={sortBy}
-                                onChange={(e) => onSortChange(e.target.value)}
-                                displayEmpty
-                                IconComponent={() => <ArrowDownUp size={14} color="#6b7280" style={{ marginRight: 8 }} />}
+            {/* Mobile: filter chips popover */}
+            <Popover
+                open={open}
+                anchorEl={anchorEl}
+                onClose={() => setAnchorEl(null)}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                slotProps={{
+                    paper: {
+                        sx: {
+                            p: 1.5,
+                            width: 280,
+                            borderRadius: '12px',
+                            boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                            mt: 0.5,
+                            display: { xs: 'block', sm: 'none' },
+                        },
+                    },
+                }}
+            >
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.6, alignItems: 'center' }}>
+                    {filterChips.map((chip) => {
+                        const isActive = activeFilter === chip.value;
+                        return (
+                            <Chip
+                                key={chip.value}
+                                label={chip.label}
+                                onClick={() => onFilterChange(chip.value)}
                                 sx={{
-                                    borderRadius: '10px',
+                                    borderRadius: '8px',
                                     fontFamily: 'Poppins, sans-serif',
-                                    fontSize: '0.82rem',
-                                    color: '#444050',
-                                    '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e2e8f0' },
-                                    '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#cbd5e1' },
-                                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#1daa61' },
+                                    fontSize: '0.75rem',
+                                    fontWeight: 600,
+                                    height: 28,
+                                    cursor: 'pointer',
+                                    background: isActive ? '#1daa61' : '#f1f5f9',
+                                    color: isActive ? '#fff' : '#64748b',
+                                    '&:hover': {
+                                        background: isActive ? '#1a9a57' : '#e2e8f0',
+                                    },
                                 }}
-                            >
-                                {sortOptions.map((opt) => (
-                                    <MenuItem key={opt.value} value={opt.value} sx={{ fontFamily: 'Poppins, sans-serif', fontSize: '0.82rem' }}>
-                                        {opt.label}
-                                    </MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
-                        {filterChips.map((chip) => {
-                            const isActive = activeFilter === chip.value;
-                            return (
-                                <Chip
-                                    key={chip.value}
-                                    label={chip.label}
-                                    onClick={() => onFilterChange(chip.value)}
-                                    sx={{
-                                        borderRadius: '8px',
-                                        fontFamily: 'Poppins, sans-serif',
-                                        fontSize: '0.75rem',
-                                        fontWeight: 600,
-                                        height: 28,
-                                        cursor: 'pointer',
-                                        background: isActive ? '#1daa61' : '#f1f5f9',
-                                        color: isActive ? '#fff' : '#64748b',
-                                        '&:hover': {
-                                            background: isActive ? '#1a9a57' : '#e2e8f0',
-                                        },
-                                    }}
-                                />
-                            );
-                        })}
-                    </Box>
-                )
-            }
-        </Box >
+                            />
+                        );
+                    })}
+                </Box>
+            </Popover>
+        </Box>
     );
 };
 
