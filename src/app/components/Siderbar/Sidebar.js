@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import './Sidebar.scss'
-import { HomeIcon, MessageCircle, ChevronLeft, LogOut, RefreshCw, User, LayoutGrid, X, QrCode } from 'lucide-react'
+import { HomeIcon, MessageCircle, ChevronLeft, LogOut, RefreshCw, User, LayoutGrid, X, QrCode, Zap } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { disconnectSocket, broadcastLogout } from '../../socket'
@@ -65,6 +65,7 @@ const Sidebar = ({isCollapsed = false, onCollapsedChange = () => { }, mobileOpen
         ...(hasWabaData ? [
             { path: "/campaign", icon: <LayoutGrid {...ICON_PROPS} />, label: "Campaign" },
             { path: "/qr-generator", icon: <QrCode {...ICON_PROPS} />, label: "QR Generator" },
+            { path: "/auto-reply", icon: <Zap {...ICON_PROPS} />, label: "Auto Reply" },
             { path: chatPath, icon: <MessageCircle {...ICON_PROPS} />, label: "Chat", external: true },
         ] : []),
     ];

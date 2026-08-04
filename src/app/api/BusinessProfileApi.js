@@ -1,7 +1,7 @@
 'use client';
 
 import { callCommonApi } from './CommonApi';
-import { PROFILE_UPDATE, getHeaders } from './Config';
+import { PROFILE_UPDATE, getHeaders, getApiBaseUrl } from './Config';
 
 export const fetchWabaCategories = async (userId, signal) => {
     try {
@@ -30,19 +30,54 @@ export const fetchWabaCategories = async (userId, signal) => {
 
 export const fetchWabaProfile = async ({ userId, accountId, companyCode, signal }) => {
     try {
-        const p = JSON.stringify({
-            AccountId: Number(accountId) || 1,
-            companycode: companyCode || '',
+        const headers = getHeaders();
+        const response = await fetch(`${getApiBaseUrl()}/whatsapp/profile/details`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                sp: headers.sp || '16',
+                sv: headers.sv || '0',
+                version: headers.Version || 'v2',
+                yearcode: headers.Yearcode || '',
+            },
+            body: JSON.stringify({
+                appuserid: userId || '',
+                AccountId: Number(accountId) || 1,
+                companycode: companyCode || '',
+            }),
+            ...(signal ? { signal } : {}),
         });
 
-        const result = await callCommonApi({
-            mode: 'get_waba_profile',
-            f: 'Profile ( get_waba_profile )',
-            p,
-            userId,
-            signal,
-        });
+        if (!response.ok) {
+            console.error('WABA profile fetch error:', response.statusText);
+            return null;
+        }
 
+        const result = await response.json();
+
+        // New format: { success, message, data: { address, description, profile_picture_url, websites[], vertical, ... } }
+        if (result?.success && result?.data) {
+            const d = result.data;
+            const websites = Array.isArray(d.websites)
+                ? d.websites.filter(Boolean)
+                : (typeof d.websites === 'string'
+                    ? d.websites.split(',').map((w) => w.trim()).filter(Boolean)
+                    : []);
+
+            return {
+                logo: d.profile_picture_url || '',
+                email: d.email || '',
+                category: d.vertical || '',
+                address: d.address || '',
+                about: d.about || '',
+                description: d.description || '',
+                websites,
+                companyId: d.company_id || d.companyId || null,
+                channelId: d.channel_id || d.channelId || null,
+            };
+        }
+
+        // Legacy format: { Status: '200', Data: { rd: [...] } }
         if (result?.Status === '200' && Array.isArray(result?.Data?.rd)) {
             const row = result.Data.rd[0];
             if (!row) return null;
@@ -89,7 +124,7 @@ export const updateWabaProfile = async ({ profile, logoFile, channel, userId }) 
         formData.append('address', profile.address || '');
         formData.append('email', profile.email || '');
         formData.append('vertical', profile.category || '');
-        formData.append('websites', profile.websites || '');
+        formData.append('websites', Array.isArray(profile.websites) ? profile.websites.filter(Boolean).join(', ') : (profile.websites || ''));
         formData.append('channelid', String(channel?.channelId || channel?.ChannelId || 1));
         formData.append('companycode', channel?.companyCode || '');
         formData.append('appuserid', userId || '');

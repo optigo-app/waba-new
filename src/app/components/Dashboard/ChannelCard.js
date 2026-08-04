@@ -9,6 +9,8 @@ const ChannelCard = ({ channel, onWalletOpen, onTemplatesClick, onBusinessProfil
     const progressPercent = channel.progressPercent || 0;
     const [activeAction, setActiveAction] = useState('templates');
     const [hoveredAction, setHoveredAction] = useState(null);
+    const [imgError, setImgError] = useState(false);
+    const hasProfilePic = Boolean(channel.profilePictureUrl) && !imgError;
 
     return (
         <Paper
@@ -37,15 +39,27 @@ const ChannelCard = ({ channel, onWalletOpen, onTemplatesClick, onBusinessProfil
                             width: '54px',
                             height: '54px',
                             borderRadius: '14px',
-                            background: 'linear-gradient(135deg, rgba(29,170,97,0.12), rgba(37,211,102,0.08))',
+                            background: hasProfilePic
+                                ? 'transparent'
+                                : 'linear-gradient(135deg, rgba(29,170,97,0.12), rgba(37,211,102,0.08))',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             flexShrink: 0,
                             border: '1px solid rgba(29,170,97,0.15)',
+                            overflow: 'hidden',
                         }}
                     >
-                        <Whatsapp width={28} height={28} fill="#1daa61" />
+                        {hasProfilePic ? (
+                            <img
+                                src={channel.profilePictureUrl}
+                                alt={channel.whatsappName || channel.companyCode}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                onError={() => setImgError(true)}
+                            />
+                        ) : (
+                            <Whatsapp width={28} height={28} fill="#1daa61" />
+                        )}
                     </Box>
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                         <Typography
@@ -57,7 +71,7 @@ const ChannelCard = ({ channel, onWalletOpen, onTemplatesClick, onBusinessProfil
                                 fontFamily: 'Poppins, sans-serif',
                             }}
                         >
-                            {channel.companyCode}
+                            {channel.whatsappName || channel.companyCode}
                         </Typography>
                         <Typography
                             sx={{

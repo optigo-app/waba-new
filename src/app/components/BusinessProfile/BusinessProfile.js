@@ -18,6 +18,7 @@ import {
     CircularProgress,
     Avatar,
     Slide,
+    Tooltip,
 } from '@mui/material';
 import {
     Building2,
@@ -26,8 +27,12 @@ import {
     CheckCircle2,
     AlertCircle,
     RotateCcw,
+    UploadCloud,
+    Plus,
+    Trash2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { Whatsapp } from '../../assests/svg';
 import styles from './BusinessProfile.module.scss';
 
 const SlideUp = React.forwardRef(function Transition(props, ref) {
@@ -41,8 +46,24 @@ const EMPTY_PROFILE = {
     address: '',
     about: '',
     description: '',
-    websites: '',
+    websites: [],
 };
+
+// WhatsApp Business Profile limits (per Meta docs)
+const MAX_WEBSITES = 2;
+const MAX_WEBSITE_LENGTH = 256;
+const MAX_ABOUT_LENGTH = 139;
+const MAX_ADDRESS_LENGTH = 256;
+const MAX_DESCRIPTION_LENGTH = 512;
+const MAX_EMAIL_LENGTH = 128;
+
+// Meta requires http:// or https:// prefix on website URLs
+const URL_PATTERN = /^https?:\/\/[^\s]+$/i;
+const isValidWebsiteUrl = (url) => !url || URL_PATTERN.test(url);
+
+// Meta requires valid email format
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const isValidEmail = (email) => !email || EMAIL_PATTERN.test(email);
 
 const BusinessProfile = ({ open, onClose, channel }) => {
     const { auth } = useAuth();
@@ -52,6 +73,7 @@ const BusinessProfile = ({ open, onClose, channel }) => {
     const [logoPreview, setLogoPreview] = useState(EMPTY_PROFILE.logo);
     const [logoFile, setLogoFile] = useState(null);
     const [isDragOver, setIsDragOver] = useState(false);
+    const [modalDragActive, setModalDragActive] = useState(false);
     const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
     const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
@@ -62,7 +84,7 @@ const BusinessProfile = ({ open, onClose, channel }) => {
     const categoriesAbortRef = useRef(null);
     const profileAbortRef = useRef(null);
 
-    const userId = auth?.username || auth?.userid || auth?.userId || auth?.appuserid || '';
+    const userId = auth?.userId || '';
 
     useEffect(() => {
         if (open) {
@@ -74,6 +96,8 @@ const BusinessProfile = ({ open, onClose, channel }) => {
             setUpdateDialogOpen(false);
             setCancelDialogOpen(false);
             setIsUpdating(false);
+            setIsDragOver(false);
+            setModalDragActive(false);
             setProfileLoading(true);
 
             // Fetch categories
@@ -98,15 +122,21 @@ const BusinessProfile = ({ open, onClose, channel }) => {
             profileAbortRef.current = profileController;
             fetchWabaProfile({
                 userId,
-                accountId: channel?.Id || channel?.AccountId || 1,
+                accountId: channel?.Id || '',
                 companyCode: channel?.companyCode || '',
                 signal: profileController.signal,
             }).then((profile) => {
                 if (!profileController.signal.aborted && profile) {
-                    setSavedData(profile);
-                    setSavedLogo(profile.logo);
-                    setFormData(profile);
-                    setLogoPreview(profile.logo);
+                    const normalizedProfile = {
+                        ...profile,
+                        websites: Array.isArray(profile.websites)
+                            ? profile.websites
+                            : (profile.websites || '').split(',').map((w) => w.trim()).filter(Boolean),
+                    };
+                    setSavedData(normalizedProfile);
+                    setSavedLogo(normalizedProfile.logo);
+                    setFormData(normalizedProfile);
+                    setLogoPreview(normalizedProfile.logo);
                 }
                 if (!profileController.signal.aborted) {
                     setProfileLoading(false);
@@ -128,8 +158,44 @@ const BusinessProfile = ({ open, onClose, channel }) => {
         JSON.stringify(formData) !== JSON.stringify(savedData) ||
         logoPreview !== savedLogo;
 
+    // Validation errors — block update when any field is invalid
+    const hasErrors = (() => {
+        if (formData.email && !isValidEmail(formData.email)) return true;
+        if ((formData.websites || []).some((w) => w && !isValidWebsiteUrl(w))) return true;
+        return false;
+    })();
+
     const handleChange = (field) => (e) => {
         setFormData((prev) => ({ ...prev, [field]: e.target.value }));
+    };
+
+    const handleWebsiteChange = (index, value) => {
+        setFormData((prev) => {
+            const websites = [...(prev.websites || [])];
+            websites[index] = value;
+            return { ...prev, websites };
+        });
+    };
+
+    const handleAddWebsite = () => {
+        setFormData((prev) => {
+            const current = prev.websites || [];
+            if (current.length >= MAX_WEBSITES) {
+                toast.error(`You can add up to ${MAX_WEBSITES} websites only.`);
+                return prev;
+            }
+            return {
+                ...prev,
+                websites: [...current, ''],
+            };
+        });
+    };
+
+    const handleRemoveWebsite = (index) => {
+        setFormData((prev) => ({
+            ...prev,
+            websites: (prev.websites || []).filter((_, i) => i !== index),
+        }));
     };
 
     const handleLogoFile = useCallback((file) => {
@@ -177,6 +243,30 @@ const BusinessProfile = ({ open, onClose, channel }) => {
         setIsDragOver(false);
     };
 
+    // Modal-level handlers — active when dragging anywhere in the dialog
+    const handleModalDragOver = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setModalDragActive(true);
+    };
+
+    const handleModalDragLeave = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.currentTarget === e.target) {
+            setModalDragActive(false);
+        }
+    };
+
+    const handleModalDrop = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setModalDragActive(false);
+        setIsDragOver(false);
+        const file = e.dataTransfer?.files?.[0];
+        if (file) handleLogoFile(file);
+    };
+
     const handleRemoveLogo = () => {
         setLogoPreview('');
         setLogoFile(null);
@@ -188,6 +278,14 @@ const BusinessProfile = ({ open, onClose, channel }) => {
     };
 
     const handleConfirmUpdate = async () => {
+        // Validate website URLs — Meta requires http:// or https:// prefix
+        const invalidWebsites = (formData.websites || []).filter((w) => w && !isValidWebsiteUrl(w));
+        if (invalidWebsites.length > 0) {
+            toast.error('Website URLs must start with http:// or https://');
+            setIsUpdating(false);
+            return;
+        }
+
         setIsUpdating(true);
         try {
             const result = await updateWabaProfile({
@@ -197,14 +295,17 @@ const BusinessProfile = ({ open, onClose, channel }) => {
                 userId,
             });
 
-            if (result?.Status === '200') {
+            // New format: { success: true, message, data } | Legacy: { Status: '200' }
+            const isSuccess = result?.success === true || result?.Status === '200';
+            if (isSuccess) {
                 setSavedData(formData);
                 setSavedLogo(logoPreview);
                 setLogoFile(null);
-                toast.success('Business profile updated successfully!');
+                toast.success(result?.message || 'Business profile updated successfully!');
                 setUpdateDialogOpen(false);
+                onClose();
             } else {
-                toast.error(result?.Message || 'Failed to update business profile');
+                toast.error(result?.message || result?.Message || 'Failed to update business profile');
             }
         } catch {
             toast.error('Failed to update business profile');
@@ -231,7 +332,9 @@ const BusinessProfile = ({ open, onClose, channel }) => {
         if (!isUpdating) setUpdateDialogOpen(false);
     };
 
-    const channelName = channel?.companyCode || 'Channel';
+    const channelName = channel?.whatsappName || channel?.companyCode || 'Channel';
+    const [headerImgError, setHeaderImgError] = useState(false);
+    const hasHeaderPic = Boolean(channel?.profilePictureUrl) && !headerImgError;
 
     return (
         <>
@@ -248,23 +351,45 @@ const BusinessProfile = ({ open, onClose, channel }) => {
             >
                 <DialogTitle className={styles.dialogHeader}>
                     <Box className={styles.dialogHeaderLeft}>
-                        <Box className={styles.pageHeaderIcon}>
-                            <Building2 size={18} />
+                        <Box className={styles.pageHeaderIcon} sx={{ overflow: 'hidden', p: hasHeaderPic ? 0 : undefined }}>
+                            {hasHeaderPic ? (
+                                <img
+                                    src={channel.profilePictureUrl}
+                                    alt={channelName}
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                    onError={() => setHeaderImgError(true)}
+                                />
+                            ) : (
+                                <Building2 size={18} />
+                            )}
                         </Box>
                         <Box>
                             <Typography component="h2" className={styles.pageTitle}>
                                 Business Profile
                             </Typography>
                             <Typography component="p" className={styles.pageSubtitle}>
-                                {channelName} • Manage your business identity
+                                Manage your business identity
                             </Typography>
                         </Box>
                     </Box>
-                    <IconButton onClick={onClose} size="small" sx={{ color: '#7d7f85' }}>
-                        <X size={20} />
-                    </IconButton>
+                    <Box className={styles.dialogHeaderRight}>
+                        <Box className={styles.channelBadge}>
+                            <Typography component="span" className={styles.channelBadgeText}>
+                                {channelName}{channel?.mobileNumber ? ` • ${channel.mobileNumber}` : ''}
+                            </Typography>
+                        </Box>
+                        <IconButton onClick={onClose} size="small" sx={{ color: '#7d7f85' }}>
+                            <X size={20} />
+                        </IconButton>
+                    </Box>
                 </DialogTitle>
-                <DialogContent dividers sx={{ p: 0 }}>
+                <DialogContent
+                    dividers
+                    sx={{ p: 0 }}
+                    onDragOver={handleModalDragOver}
+                    onDragLeave={handleModalDragLeave}
+                    onDrop={handleModalDrop}
+                >
                     {profileLoading ? (
                         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '300px' }}>
                             <CircularProgress size={32} sx={{ color: '#1daa61' }} />
@@ -279,26 +404,44 @@ const BusinessProfile = ({ open, onClose, channel }) => {
                             onDrop={handleLogoDrop}
                             onDragOver={handleLogoDragOver}
                             onDragLeave={handleLogoDragLeave}
-                            onClick={() => fileInputRef.current?.click()}
+                            onClick={() => !isDragOver && fileInputRef.current?.click()}
                             sx={{
-                                border: isDragOver ? '2px dashed #1daa61' : 'none',
-                                background: isDragOver ? 'rgba(29, 170, 97, 0.05)' : 'transparent',
+                                position: 'relative',
+                                border: (isDragOver || modalDragActive) ? '2px dashed #1daa61' : 'none',
+                                background: (isDragOver || modalDragActive) ? 'rgba(29, 170, 97, 0.05)' : 'transparent',
+                                borderRadius: '16px',
+                                transition: 'all 0.2s ease',
                             }}
                         >
                             {logoPreview ? (
                                 <Avatar
                                     src={logoPreview}
                                     className={styles.logoAvatar}
-                                    sx={{ width: 150, height: 150 }}
+                                    sx={{
+                                        width: 150,
+                                        height: 150,
+                                        opacity: (isDragOver || modalDragActive) ? 0.15 : 1,
+                                        transition: 'opacity 0.2s ease',
+                                    }}
                                 />
                             ) : (
-                                <Avatar className={styles.logoPlaceholder} sx={{ width: 150, height: 150 }}>
+                                <Avatar
+                                    className={styles.logoPlaceholder}
+                                    sx={{
+                                        width: 150,
+                                        height: 150,
+                                        opacity: (isDragOver || modalDragActive) ? 0.15 : 1,
+                                        transition: 'opacity 0.2s ease',
+                                    }}
+                                >
                                     <Building2 size={40} color="#a0a0a0" />
                                 </Avatar>
                             )}
-                            <Box className={styles.logoEditBadge}>
-                                <Camera size={14} color="#fff" />
-                            </Box>
+                            {!(isDragOver || modalDragActive) && (
+                                <Box className={styles.logoEditBadge}>
+                                    <Camera size={14} color="#fff" />
+                                </Box>
+                            )}
                             <input
                                 ref={fileInputRef}
                                 type="file"
@@ -306,6 +449,28 @@ const BusinessProfile = ({ open, onClose, channel }) => {
                                 hidden
                                 onChange={handleLogoUpload}
                             />
+                            {(isDragOver || modalDragActive) && (
+                                <Box
+                                    sx={{
+                                        position: 'absolute',
+                                        inset: 0,
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '8px',
+                                        borderRadius: '14px',
+                                        background: 'rgba(255, 255, 255, 0.92)',
+                                        pointerEvents: 'none',
+                                        zIndex: 3,
+                                    }}
+                                >
+                                    <UploadCloud size={36} color="#1daa61" />
+                                    <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#1daa61', fontFamily: 'Poppins, sans-serif' }}>
+                                        Drop image here
+                                    </Typography>
+                                </Box>
+                            )}
                         </Box>
                         {logoPreview && (
                             <IconButton
@@ -335,6 +500,11 @@ const BusinessProfile = ({ open, onClose, channel }) => {
                                     placeholder="Enter Email"
                                     value={formData.email}
                                     onChange={handleChange('email')}
+                                    slotProps={{ htmlInput: { maxLength: MAX_EMAIL_LENGTH } }}
+                                    error={formData.email && !isValidEmail(formData.email)}
+                                    helperText={formData.email && !isValidEmail(formData.email)
+                                        ? 'Enter a valid email address'
+                                        : (formData.email ? `${formData.email.length}/${MAX_EMAIL_LENGTH}` : undefined)}
                                     className={styles.textField}
                                 />
                             </Grid>
@@ -352,6 +522,10 @@ const BusinessProfile = ({ open, onClose, channel }) => {
                                     className={styles.textField}
                                     slotProps={{
                                         select: {
+                                            renderValue: (value) => {
+                                                const cat = categories.find((c) => c.code === value);
+                                                return cat ? cat.name : value || '';
+                                            },
                                             MenuProps: {
                                                 slotProps: {
                                                     paper: { sx: { maxHeight: 250 } },
@@ -372,7 +546,7 @@ const BusinessProfile = ({ open, onClose, channel }) => {
                                         <MenuItem disabled>No categories available</MenuItem>
                                     )}
                                     {categories.map((cat) => (
-                                        <MenuItem key={cat.id} value={cat.name}>
+                                        <MenuItem key={cat.id} value={cat.code}>
                                             {cat.name}
                                         </MenuItem>
                                     ))}
@@ -392,6 +566,8 @@ const BusinessProfile = ({ open, onClose, channel }) => {
                                     placeholder="Enter business address"
                                     value={formData.address}
                                     onChange={handleChange('address')}
+                                    slotProps={{ htmlInput: { maxLength: MAX_ADDRESS_LENGTH } }}
+                                    helperText={formData.address ? `${formData.address.length}/${MAX_ADDRESS_LENGTH}` : undefined}
                                     className={styles.textField}
                                 />
                             </Grid>
@@ -409,6 +585,8 @@ const BusinessProfile = ({ open, onClose, channel }) => {
                                     placeholder="Short bio or tagline"
                                     value={formData.about}
                                     onChange={handleChange('about')}
+                                    slotProps={{ htmlInput: { maxLength: MAX_ABOUT_LENGTH } }}
+                                    helperText={formData.about ? `${formData.about.length}/${MAX_ABOUT_LENGTH}` : undefined}
                                     className={styles.textField}
                                 />
                             </Grid>
@@ -426,23 +604,68 @@ const BusinessProfile = ({ open, onClose, channel }) => {
                                     placeholder="Detailed business description"
                                     value={formData.description}
                                     onChange={handleChange('description')}
+                                    slotProps={{ htmlInput: { maxLength: MAX_DESCRIPTION_LENGTH } }}
+                                    helperText={formData.description ? `${formData.description.length}/${MAX_DESCRIPTION_LENGTH}` : undefined}
                                     className={styles.textField}
                                 />
                             </Grid>
 
                             {/* Row 5: Websites */}
                             <Grid size={{ xs: 12 }}>
-                                <Typography component="label" className={styles.fieldLabel}>
-                                    Websites
-                                </Typography>
-                                <TextField
-                                    fullWidth
-                                    size="small"
-                                    placeholder="https://www.yourwebsite.com"
-                                    value={formData.websites}
-                                    onChange={handleChange('websites')}
-                                    className={styles.textField}
-                                />
+                                <Box className={styles.websiteLabelRow}>
+                                    <Typography component="label" className={styles.fieldLabel}>
+                                        Websites
+                                    </Typography>
+                                    <Tooltip
+                                        title={(formData.websites || []).length >= MAX_WEBSITES
+                                            ? `Maximum ${MAX_WEBSITES} websites allowed`
+                                            : 'Add website'}
+                                        placement="top"
+                                        arrow
+                                    >
+                                        <span>
+                                            <IconButton
+                                                size="small"
+                                                onClick={handleAddWebsite}
+                                                disabled={(formData.websites || []).length >= MAX_WEBSITES}
+                                                className={styles.websiteAddIconBtn}
+                                            >
+                                                <Plus size={18} />
+                                            </IconButton>
+                                        </span>
+                                    </Tooltip>
+                                </Box>
+                                <Box className={styles.websiteList}>
+                                    {(formData.websites || []).map((site, idx) => {
+                                        const urlError = site && !isValidWebsiteUrl(site);
+                                        return (
+                                        <Box key={idx} className={styles.websiteRow}>
+                                            <TextField
+                                                fullWidth
+                                                size="small"
+                                                placeholder="https://www.yourwebsite.com"
+                                                value={site}
+                                                onChange={(e) => handleWebsiteChange(idx, e.target.value.slice(0, MAX_WEBSITE_LENGTH))}
+                                                slotProps={{ htmlInput: { maxLength: MAX_WEBSITE_LENGTH } }}
+                                                error={urlError}
+                                                helperText={urlError
+                                                    ? 'URL must start with http:// or https://'
+                                                    : (site ? `${site.length}/${MAX_WEBSITE_LENGTH}` : undefined)}
+                                                className={styles.textField}
+                                            />
+                                            <Tooltip title="Remove website" placement="top" arrow>
+                                                <IconButton
+                                                    size="small"
+                                                    onClick={() => handleRemoveWebsite(idx)}
+                                                    className={styles.websiteRemoveBtn}
+                                                >
+                                                    <Trash2 size={16} />
+                                                </IconButton>
+                                            </Tooltip>
+                                        </Box>
+                                        );
+                                    })}
+                                </Box>
                             </Grid>
                         </Grid>
 
@@ -451,7 +674,7 @@ const BusinessProfile = ({ open, onClose, channel }) => {
                             <Button
                                 variant="contained"
                                 onClick={handleUpdateClick}
-                                disabled={!hasChanges}
+                                disabled={!hasChanges || hasErrors}
                                 startIcon={<CheckCircle2 size={18} />}
                                 className={styles.updateBtn}
                             >
@@ -490,6 +713,66 @@ const BusinessProfile = ({ open, onClose, channel }) => {
                     Update Business Profile?
                 </DialogTitle>
                 <DialogContent>
+                    <Box sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        p: '12px',
+                        mb: '14px',
+                        borderRadius: '12px',
+                        background: '#f8fafc',
+                        border: '1px solid #e4e8ee',
+                    }}>
+                        <Box
+                            sx={{
+                                width: '44px',
+                                height: '44px',
+                                borderRadius: '10px',
+                                background: 'linear-gradient(135deg, rgba(29,170,97,0.12), rgba(37,211,102,0.08))',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0,
+                                border: '1px solid rgba(29,170,97,0.15)',
+                                overflow: 'hidden',
+                            }}
+                        >
+                            {channel?.profilePictureUrl ? (
+                                <img
+                                    src={channel.profilePictureUrl}
+                                    alt={channel?.whatsappName || channel?.companyCode || 'Channel'}
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                />
+                            ) : (
+                                <Whatsapp width={22} height={22} fill="#1daa61" />
+                            )}
+                        </Box>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                            <Typography sx={{
+                                fontFamily: 'Poppins, sans-serif',
+                                fontSize: '0.9rem',
+                                fontWeight: 600,
+                                color: '#444050',
+                                lineHeight: 1.2,
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                            }}>
+                                {channel?.whatsappName || channel?.companyCode || 'Channel'}
+                            </Typography>
+                            {channel?.mobileNumber && (
+                                <Typography sx={{
+                                    fontFamily: 'Poppins, sans-serif',
+                                    fontSize: '0.75rem',
+                                    color: '#6D6B77',
+                                    fontWeight: 500,
+                                }}>
+                                    {channel.mobileNumber}
+                                </Typography>
+                            )}
+                        </Box>
+                    </Box>
                     <Typography sx={{ fontFamily: 'Poppins, sans-serif', fontSize: '0.875rem', color: '#7d7f85', lineHeight: 1.6 }}>
                         Are you sure you want to update your business profile? This will reflect changes across your WhatsApp Business account.
                     </Typography>

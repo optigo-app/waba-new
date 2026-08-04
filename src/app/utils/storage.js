@@ -13,6 +13,7 @@ export const STORAGE_KEYS = {
   CAMPAIGN_TIMERS: 'campaignActiveTimers',
   AUDIENCE_DRAFT: 'audienceSelectionDraft',
   CLIENT_IP: 'clientIpAddress',
+  FLOW_DRAFT: 'flowDraftData',
 };
 
 const isClient = () => typeof window !== 'undefined';

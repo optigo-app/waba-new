@@ -60,6 +60,8 @@ const ChannelsDashboard = () => {
             mobileNumber: walletInfo.mobileNumber || '-',
             wabaId: walletInfo.wabaId || '-',
             wabaPhoneNo: walletInfo.wabaPhoneNo || '-',
+            whatsappName: walletInfo.whatsappName || '',
+            profilePictureUrl: walletInfo.profilePictureUrl || '',
             refundBalance: walletInfo.refundBalance,
         }));
     }, [walletInfo]);

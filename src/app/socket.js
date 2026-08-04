@@ -104,7 +104,10 @@ export const initializeSocket = (token) => {
         } catch (e) {
             console.error('Chat store newMessage error:', e);
         }
-        dispatch('waba:newMessage', data);
+        // Skip notification when CampaignId is "1" (campaign messages)
+        if (String(data?.CampaignId) !== '1') {
+            dispatch('waba:newMessage', data);
+        }
 
         // Background: fetch from Meta, upload to own server, save URL
         processIncomingMedia(data).then((result) => {
@@ -136,7 +139,10 @@ export const initializeSocket = (token) => {
         } catch (e) {
             console.error('Chat store sendMessage error:', e);
         }
-        dispatch('waba:sendMessage', data);
+        // Skip notification when CampaignId is "1" (campaign messages)
+        if (String(data?.CampaignId) !== '1') {
+            dispatch('waba:sendMessage', data);
+        }
 
         // Background: fetch from Meta, upload to own server, save URL
         processIncomingMedia(data).then((result) => {

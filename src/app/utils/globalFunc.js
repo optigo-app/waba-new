@@ -15,6 +15,21 @@ export const getStaticUrl = (path) => {
     return `${window.location.origin}${basePath}${cleanPath}`;
 };
 
+/**
+ * Build a relative API URL that respects redirect_version on production.
+ * Use this for fetch() calls to Next.js API routes (not external APIs).
+ * @param {string} path - e.g. '/api/whatsapp/flow/ai-edit'
+ * @returns {string} Prefixed path e.g. '/V1/api/whatsapp/flow/ai-edit'
+ */
+export const getApiUrl = (path) => {
+    if (typeof window === 'undefined') return path;
+    const auth = useAuthStore.getState().auth;
+    const isLocalhost = window.location.origin.includes('localhost');
+    const basePath = isLocalhost ? '' : (auth?.redirect_version || '');
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    return `${basePath}${cleanPath}`;
+};
+
 const hashString = (value) => {
     const str = String(value ?? '');
     let hash = 0;

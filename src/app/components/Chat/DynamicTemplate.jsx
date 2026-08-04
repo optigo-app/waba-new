@@ -150,6 +150,28 @@ export default function DynamicTemplate({
     return text;
   };
 
+  // Escape HTML special characters to prevent injection from variable values
+  const escapeHtml = (str = '') =>
+    str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
+  // Convert WhatsApp markdown (*bold*, _italic_, ~strike~, `code`) to HTML.
+  // Escapes HTML first so injected variable values can't break out of markup.
+  const formatWhatsAppText = (text = '') => {
+    let escaped = escapeHtml(text);
+    // Inline code first so markdown markers inside `code` aren't re-processed
+    escaped = escaped.replace(/`([^`]+?)`/g, '<code style="background: rgba(0,0,0,0.06); padding: 1px 4px; border-radius: 3px; font-family: monospace; font-size: 0.9em;">$1</code>');
+    escaped = escaped
+      .replace(/\*([^*]+?)\*/g, '<strong>$1</strong>')
+      .replace(/_([^_]+?)_/g, '<em>$1</em>')
+      .replace(/~([^~]+?)~/g, '<s>$1</s>');
+    return escaped;
+  };
+
   const renderComponent = (component, isCarouselCard = false) => {
     if (!component) return null;
 
@@ -224,7 +246,10 @@ export default function DynamicTemplate({
         }
 
         return component.text ? (
-          <div className="template-header text">{renderText(component.text)}</div>
+          <div
+            className="template-header text"
+            dangerouslySetInnerHTML={{ __html: formatWhatsAppText(renderText(component.text)) }}
+          />
         ) : null;
       }
 
@@ -233,14 +258,22 @@ export default function DynamicTemplate({
         return (
           <div className="template-body">
             {bodyText.split('\n').map((line, i) => (
-              <p key={i}>{line}</p>
+              <p
+                key={i}
+                dangerouslySetInnerHTML={{ __html: formatWhatsAppText(line) }}
+              />
             ))}
           </div>
         );
       }
 
       case 'FOOTER':
-        return <div className="template-footer">{component.text}</div>;
+        return (
+          <div
+            className="template-footer"
+            dangerouslySetInnerHTML={{ __html: formatWhatsAppText(component.text || '') }}
+          />
+        );
 
       case 'BUTTONS':
         return (

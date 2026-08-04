@@ -248,7 +248,7 @@ export const useChatStore = create((set, get) => ({
         CustomerId: msgConversationId,
         CustomerPhone: data?.Sender || '',
         CustomerName: '',
-        WhatsappCustName: '',
+        WhatsappCustName: data.WhatsappCustName ?? '',
         IsPin: 0,
         IsStar: 0,
         IsArchived: 0,

@@ -126,7 +126,16 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans
     </div>
   </div>
 </div>
-<script>window.onload = function() { window.print(); setTimeout(function() { window.close(); }, 500); };</script>
+<script>
+window.onload = function() {
+    var doPrint = function() { window.print(); setTimeout(function() { window.close(); }, 500); };
+    if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(doPrint);
+    } else {
+        setTimeout(doPrint, 800);
+    }
+};
+</script>
 </body>
 </html>`;
 };

@@ -12,6 +12,7 @@ import Sidebar from './Siderbar/Sidebar';
 import AuthGuard from './AuthGuard';
 import NotificationBanner from './NotificationBanner/NotificationBanner';
 import { storage } from '../utils/storage';
+import { useFlowStore } from '../store/flowStore';
 
 const MOBILE_BREAKPOINT = 768;
 
@@ -72,6 +73,8 @@ export default function AppLayout({ children }) {
 
   const isPublicRoute = pathname === '/login' || pathname === '/session-check' || pathname === '/test';
   const isChatRoute = pathname === '/chat' || pathname?.startsWith('/chat/');
+  const flowView = useFlowStore((state) => state.view);
+  const isFlowBuilderRoute = pathname === '/auto-reply' && flowView === 'builder';
 
   if (isPublicRoute) {
     return <>{children}</>;
@@ -89,7 +92,7 @@ export default function AppLayout({ children }) {
     />
   );
 
-  const content = isChatRoute ? (
+  const content = (isChatRoute || isFlowBuilderRoute) ? (
     <>{children}</>
   ) : (
     <Box sx={{ display: 'flex', minHeight: '100vh', width: '100%' }}>

@@ -119,6 +119,39 @@
   font-weight: 400;
   white-space: pre-wrap;
   word-break: break-word;
+
+  strong, b {
+    font-weight: 700;
+  }
+
+  em, i {
+    font-style: italic;
+  }
+
+  s, strike {
+    text-decoration: line-through;
+  }
+}
+
+.message-text-code {
+  background: rgba(0, 0, 0, 0.06);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 0.9em;
+}
+
+.message-text-link {
+  color: #1daa61;
+  text-decoration: none;
+  font-weight: 500;
+  word-break: break-all;
+  transition: opacity 0.2s;
+
+  &:hover {
+    opacity: 0.8;
+    text-decoration: underline;
+  }
 }
 
 .message-meta {

@@ -22,6 +22,7 @@ import {
   unArchieveApi,
 } from '../../api/chat/conversationApi';
 import AddCustomerDialog from './AddCustomerDialog';
+import WhatsAppText from './WhatsAppText';
 import { useAuthStore } from '../../store/authStore';
 import { useChatStore } from '../../store/chatStore';
 import toast from 'react-hot-toast';
@@ -941,7 +942,11 @@ function ChatSidebar({
                             <span className="last-message-text">
                               {member.lastMessageText ? (
                                 member.lastMessageText !== 'No message' ? (
-                                  member.lastMessage
+                                  typeof member.lastMessage === 'string' ? (
+                                    <WhatsAppText text={member.lastMessage} />
+                                  ) : (
+                                    member.lastMessage
+                                  )
                                 ) : (
                                   <span className="last-message-attachment">{member.lastMessage}</span>
                                 )

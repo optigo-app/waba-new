@@ -1,0 +1,384 @@
+@use '../../globals.scss' as *;
+
+// ── Page layout ───────────────────────────────────────────────────────────────
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: #f8fafc;
+    height: 100vh;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+// ── Top bar ───────────────────────────────────────────────────────────────────
+.topBar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1.5rem;
+    background: #fff;
+    border-bottom: 1px solid $sidebar-borderColor;
+    border-radius: 12px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    gap: 1rem;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.topBarLeft {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.headerIconWrap {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: rgba($primary-main, 0.1);
+    color: $primary-main;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.pageTitle {
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+    color: $titleColor !important;
+    margin: 0 0 4px 0 !important;
+    font-family: $font-family !important;
+    line-height: 1.25 !important;
+    letter-spacing: -0.01em;
+}
+
+.pageSubtitle {
+    font-size: 0.78rem !important;
+    font-weight: 400 !important;
+    color: $secondaryColor !important;
+    margin: 0 !important;
+    font-family: $font-family !important;
+    line-height: 1.4 !important;
+}
+
+.topActions {
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+// ── Import button ─────────────────────────────────────────────────────────────
+.importBtn {
+    text-transform: none !important;
+    font-family: 'Poppins', sans-serif !important;
+    font-size: 0.78rem !important;
+    font-weight: 600 !important;
+    border-radius: 10px !important;
+    border-color: #e2e8f0 !important;
+    color: #475569 !important;
+    background: #fff !important;
+    transition: all 0.2s ease !important;
+
+    &:hover {
+        border-color: #1daa61 !important;
+        color: #1daa61 !important;
+        background: #f0fdf4 !important;
+    }
+}
+
+// ── Import error toast ────────────────────────────────────────────────────────
+.importErrorToast {
+    position: fixed;
+    top: 1.5rem;
+    right: 1.5rem;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #b91c1c;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 500;
+    padding: 0.75rem 1rem;
+    border-radius: 10px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    animation: importErrorSlide 0.25s ease-out;
+}
+
+.importErrorClose {
+    background: none;
+    border: none;
+    color: #b91c1c;
+    font-size: 1.2rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 0.25rem;
+    opacity: 0.6;
+    transition: opacity 0.15s ease;
+
+    &:hover {
+        opacity: 1;
+    }
+}
+
+@keyframes importErrorSlide {
+    from {
+        opacity: 0;
+        transform: translateX(1rem);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+// ── Content area ──────────────────────────────────────────────────────────────
+.contentArea {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: 0.25rem;
+}
+
+// ── Info banner (compact) ────────────────────────────────────────────────────
+.infoBanner {
+    display: flex;
+    align-items: stretch;
+    position: relative;
+    background: linear-gradient(135deg, #075E54 0%, #1daa61 100%);
+    border: none;
+    border-radius: 14px;
+    margin-bottom: 1rem;
+    flex-shrink: 0;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(15, 23, 42, 0.08);
+
+    &__deco {
+        position: absolute;
+        right: -10px;
+        top: 0;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        opacity: 0.08;
+        pointer-events: none;
+        color: #ffffff;
+
+        svg {
+            transform: rotate(12deg);
+        }
+    }
+
+    &__content {
+        position: relative;
+        z-index: 1;
+        flex: 1;
+        padding: 1rem 1.5rem;
+        min-width: 0;
+    }
+
+    &__title {
+        font-size: 1.1rem !important;
+        font-weight: 700 !important;
+        color: #ffffff;
+        padding: 0 0 0.35rem 0;
+        font-family: 'Poppins', sans-serif !important;
+        line-height: 1.3;
+    }
+
+    &__highlight {
+        color: #25D366;
+        font-weight: 700 !important;
+        border-bottom: 2px solid #25D366;
+        padding-bottom: 3px;
+    }
+
+    &__desc {
+        font-size: 0.78rem !important;
+        color: #cbd5e1;
+        line-height: 1.5;
+        padding: 0;
+        font-family: 'Poppins', sans-serif !important;
+        max-width: 600px;
+        margin: 0 !important;
+    }
+
+    &__features {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        flex-wrap: wrap;
+    }
+
+    &__feature {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        color: #cbd5e1;
+        font-size: 0.7rem;
+        font-weight: 500;
+        font-family: 'Poppins', sans-serif;
+
+        svg {
+            color: #25D366;
+            flex-shrink: 0;
+        }
+    }
+}
+
+// ── Search bar ────────────────────────────────────────────────────────────────
+.searchBarRow {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 1.25rem;
+}
+
+.searchInput {
+    width: 280px;
+
+    & > div {
+        border-radius: 10px !important;
+        font-family: $font-family !important;
+        font-size: 0.82rem !important;
+        background: #fff;
+
+        svg {
+            color: $secondaryColor;
+        }
+    }
+}
+
+// ── Automation cards (template card style) ───────────────────────────────────
+.automationGrid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.25rem;
+    padding-bottom: 1rem;
+
+    @media (max-width: 1200px) {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    @media (max-width: 720px) {
+        grid-template-columns: repeat(1, 1fr);
+    }
+}
+
+.automationCard {
+    height: 100%;
+    border-radius: 16px !important;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    border: 1px solid #eef0f4 !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.02) !important;
+    transition: box-shadow 0.3s ease, transform 0.25s ease !important;
+    cursor: pointer;
+    overflow: hidden;
+    position: relative;
+
+    &:hover {
+        box-shadow: 0 12px 32px rgba(0,0,0,0.08), 0 4px 8px rgba(0,0,0,0.04) !important;
+        transform: translateY(-3px);
+    }
+}
+
+// ── Empty state ────────────────────────────────────────────────────────────────
+.emptyState {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1.5rem;
+    text-align: center;
+}
+
+.emptyStateIconWrap {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: #f1f5f9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.25rem;
+}
+
+.emptyStateIcon {
+    color: #cbd5e1;
+}
+
+.emptyStateTitle {
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+    color: $titleColor;
+    font-family: $font-family !important;
+    margin: 0 0 0.5rem 0 !important;
+}
+
+.emptyStateDesc {
+    font-size: 0.82rem !important;
+    color: $secondaryColor !important;
+    font-family: $font-family !important;
+    margin: 0 !important;
+    max-width: 320px;
+}
+
+// ── Draft restore modal ───────────────────────────────────────────────────────
+.draftModal {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 12px 40px rgba(15, 23, 42, 0.2);
+    width: 400px;
+    max-width: 90vw;
+    overflow: hidden;
+}
+
+.draftModalHeader {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid $sidebar-borderColor;
+}
+
+.draftModalTitle {
+    font-size: 1rem;
+    font-weight: 700;
+    color: $titleColor;
+    font-family: $font-family;
+}
+
+.draftModalBody {
+    padding: 1.5rem;
+}
+
+.draftModalText {
+    font-size: 0.85rem;
+    color: $secondaryColor;
+    font-family: $font-family;
+    margin: 0 0 1.25rem 0;
+    line-height: 1.6;
+}
+
+.draftModalActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
+.draftModalDiscardBtn {
+    text-transform: none !important;
+    font-family: $font-family !important;
+    font-size: 0.8rem !important;
+    border-radius: 10px !important;
+    border-color: $sidebar-borderColor !important;
+    color: $secondaryColor !important;
+}

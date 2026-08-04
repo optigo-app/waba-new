@@ -6,7 +6,8 @@ import { MoreVertical, ChevronDown, Paperclip, Download, AlertCircle, Clock3, Ch
 import DynamicTemplate from './DynamicTemplate';
 import QuickReactionMenu from './QuickReactionMenu';
 import { Emoji } from 'emoji-picker-react';
-import { parseTemplateData, renderLinks } from './utils/chatUtils';
+import { parseTemplateData } from './utils/chatUtils';
+import WhatsAppText from './WhatsAppText';
 import { extractTimeFromISO } from './utils/dateUtils';
 
 const charToUnified = (char) => {
@@ -480,7 +481,7 @@ const MessageBubble = memo(function MessageBubble({
 
             const textBlock = (
               <div className="message-text">
-                {renderLinks(captionText, { onLinkClick: onExternalLinkClick })}
+                <WhatsAppText text={captionText} onLinkClick={onExternalLinkClick} />
               </div>
             );
 

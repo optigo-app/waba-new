@@ -281,35 +281,54 @@ const QRGenerator = () => {
     };
 
     // ── Print ───────────────────────────────────────────────────────────────
-    const handlePrint = useCallback(() => {
-        if (!qrDataUrl) return;
+    const handlePrint = useCallback(async () => {
+        if (!qrDataUrl || !flyerRef.current) return;
+
         const printWindow = window.open('', '_blank', 'width=800,height=900');
         if (!printWindow) {
             toast.error('Please allow pop-ups to print');
             return;
         }
 
-        const digitsOnly = phoneData.phone.replace(/[^0-9]/g, '');
-        const displayPhone = formatPhoneNumber(digitsOnly);
-        const poweredByUrl = getStaticUrl('/poweredBy.png');
+        try {
+            const canvas = await html2canvas(flyerRef.current, {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: '#ffffff',
+                logging: false,
+            });
+            const imgData = canvas.toDataURL('image/png');
+            const imgWidth = canvas.width;
+            const imgHeight = canvas.height;
 
-        const templateData = {
-            qrDataUrl,
-            brandName,
-            headline,
-            tagline,
-            displayPhone,
-            logoDataUrl,
-            poweredByUrl,
-        };
-
-        const printHtml = designType === 'standee'
-            ? getStandeeTemplate(templateData)
-            : getFlyerTemplate(templateData);
-
-        printWindow.document.write(printHtml);
-        printWindow.document.close();
-    }, [qrDataUrl, phoneData, brandName, headline, tagline, logoDataUrl, designType]);
+            printWindow.document.write(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>WhatsApp QR Print</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { background: #fff; }
+@page { size: ${imgWidth}px ${imgHeight}px; margin: 0; }
+body { display: flex; justify-content: center; align-items: center; }
+.print-img { width: ${imgWidth}px; height: ${imgHeight}px; display: block; }
+@media print {
+    body { display: block; }
+    .print-img { max-width: 100%; max-height: 100vh; }
+}
+</style>
+</head>
+<body>
+<img class="print-img" src="${imgData}" alt="QR Print" onload="window.print(); setTimeout(function(){ window.close(); }, 500);" />
+</body>
+</html>`);
+            printWindow.document.close();
+        } catch (e) {
+            console.error('Print error:', e);
+            toast.error('Failed to prepare print');
+            printWindow.close();
+        }
+    }, [qrDataUrl]);
 
     // ── PDF Download ─────────────────────────────────────────────────────────
     const handleDownloadPDF = useCallback(async () => {
