@@ -4,6 +4,7 @@ import { decompileFlow, compileFlow, autoLayoutFlow, validateFlow, autoFixFlow }
 import { generateAiFlow as generateAiFlowApi, editAiFlow as editAiFlowApi } from '../api/aiFlowApi';
 import { getApiBaseUrl, getHeaders } from '../api/Config';
 import { getApiUrl } from '../utils/globalFunc';
+import { fetchAutomationList, uploadAutomationFlow, fetchAutomationFile } from '../api/automationApi';
 import { callCommonApi } from '../api/CommonApi';
 import { getToken, storage, STORAGE_KEYS } from '../utils/storage';
 import { getDecodedSession } from '../utils/session';
@@ -184,23 +185,8 @@ export const useFlowStore = create((set, get) => ({
     loadFlowsFromBackend: async () => {
         set({ isLoadingFlows: true });
         try {
-            const apiUrl = getApiBaseUrl();
-            const headers = getHeaders();
-            const token = getToken();
-            const session = getDecodedSession();
-            const companyCode = token?.companycode || token?.CompanyCode || session?.companycode || session?.cc || '';
-
-            const res = await fetch(getApiUrl('/api/whatsapp/automation/list'), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    company: companyCode,
-                    apiUrl,
-                    headers,
-                }),
-            });
-            const data = await res.json();
-            if (res.ok && data.success && Array.isArray(data.files)) {
+            const data = await fetchAutomationList();
+            if (data.success && Array.isArray(data.files)) {
                 const backendFlows = data.files.map((item) => ({
                     id: String(item.Id) || item.FlowName,
                     name: item.FlowName || 'Untitled Flow',
@@ -240,17 +226,9 @@ export const useFlowStore = create((set, get) => ({
         let initialNodes;
         let initialEdges;
 
-        // Helper to fetch flow files through our proxy (avoids CORS, handles redirect_version)
+        // Helper to fetch flow files directly from backend
         const fetchFlowFile = async (fileUrl) => {
-            const apiUrl = getApiBaseUrl();
-            const headers = getHeaders();
-            const res = await fetch(getApiUrl('/api/whatsapp/automation/file'), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ fileUrl, apiUrl, headers }),
-            });
-            if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
-            return res.json();
+            return fetchAutomationFile(fileUrl);
         };
 
         if (listSummary.frontendPath) {
@@ -890,28 +868,13 @@ export const useFlowStore = create((set, get) => ({
 
         try {
             const apiUrl = getApiBaseUrl();
-            const headers = getHeaders();
-            const token = getToken();
-            const session = getDecodedSession();
-            const companyCode = token?.companycode || token?.CompanyCode || session?.companycode || session?.cc || '';
 
-            // 1. Upload frontend + backend JSON to backend API
-            const uploadRes = await fetch(getApiUrl('/api/whatsapp/automation/upload'), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    frontendJson,
-                    backendJson,
-                    flowName: s.flowName || currentId,
-                    company: companyCode,
-                    apiUrl,
-                    headers,
-                }),
-            });
-            const uploadData = await uploadRes.json();
-            if (!uploadRes.ok) {
-                throw new Error(uploadData.error || 'Upload failed');
-            }
+            // 1. Upload frontend + backend JSON to backend API directly
+            const uploadData = await uploadAutomationFlow(
+                frontendJson,
+                backendJson,
+                s.flowName || currentId,
+            );
 
             // Construct frontend/backend URLs from the API response or fallback
             const safeFlowName = (s.flowName || currentId).replace(/[^a-zA-Z0-9_-]/g, '_');

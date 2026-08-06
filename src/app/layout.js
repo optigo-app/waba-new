@@ -25,7 +25,10 @@ const greatVibes = Great_Vibes({
 });
 
 export const metadata = {
-  title: "WABA Module",
+  title: {
+    default: "WABA",
+    template: "%s | WABA",
+  },
   description: "WhatsApp Business API Module",
 };
 

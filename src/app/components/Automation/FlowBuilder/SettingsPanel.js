@@ -318,19 +318,21 @@ function SendQuestionForm({ data, updateField }) {
     const buttonType = data.buttonType || 'quick_reply';
     const [btnLabel, setBtnLabel] = useState('');
     const [btnDesc, setBtnDesc] = useState('');
+    const [btnUrl, setBtnUrl] = useState('');
 
-    const limitCount = buttonType === 'quick_reply' ? 3 : 10;
-    const maxLabelLength = buttonType === 'quick_reply' ? 20 : 24;
+    const limitCount = buttonType === 'quick_reply' ? 3 : buttonType === 'cta_url' ? 1 : 10;
+    const maxLabelLength = buttonType === 'quick_reply' ? 20 : buttonType === 'cta_url' ? 20 : 24;
 
     const sectionOrder = getSectionOrder(data, DEFAULT_SECTION_ORDER_SEND_QUESTION);
 
     // ── Inline WhatsApp API validation ──────────────────────────
     const validationWarnings = [];
+    const isCtaUrl = buttonType === 'cta_url' && buttons.length > 0;
     const isList = buttonType === 'list' && buttons.length > 0;
-    const isButton = buttonType !== 'list' && buttons.length > 0;
+    const isButton = buttonType !== 'list' && buttonType !== 'cta_url' && buttons.length > 0;
 
     // Body text limit
-    const bodyLimit = isList ? 4096 : (isButton ? 1024 : 4096);
+    const bodyLimit = isList ? 4096 : (isButton || isCtaUrl) ? 1024 : 4096;
     if (data.text && data.text.length > bodyLimit) {
         validationWarnings.push(`Body text exceeds ${bodyLimit} char limit for ${isList ? 'list' : isButton ? 'button' : 'text'} messages (current: ${data.text.length}).`);
     }
@@ -341,6 +343,14 @@ function SendQuestionForm({ data, updateField }) {
     }
     if (isList && buttons.length > 10) {
         validationWarnings.push(`${buttons.length} list rows — Meta allows max 10 total. Remove extras.`);
+    }
+
+    // CTA URL button count
+    if (isCtaUrl && buttons.length > 1) {
+        validationWarnings.push(`${buttons.length} buttons — Meta allows max 1 for CTA URL messages.`);
+    }
+    if (isCtaUrl && buttons[0] && !buttons[0].ctaUrl && !buttons[0].url) {
+        validationWarnings.push('CTA URL button has no URL configured — Meta will reject this message.');
     }
 
     // Duplicate button labels
@@ -368,18 +378,27 @@ function SendQuestionForm({ data, updateField }) {
                 actionLabel: 'Remove media',
             });
         }
+        if (isCtaUrl && data.mediaType === 'audio') {
+            validationWarnings.push({
+                text: `Audio cannot be used as a header on CTA URL messages. Send as a separate audio message.`,
+                action: () => { updateField('mediaUrl', ''); updateField('mediaFileName', ''); updateField('mediaType', 'image'); },
+                actionLabel: 'Remove media',
+            });
+        }
     }
 
     const handleAddButton = () => {
         if (buttons.length >= limitCount || !btnLabel.trim()) return;
         const newBtn = {
-            id: `btn_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+            id: buttonType === 'cta_url' ? 'cta_url' : `btn_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
             label: btnLabel.trim().substring(0, maxLabelLength),
             description: buttonType === 'list' && btnDesc.trim() ? btnDesc.trim() : undefined,
+            ...(buttonType === 'cta_url' ? { ctaUrl: btnUrl.trim() } : {}),
         };
         updateField('buttons', [...buttons, newBtn]);
         setBtnLabel('');
         setBtnDesc('');
+        setBtnUrl('');
     };
 
     const handleRemoveButton = (id) => {
@@ -445,6 +464,7 @@ function SendQuestionForm({ data, updateField }) {
                             >
                                 <MenuItem value="quick_reply">Quick Reply Buttons (Max 3)</MenuItem>
                                 <MenuItem value="list">Structured Interactive List (Max 10)</MenuItem>
+                                <MenuItem value="cta_url">CTA URL Button (Call/Link, Max 1)</MenuItem>
                             </TextField>
                         </div>
                     </ReorderableSection>
@@ -488,6 +508,16 @@ function SendQuestionForm({ data, updateField }) {
                                                         value={b.description || ''}
                                                         onChange={(e) => handleEditButton(b.id, 'description', e.target.value.substring(0, 72))}
                                                         placeholder="Description (max 72 chars)"
+                                                        className={styles.buttonListEditInput}
+                                                        sx={{ mt: 0.5 }}
+                                                    />
+                                                )}
+                                                {buttonType === 'cta_url' && (
+                                                    <TextField
+                                                        fullWidth size="small"
+                                                        value={b.ctaUrl || b.url || ''}
+                                                        onChange={(e) => handleEditButton(b.id, 'ctaUrl', e.target.value)}
+                                                        placeholder="URL (e.g. tel:+1234567890 or https://...)"
                                                         className={styles.buttonListEditInput}
                                                         sx={{ mt: 0.5 }}
                                                     />
@@ -543,6 +573,16 @@ function SendQuestionForm({ data, updateField }) {
                                             sx={{ mt: 1 }}
                                         />
                                     )}
+                                    {buttonType === 'cta_url' && (
+                                        <TextField
+                                            fullWidth size="small"
+                                            value={btnUrl}
+                                            onChange={(e) => setBtnUrl(e.target.value)}
+                                            placeholder="URL (e.g. tel:+1234567890 or https://...)"
+                                            className={styles.settingsInput}
+                                            sx={{ mt: 1 }}
+                                        />
+                                    )}
                                     <Button
                                         fullWidth variant="contained" size="small"
                                         onClick={handleAddButton}
@@ -556,7 +596,7 @@ function SendQuestionForm({ data, updateField }) {
                                 </Box>
                             ) : (
                                 <Typography className={styles.buttonLimitReached}>
-                                    Reached max options for WhatsApp {buttonType.replace('_', ' ')} elements.
+                                    Reached max options for WhatsApp {buttonType === 'cta_url' ? 'CTA URL' : buttonType.replace('_', ' ')} elements.
                                 </Typography>
                             )}
                         </div>
@@ -1257,7 +1297,8 @@ function AttachmentUpload({ data, updateField }) {
         // Meta validation: check media type against node's buttonType
         const buttonType = data.buttonType || 'quick_reply';
         const isList = buttonType === 'list';
-        const isButton = buttonType !== 'list' && (data.buttons || []).length > 0;
+        const isCtaUrl = buttonType === 'cta_url';
+        const isButton = buttonType !== 'list' && buttonType !== 'cta_url' && (data.buttons || []).length > 0;
 
         if (isList) {
             setUploadError('List messages support text-only headers. Media cannot be attached to list-type nodes. Remove the media or switch to button type.');
@@ -1265,6 +1306,10 @@ function AttachmentUpload({ data, updateField }) {
         }
         if (isButton && inferredType === 'audio') {
             setUploadError('Audio cannot be used as a header on interactive button messages. Send audio as a separate send_message node instead.');
+            return;
+        }
+        if (isCtaUrl && inferredType === 'audio') {
+            setUploadError('Audio cannot be used as a header on CTA URL messages. Send audio as a separate send_message node instead.');
             return;
         }
 
@@ -1412,11 +1457,14 @@ function AttachmentUpload({ data, updateField }) {
                                 // Validate URL media type against Meta rules
                                 const bt = data.buttonType || 'quick_reply';
                                 const isList = bt === 'list';
+                                const isCtaUrl = bt === 'cta_url';
                                 const hasButtons = (data.buttons || []).length > 0;
                                 if (isList && url) {
                                     setUploadError('List messages support text-only headers. Media cannot be attached to list-type nodes.');
-                                } else if (hasButtons && mediaType === 'audio' && url) {
+                                } else if (hasButtons && !isCtaUrl && mediaType === 'audio' && url) {
                                     setUploadError('Audio cannot be used as a header on interactive button messages.');
+                                } else if (isCtaUrl && mediaType === 'audio' && url) {
+                                    setUploadError('Audio cannot be used as a header on CTA URL messages.');
                                 } else {
                                     setUploadError('');
                                 }

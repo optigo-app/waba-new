@@ -293,6 +293,21 @@ function parseWaMessage(msg, label) {
         };
     }
 
+    // Interactive CTA URL type
+    if (msg.type === 'interactive' && interactive?.type === 'cta_url') {
+        return {
+            label,
+            text: interactive.body?.text || '',
+            buttonType: 'cta_url',
+            buttons: [{
+                id: 'cta_url',
+                label: interactive.action?.parameters?.display_text || 'Click Here',
+                ctaUrl: interactive.action?.parameters?.url || '',
+            }],
+            timeoutMinutes: 30,
+        };
+    }
+
     // Interactive list type
     if (msg.type === 'interactive' && interactive?.type === 'list') {
         const rows = interactive.action?.sections?.[0]?.rows || [];
@@ -437,6 +452,32 @@ function buildWaMessage(node) {
         return message;
     }
 
+    // Interactive CTA URL type
+    if (buttonType === 'cta_url' && buttons.length > 0) {
+        const btn = buttons[0];
+        const message = {
+            type: 'interactive',
+            interactive: {
+                type: 'cta_url',
+                body: { text: text || '' },
+                action: {
+                    name: 'cta_url',
+                    parameters: {
+                        display_text: btn.label || 'Click Here',
+                        url: btn.ctaUrl || btn.url || '',
+                    },
+                },
+            },
+        };
+
+        if (mediaUrl) {
+            const type = mediaType || 'image';
+            message.interactive.header = { type, [type]: { link: mediaUrl } };
+        }
+
+        return message;
+    }
+
     // Interactive button type
     if (buttons.length > 0) {
         const message = {
@@ -553,7 +594,7 @@ export function compileFlow(flow) {
 
         const outgoing = edges.filter((e) => e.source === node.id);
 
-        if (node.type === 'send_question' && (node.data.buttons || []).length > 0) {
+        if (node.type === 'send_question' && (node.data.buttons || []).length > 0 && node.data.buttonType !== 'cta_url') {
             // Conditional branching for send_question with buttons
             const conditions = [];
 
@@ -608,17 +649,52 @@ export function validateFlow(nodes, edges) {
 
         const { text, buttons = [], mediaUrl, mediaType, buttonType } = node.data;
         const label = node.data.label || node.id;
+        const isCtaUrl = buttonType === 'cta_url' && buttons.length > 0;
         const isList = buttonType === 'list' && buttons.length > 0;
-        const isButton = buttonType !== 'list' && buttons.length > 0;
+        const isButton = buttonType !== 'list' && buttonType !== 'cta_url' && buttons.length > 0;
 
         // ── Body text limits ──────────────────────────────────────
-        const bodyLimit = isList ? 4096 : 1024;
+        const bodyLimit = isList ? 4096 : (isButton || isCtaUrl) ? 1024 : 4096;
         if (text && text.length > bodyLimit) {
             issues.push({
                 nodeId: node.id,
                 severity: 'error',
                 message: `"${label}" body text is ${text.length} chars — max ${bodyLimit} for ${isList ? 'list' : 'button'} messages.`,
             });
+        }
+
+        // ── CTA URL message validation (interactive.type: "cta_url") ──
+        if (isCtaUrl) {
+            if (buttons.length > 1) {
+                issues.push({
+                    nodeId: node.id,
+                    severity: 'error',
+                    message: `"${label}" has ${buttons.length} buttons — max 1 for CTA URL messages.`,
+                });
+            }
+            const btn = buttons[0];
+            if (btn.label && btn.label.length > 20) {
+                issues.push({
+                    nodeId: node.id,
+                    severity: 'error',
+                    message: `"${label}" CTA button "${btn.label.substring(0, 15)}..." display_text is ${btn.label.length} chars — max 20.`,
+                });
+            }
+            if (!btn.ctaUrl && !btn.url) {
+                issues.push({
+                    nodeId: node.id,
+                    severity: 'error',
+                    message: `"${label}" CTA URL button has no URL configured — Meta will reject this message.`,
+                });
+            }
+            // Header type check for CTA URL messages
+            if (mediaUrl && mediaType === 'audio') {
+                issues.push({
+                    nodeId: node.id,
+                    severity: 'error',
+                    message: `"${label}" — audio cannot be used as a header on CTA URL messages. Send as a separate audio message.`,
+                });
+            }
         }
 
         // ── Button message validation (interactive.type: "button") ─
@@ -895,7 +971,7 @@ export function autoFixFlow(nodes, edges) {
         const buttons = node.data.buttons || [];
         const isQuickReply = (node.data.buttonType || 'quick_reply') !== 'list';
 
-        if (isQuickReply && buttons.length > 3) {
+        if (isQuickReply && (node.data.buttonType || 'quick_reply') !== 'cta_url' && buttons.length > 3) {
             node.data.buttonType = 'list';
             fixes.push(`Converted "${node.data.label}" from quick_reply to list (had ${buttons.length} buttons, max 3 for quick_reply).`);
         }
@@ -918,6 +994,7 @@ export function autoFixFlow(nodes, edges) {
     // 2. Fix dead-end buttons (no outgoing edge)
     newNodes.forEach((node) => {
         if (node.type !== 'send_question') return;
+        if (node.data.buttonType === 'cta_url') return; // CTA URL buttons don't create flow branches
         const buttons = node.data.buttons || [];
         if (buttons.length === 0) return;
 

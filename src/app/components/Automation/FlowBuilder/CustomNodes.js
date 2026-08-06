@@ -21,6 +21,7 @@ import {
     AlertTriangle,
     List,
     MessageCircle,
+    ExternalLink,
 } from 'lucide-react';
 import { useFlowStore } from '../../../store/flowStore';
 import styles from './FlowBuilder.module.scss';
@@ -231,10 +232,11 @@ function validateSendQuestion(data) {
     const buttons = data.buttons || [];
     const buttonType = data.buttonType || 'quick_reply';
     const isList = buttonType === 'list';
-    const isButton = buttonType !== 'list' && buttons.length > 0;
+    const isCtaUrl = buttonType === 'cta_url';
+    const isButton = buttonType !== 'list' && buttonType !== 'cta_url' && buttons.length > 0;
 
     // Body text limit
-    const bodyLimit = isList ? 4096 : (isButton ? 1024 : 4096);
+    const bodyLimit = isList ? 4096 : (isButton || isCtaUrl) ? 1024 : 4096;
     if (data.text && data.text.length > bodyLimit) {
         warnings.push(`Body text exceeds ${bodyLimit} char limit (current: ${data.text.length}).`);
     }
@@ -245,6 +247,12 @@ function validateSendQuestion(data) {
     }
     if (isList && buttons.length > 10) {
         warnings.push(`${buttons.length} list rows — Meta allows max 10 total.`);
+    }
+    if (isCtaUrl && buttons.length > 1) {
+        warnings.push(`${buttons.length} buttons — Meta allows max 1 for CTA URL messages.`);
+    }
+    if (isCtaUrl && buttons[0] && !buttons[0].ctaUrl && !buttons[0].url) {
+        warnings.push('CTA URL button has no URL configured.');
     }
 
     // Button label length
@@ -269,6 +277,9 @@ function validateSendQuestion(data) {
         }
         if (isButton && data.mediaType === 'audio') {
             warnings.push('Audio cannot be used as a header on button messages.');
+        }
+        if (isCtaUrl && data.mediaType === 'audio') {
+            warnings.push('Audio cannot be used as a header on CTA URL messages.');
         }
     }
 
@@ -410,12 +421,16 @@ const SendQuestionNode = ({ id, selected, data }) => {
                                     <span className={styles.flowNodeBadge} style={{ background: `${color}15`, color }}>
                                         <List size={9} /> List Options
                                     </span>
+                                ) : buttonType === 'cta_url' ? (
+                                    <span className={styles.flowNodeBadge} style={{ background: `${color}15`, color }}>
+                                        <ExternalLink size={9} /> CTA URL
+                                    </span>
                                 ) : (
                                     <span className={styles.flowNodeBadge} style={{ background: `${color}15`, color }}>
                                         <MessageCircle size={9} /> Quick Reply
                                     </span>
                                 )}
-                                <span style={{ marginLeft: 'auto' }}>{buttons.length} / {buttonType === 'list' ? 10 : 3}</span>
+                                <span style={{ marginLeft: 'auto' }}>{buttons.length} / {buttonType === 'list' ? 10 : buttonType === 'cta_url' ? 1 : 3}</span>
                             </div>
                             {buttons.length === 0 ? (
                                 <div className={styles.flowNodeEmpty}>No response buttons configured...</div>
@@ -432,8 +447,13 @@ const SendQuestionNode = ({ id, selected, data }) => {
                                                     className={styles.flowNodeOutputLabel}
                                                 />
                                                 {btn.description && <span className={styles.flowNodeOutputDesc}>{btn.description}</span>}
+                                                {buttonType === 'cta_url' && (btn.ctaUrl || btn.url) && (
+                                                    <span className={styles.flowNodeOutputDesc} style={{ wordBreak: 'break-all' }}>{btn.ctaUrl || btn.url}</span>
+                                                )}
                                             </div>
-                                            <Handle type="source" position={Position.Right} id={btn.id} className={styles.flowNodeHandleMini} style={{ background: color, top: '50%' }} />
+                                            {buttonType !== 'cta_url' && (
+                                                <Handle type="source" position={Position.Right} id={btn.id} className={styles.flowNodeHandleMini} style={{ background: color, top: '50%' }} />
+                                            )}
                                         </div>
                                     ))}
                                 </div>

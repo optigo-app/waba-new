@@ -210,8 +210,13 @@ const SimulatorDrawer = () => {
             }
             case 'send_question': {
                 const textContent = interpolateVars(node.data?.text || '');
+                const btnType = node.data?.buttonType || 'quick_reply';
                 addLog('success', `Sent Interactive Question: "${textContent}" with ${node.data?.buttons?.length || 0} button options.`, node.id);
-                setMessages(prev => [...prev, { id: `bot-question-${Date.now()}`, sender: 'bot', text: textContent, timestamp: currentTimeStr, media: node.data?.mediaUrl ? { url: node.data.mediaUrl, type: node.data.mediaType || 'image' } : undefined, buttons: node.data?.buttons || [] }]);
+                setMessages(prev => [...prev, { id: `bot-question-${Date.now()}`, sender: 'bot', text: textContent, timestamp: currentTimeStr, media: node.data?.mediaUrl ? { url: node.data.mediaUrl, type: node.data.mediaType || 'image' } : undefined, buttons: node.data?.buttons || [], buttonType: btnType }]);
+                if (btnType === 'cta_url') {
+                    const next = getNextNode(node.id, 'output') || getNextNode(node.id, null);
+                    if (next) executeNode(next);
+                }
                 break;
             }
             case 'api_call': {
@@ -509,10 +514,17 @@ const SimulatorDrawer = () => {
                                                     {msg.buttons && msg.buttons.length > 0 && (
                                                         <div className={styles.simMsgButtons}>
                                                             {msg.buttons.map(btn => (
-                                                                <button key={btn.id} onClick={() => handleButtonClick(btn.id, btn.label)} className={styles.simMsgBtn}>
-                                                                    <span>{btn.label}</span>
-                                                                    <span className={styles.simMsgBtnTap}>TAP</span>
-                                                                </button>
+                                                                msg.buttonType === 'cta_url' ? (
+                                                                    <a key={btn.id} href={btn.ctaUrl || btn.url || '#'} className={styles.simMsgBtn} target="_blank" rel="noopener noreferrer">
+                                                                        <span>{btn.label}</span>
+                                                                        <span className={styles.simMsgBtnTap}>OPEN</span>
+                                                                    </a>
+                                                                ) : (
+                                                                    <button key={btn.id} onClick={() => handleButtonClick(btn.id, btn.label)} className={styles.simMsgBtn}>
+                                                                        <span>{btn.label}</span>
+                                                                        <span className={styles.simMsgBtnTap}>TAP</span>
+                                                                    </button>
+                                                                )
                                                             ))}
                                                         </div>
                                                     )}
