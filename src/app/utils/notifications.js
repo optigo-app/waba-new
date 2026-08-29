@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import toast from 'react-hot-toast';
 import { playNotificationSound } from './notificationSound';
@@ -11,7 +11,6 @@ let cachedSwReg = null;
 if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
     navigator.serviceWorker.ready.then((reg) => {
         cachedSwReg = reg;
-        console.log('[Notification] Cached SW registration:', reg.scope);
     }).catch(() => {});
 }
 
@@ -54,7 +53,7 @@ export const showBrowserNotification = async ({
 }) => {
     const isChatRoute = typeof window !== 'undefined' && window.location.pathname.includes('/chat');
     const notifType = data?.type || '';
-    // NEW_MESSAGE → only show when user is on /chat; all other types → show everywhere
+    // NEW_MESSAGE -> only show when user is on /chat; all other types -> show everywhere
     const shouldPlaySound = notifType === 'NEW_MESSAGE' ? isChatRoute : true;
 
     // Suppress NEW_MESSAGE notifications when user is not on /chat
@@ -65,35 +64,27 @@ export const showBrowserNotification = async ({
     // Not in browser or API not supported
     if (typeof window === 'undefined' || !('Notification' in window)) {
         if (shouldPlaySound) playNotificationSound();
-        toast(body, { icon: 'ðŸ””' });
+        toast(body, { icon: '🔔' });
         return;
     }
 
     const isTabVisible = typeof document !== 'undefined' && document.visibilityState === 'visible';
-    console.log('[Notification] showBrowserNotification called:', { title, body, isTabVisible, isChatRoute, notifType, shouldPlaySound, permission: Notification.permission });
 
-    // Tab active → show inline notification only, no browser notification
+    // Tab active -> show inline notification only, no browser notification
     if (isTabVisible) {
-        console.log('[Notification] Tab visible — showing inline notification');
         showInPageNotification({ title, body, tag, group: data?.group || 'OTHER' });
         if (shouldPlaySound) playNotificationSound();
         return;
     }
 
-    // Tab not active → show browser notification only, no inline notification
+    // Tab not active -> show browser notification only, no inline notification
     if (Notification.permission !== 'granted') {
-        console.log('[Notification] Permission not granted:', Notification.permission);
         return;
     }
-
-    console.log('[Notification] Showing browser notification (hidden tab)');
     if (shouldPlaySound) playNotificationSound();
 
     const iconUrl = icon || getStaticUrl('/waba_logo.png');
     const badgeUrl = badge || getStaticUrl('/waba_logo.png');
-
-    console.log('[Notification] Icon URL:', iconUrl);
-    console.log('[Notification] Badge URL:', badgeUrl);
 
     const options = {
         body,
@@ -105,11 +96,8 @@ export const showBrowserNotification = async ({
         silent: true, // We play our own sound for consistency
     };
 
-    console.log('[Notification] Full options:', JSON.stringify(options));
-
     const showViaNative = (opts) => {
         const nativeOpts = { ...options, ...opts };
-        console.log('[Notification] Using new Notification()', nativeOpts);
         try {
             const notification = new Notification(title, nativeOpts);
             notification.onclick = (e) => {
@@ -129,7 +117,6 @@ export const showBrowserNotification = async ({
                 }
                 notification.close();
             };
-            console.log('[Notification] Native notification shown');
         } catch (e) {
             console.error('[Notification] Native notification failed:', e);
         }
@@ -137,20 +124,16 @@ export const showBrowserNotification = async ({
 
     // Use cached Service Worker registration synchronously
     if ('serviceWorker' in navigator && cachedSwReg && cachedSwReg.active) {
-        console.log('[Notification] Using cached SW registration:', cachedSwReg.scope);
         try {
             const result = cachedSwReg.showNotification(title, options);
             if (result && typeof result.then === 'function') {
                 result
-                    .then(() => console.log('[Notification] SW showNotification resolved OK'))
+                    .then(() => {})
                     .catch((err) => {
                         console.error('[Notification] SW showNotification rejected:', err?.name, err?.message, err);
                         showViaNative({ body });
                     });
-            } else {
-                console.log('[Notification] SW showNotification returned synchronously (no promise)');
             }
-            console.log('[Notification] Service Worker notification called (sync)');
         } catch (swErr) {
             console.warn('[Notification] SW showNotification failed (sync):', swErr?.name, swErr?.message, swErr);
             showViaNative({ body });
@@ -159,27 +142,21 @@ export const showBrowserNotification = async ({
     }
 
     // Fallback async path for socket-driven notifications
-    console.log('[Notification] No cached SW reg — trying async path');
     if ('serviceWorker' in navigator) {
         try {
             const reg = await Promise.race([
                 navigator.serviceWorker.ready,
                 new Promise((_, reject) => setTimeout(() => reject(new Error('SW ready timeout')), 2000)),
             ]);
-            console.log('[Notification] Service Worker ready:', reg?.scope, 'active=', !!reg?.active);
             if (reg && reg.active) {
                 cachedSwReg = reg; // cache for next time
-                console.log('[Notification] SW active, calling showNotification with:', { title, options });
                 try {
                     await reg.showNotification(title, options);
-                    console.log('[Notification] Service Worker notification shown');
                 } catch (swErr) {
                     console.warn('[Notification] SW showNotification failed:', swErr?.name, swErr?.message, swErr);
                     const minimalOpts = { body, data: options.data, tag: options.tag };
-                    console.log('[Notification] Retrying with minimal options:', minimalOpts);
                     try {
                         await reg.showNotification(title, minimalOpts);
-                        console.log('[Notification] Service Worker notification shown (minimal)');
                     } catch (swErr2) {
                         console.warn('[Notification] SW minimal also failed:', swErr2?.name, swErr2?.message);
                         showViaNative(minimalOpts);
@@ -193,7 +170,6 @@ export const showBrowserNotification = async ({
             showViaNative({ body });
         }
     } else {
-        console.log('[Notification] Service Worker not supported');
         showViaNative({ body });
     }
 };
@@ -216,14 +192,14 @@ export const NOTIFICATION_TEMPLATES = {
 
     // Message reaction
     MESSAGE_REACTION: (data) => {
-        let emoji = 'ðŸ‘';
+        let emoji = '👍';
         try {
             const reactions =
                 typeof data?.ReactionEmojis === 'string'
                     ? JSON.parse(data.ReactionEmojis)
                     : data?.ReactionEmojis;
             if (Array.isArray(reactions) && reactions.length > 0) {
-                emoji = reactions[reactions.length - 1].Reaction || 'ðŸ‘';
+                emoji = reactions[reactions.length - 1].Reaction || '👍';
             }
         } catch (e) {
             /* ignore */
@@ -239,7 +215,7 @@ export const NOTIFICATION_TEMPLATES = {
 
     // Conversation assigned to user
     CONVERSATION_ASSIGNED: (data) => ({
-        title: 'ðŸ‘¤ Conversation Assigned',
+        title: '👤 Conversation Assigned',
         body: `A conversation with ${capitalizeWords(
             data?.CustomerName || data?.customerName || 'a customer'
         )} has been assigned to you.`,
@@ -249,7 +225,7 @@ export const NOTIFICATION_TEMPLATES = {
 
     // Session logged out from another device
     SESSION_LOGOUT: () => ({
-        title: 'ðŸ”’ Session Logged Out',
+        title: '🔒 Session Logged Out',
         body: 'Your account was logged in from another device.',
         icon: getAppIcon(),
         badge: getAppIcon(),
@@ -257,7 +233,6 @@ export const NOTIFICATION_TEMPLATES = {
 };
 
 export const notify = (data, templateId) => {
-    console.log('[Notification] notify() called:', { templateId, data });
     const templateFn = NOTIFICATION_TEMPLATES[templateId];
     if (!templateFn) {
         console.warn(`Notification template "${templateId}" not found`);

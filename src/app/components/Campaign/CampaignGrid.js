@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation';
 import { DataGrid } from '@mui/x-data-grid';
 import { Paper, Chip, Box, Typography, Button, ToggleButtonGroup, ToggleButton, Grid, Card, CardContent, Tooltip, CircularProgress, Popover } from '@mui/material';
-import { BarChart3, Copy, Rocket, Edit2, Plus, RefreshCw, Megaphone, LayoutGrid, List, AlertTriangle, Trash2, SlidersHorizontal } from 'lucide-react';
+import { BarChart3, Copy, Rocket, Edit2, Plus, RefreshCw, Megaphone, LayoutGrid, List, AlertTriangle, Trash2, SlidersHorizontal, MoreHorizontal } from 'lucide-react';
 import FilterBar from '../Common/FilterBar/FilterBar';
 import IconButton from '../Common/IconButton';
 import Pagination from '../Common/Pagination/Pagination';
@@ -11,9 +11,11 @@ import { fetchCampaignLists } from '../../api/CampaignList';
 import { deleteCampaign } from '../../api/DeleteCampaign';
 import { getCampaignTimers, setCampaignTimers, setCampaignDraft } from '../../utils/storage';
 import { fetchCampaignDetails } from '../../api/FetchCampaignDetails';
+import { fetchCampaignCustomerList } from '../../api/FetchCampaignCustomerList';
 import { extractAudienceFromResponse } from './utils/audienceMapper';
 import { sendBulk } from '../../api/SendBulk';
 import { useAuthToken } from '../../hooks/useAuthToken';
+import { useWallet } from '../../contexts/WalletContext';
 import styles from './CampaignGrid.module.scss';
 import { formatDate } from '../../utils/globalFunc';
 import ConfirmationModal from '../ConfirmationModal/ConfirmationModal';
@@ -24,91 +26,244 @@ import toast from 'react-hot-toast';
 // ── Stable helpers ────────────────────────────────────────────────────────────
 const getStatusConfig = (status) => {
   switch (status?.toLowerCase()) {
-    case 'completed': return { label: 'Completed', color: 'var(--success-main)', bg: 'rgba(40,199,111,0.16)' };
-    case 'pending': return { label: 'Pending', color: 'var(--warning-main)', bg: 'rgba(245,124,0,0.16)' };
-    case 'active': return { label: 'Active', color: '#2196f3', bg: 'rgba(33,150,243,0.14)' };
-    case 'failed': return { label: 'Failed', color: 'var(--error-main)', bg: 'rgba(211,47,47,0.16)' };
-    default: return { label: status || 'Unknown', color: 'var(--secondary-color)', bg: '#f3f4f6' };
+    case 'completed': return { label: 'Completed', color: 'var(--success-main)', bg: 'var(--success-light-bg)' };
+    case 'pending': return { label: 'Pending', color: 'var(--warning-main)', bg: 'var(--warning-light-bg)' };
+    case 'active': return { label: 'Active', color: 'var(--info-main)', bg: 'var(--info-light-bg)' };
+    case 'failed': return { label: 'Failed', color: 'var(--error-main)', bg: 'var(--error-light-bg)' };
+    default: return { label: status || 'Unknown', color: 'var(--text-secondary)', bg: 'var(--neutral-light-bg)' };
   }
 };
 
 const getTypeConfig = (type) => {
   switch (type?.toLowerCase()) {
-    case 'schedule': return { label: 'Schedule', color: 'var(--info-main)', bg: 'rgba(0,207,232,0.16)' };
-    case 'immediate': return { label: 'Immediate', color: '#8b85a5', bg: 'rgba(139,133,165,0.12)' };
-    case 'recurring': return { label: 'Recurring', color: 'var(--warning-main)', bg: 'rgba(245,124,0,0.16)' };
-    default: return { label: type || 'Unknown', color: 'var(--secondary-color)', bg: '#f3f4f6' };
+    case 'schedule': return { label: 'Schedule', color: 'var(--info-main)', bg: 'var(--info-light-bg)' };
+    case 'immediate': return { label: 'Immediate', color: 'var(--primary-main)', bg: 'var(--primary-light-bg)' };
+    case 'recurring': return { label: 'Recurring', color: 'var(--warning-main)', bg: 'var(--warning-light-bg)' };
+    default: return { label: type || 'Unknown', color: 'var(--text-primary)', bg: 'var(--neutral-light-bg)' };
   }
 };
 
+// ── Action menu (popover with card-style items) ───────────────────────────────
+const POPOVER_PAPER_SX = {
+  borderRadius: '14px',
+  boxShadow: 'var(--paper-shadow)',
+  border: '1px solid var(--border-color)',
+  backgroundColor: 'var(--bg-paper)',
+  p: 0.5,
+  minWidth: 250,
+  animation: 'menuPopIn 0.18s ease-out',
+  '@keyframes menuPopIn': {
+    '0%': { opacity: 0, transform: 'scale(0.92) translateY(-4px)' },
+    '100%': { opacity: 1, transform: 'scale(1) translateY(0)' },
+  },
+};
+
+const ActionMenuItem = ({ icon: Icon, label, description, color, onClick, disabled, disabledReason }) => (
+  <Box
+    onClick={disabled ? undefined : onClick}
+    sx={{
+      display: 'flex',
+      alignItems: 'flex-start',
+      gap: 1.25,
+      px: 1.5,
+      py: 1.25,
+      borderRadius: '10px',
+      cursor: disabled ? 'not-allowed' : 'pointer',
+      opacity: disabled ? 0.55 : 1,
+      transition: 'background-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease',
+      '&:hover': disabled ? {} : {
+        backgroundColor: `rgba(${color}, 0.06)`,
+        transform: 'translateX(3px)',
+        boxShadow: `inset 3px 0 0 rgb(${color})`,
+        '& .menu-item-icon': {
+          transform: 'scale(1.12) rotate(-3deg)',
+          backgroundColor: `rgba(${color}, 0.22)`,
+        },
+      },
+    }}
+  >
+    <Box
+      className="menu-item-icon"
+      sx={{
+        width: 34,
+        height: 34,
+        borderRadius: '8px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+        backgroundColor: `rgba(${color}, 0.12)`,
+        color: `rgb(${color})`,
+        transition: 'transform 0.18s ease, background-color 0.18s ease',
+        mt: 0.25,
+      }}
+    >
+      <Icon size={17} />
+    </Box>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.3, minWidth: 0, flex: 1 }}>
+      <Typography sx={{ fontSize: '0.82rem', fontWeight: 600, fontFamily: 'Poppins, sans-serif', color: 'var(--text-primary)', lineHeight: 1.3, whiteSpace: 'nowrap' }}>
+        {label}
+      </Typography>
+      <Typography sx={{ fontSize: '0.68rem', fontWeight: 400, fontFamily: 'Poppins, sans-serif', color: 'var(--text-tertiary)', lineHeight: 1.4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        {description}
+      </Typography>
+      {disabled && disabledReason && (
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.5,
+            mt: 0.25,
+            px: 0.75,
+            py: 0.3,
+            borderRadius: '6px',
+            backgroundColor: 'var(--warning-light-bg)',
+            border: '1px solid rgba(245, 124, 0, 0.2)',
+          }}
+        >
+          <AlertTriangle size={11} color="var(--warning-main)" strokeWidth={2.5} style={{ flexShrink: 0 }} />
+          <Typography sx={{ fontSize: '0.62rem', fontWeight: 500, fontFamily: 'Poppins, sans-serif', color: 'var(--warning-main)', lineHeight: 1.3, whiteSpace: 'nowrap' }}>
+            {disabledReason}
+          </Typography>
+        </Box>
+      )}
+    </Box>
+  </Box>
+);
+
+const ActionMenu = ({ items, triggerEl, anchorPos, open, onClose, onOpenFromIcon }) => {
+  // Icon-triggered mode (internal state)
+  const [iconAnchorEl, setIconAnchorEl] = useState(null);
+  const iconOpen = Boolean(iconAnchorEl);
+
+  const handleIconOpen = (e) => {
+    e.stopPropagation();
+    setIconAnchorEl(e.currentTarget);
+  };
+  const handleIconClose = () => setIconAnchorEl(null);
+
+  // External mode (right-click) — controlled by parent via anchorPos/open
+  const isControlled = anchorPos !== undefined;
+
+  const currentOpen = isControlled ? open : iconOpen;
+  const handleClose = isControlled ? onClose : handleIconClose;
+
+  return (
+    <>
+      {!isControlled && (
+        <IconButton icon={MoreHorizontal} color="secondary" tooltip="More actions" onClick={handleIconOpen} />
+      )}
+      <Popover
+        open={currentOpen}
+        anchorEl={isControlled ? undefined : iconAnchorEl}
+        anchorPosition={isControlled ? { top: anchorPos?.y || 0, left: anchorPos?.x || 0 } : undefined}
+        onClose={handleClose}
+        anchorReference={isControlled ? 'anchorPosition' : 'anchorEl'}
+        anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+        slotProps={{
+          paper: {
+            sx: POPOVER_PAPER_SX,
+          },
+        }}
+      >
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, p: 0.5 }}>
+          {items.map((item, i) => (
+            <ActionMenuItem key={i} {...item} onClick={() => { handleClose(); item.onClick?.(); }} />
+          ))}
+        </Box>
+      </Popover>
+    </>
+  );
+};
+
 // ── Stable column definitions ─────────────────────────────────────────────────
-const buildColumns = (onAnalytics, onDuplicate, onDownload, onLaunch, onStop, onEdit, onCopyId, onDelete, getActiveTimers, launchingCampaignIds) => {
+const buildColumns = (onAnalytics, onDuplicate, onDownload, onLaunch, onStop, onEdit, onDelete, getActiveTimers, launchingCampaignIds) => {
   return [
     {
-      field: 'actions', headerName: 'ACTION', minWidth: 220, sortable: false,
+      field: 'actions', headerName: 'ACTION', minWidth: 140, sortable: false,
       filterable: false, disableColumnMenu: true,
-      renderCell: (params) => (
-        <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', pl: 1 }}>
-          <IconButton icon={Copy} color="secondary" tooltip="Copy Campaign ID" onClick={() => onCopyId(params.row.Id)} />
-          <IconButton
-            icon={BarChart3}
-            color="primary"
-            tooltip={Number(params.row.Status) === 1 ? "Analytics not available for pending campaigns" : "Analytics"}
-            onClick={() => onAnalytics(params.row)}
-            disabled={Number(params.row.Status) === 1}
-          />
-          <IconButton icon={Copy} color="info" tooltip="Quick Clone" onClick={() => onDuplicate(params.row)} />
-          {/* <IconButton icon={Download} color="success" tooltip="Download" onClick={() => onDownload(params.row)} /> */}
-          {(Number(params.row.Type) === 1 && Number(params.row.Status) === 1) && (
-            (() => {
-              const timers = getActiveTimers();
-              const hasActiveTimer = Object.keys(timers).length > 0;
-              const rowTimer = timers[String(params.row.Id)];
-              if (rowTimer) {
-                return (
-                  <CountdownButton
-                    expiry={rowTimer}
-                    onStop={onStop}
-                    row={params.row}
-                  />
-                );
-              }
-              if (launchingCampaignIds.has(String(params.row.Id))) {
+      renderCell: (params) => {
+        const isPending = Number(params.row.Status) === 1;
+        return (
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', pl: 1 }}>
+            {(Number(params.row.Type) === 1 && Number(params.row.Status) === 1) && (
+              (() => {
+                const timers = getActiveTimers();
+                const hasActiveTimer = Object.keys(timers).length > 0;
+                const rowTimer = timers[String(params.row.Id)];
+                if (rowTimer) {
+                  return (
+                    <CountdownButton
+                      expiry={rowTimer}
+                      onStop={onStop}
+                      row={params.row}
+                    />
+                  );
+                }
+                if (launchingCampaignIds.has(String(params.row.Id))) {
+                  return (
+                    <IconButton
+                      icon={CircularProgress}
+                      color="primary"
+                      tooltip="Launching..."
+                      disabled
+                      className={styles.rocketHighlight}
+                    />
+                  );
+                }
                 return (
                   <IconButton
-                    icon={CircularProgress}
+                    icon={Rocket}
                     color="primary"
-                    tooltip="Launching..."
-                    disabled
+                    tooltip={hasActiveTimer ? "Another launch in progress" : "Launch"}
+                    onClick={() => onLaunch(params.row)}
+                    disabled={hasActiveTimer}
                     className={styles.rocketHighlight}
                   />
                 );
-              }
-              return (
-                <IconButton
-                  icon={Rocket}
-                  color="primary"
-                  tooltip={hasActiveTimer ? "Another launch in progress" : "Launch"}
-                  onClick={() => onLaunch(params.row)}
-                  disabled={hasActiveTimer}
-                  className={styles.rocketHighlight}
-                />
-              );
-            })()
-          )}
-          {Number(params.row.Status) === 1 && (
-            <>
-              <IconButton icon={Edit2} color="secondary" tooltip="Edit" onClick={() => onEdit(params.row)} />
-              <IconButton icon={Trash2} color="error" tooltip="Delete" onClick={() => onDelete(params.row)} />
-            </>
-          )}
-        </Box>
-      ),
+              })()
+            )}
+            <ActionMenu
+              items={[
+                { icon: BarChart3, label: 'Analytics', description: 'View campaign report & insights', color: '29, 170, 97', onClick: () => onAnalytics(params.row), disabled: isPending, disabledReason: 'Available after campaign is launched' },
+                { icon: Copy, label: 'Quick Clone', description: 'Duplicate this campaign setup', color: '0, 207, 232', onClick: () => onDuplicate(params.row) },
+                ...(isPending ? [
+                  { icon: Edit2, label: 'Edit', description: 'Modify campaign details & audience', color: '125, 127, 133', onClick: () => onEdit(params.row) },
+                  { icon: Trash2, label: 'Delete', description: 'Permanently remove this campaign', color: '211, 47, 47', onClick: () => onDelete(params.row) },
+                ] : []),
+              ]}
+            />
+          </Box>
+        );
+      },
     },
     {
       field: 'Name', headerName: 'NAME', minWidth: 200, flex: 1.5,
+      renderCell: (p) => {
+        const isPending = Number(p.row.Status) === 1;
+        return (
+          <Typography
+            variant="body2"
+            onClick={() => { if (!isPending) onAnalytics(p.row); }}
+            sx={{
+              fontWeight: 600,
+              color: 'var(--title-color)',
+              fontSize: '0.875rem',
+              cursor: isPending ? 'default' : 'pointer',
+              transition: 'color 0.15s ease',
+              '&:hover': isPending ? {} : { color: 'var(--primary-main)' },
+            }}
+          >
+            {p.value || '—'}
+          </Typography>
+        );
+      },
+    },
+    {
+      field: 'WhatsappName', headerName: 'CHANNEL', minWidth: 140, flex: 0.8,
       renderCell: (p) => (
-        <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--title-color)', fontSize: '0.875rem' }}>
+        <Typography variant="body2" sx={{ color: 'var(--text-2nd-color)', fontSize: '0.8rem', fontWeight: 500 }}>
           {p.value || '—'}
         </Typography>
       ),
@@ -132,7 +287,7 @@ const buildColumns = (onAnalytics, onDuplicate, onDownload, onLaunch, onStop, on
       },
     },
     {
-      field: 'Receiver', headerName: 'RECEIVERS', minWidth: 100, flex: 0.6, type: 'number',
+      field: 'Receiver', headerName: 'RECEIVERS', minWidth: 80, flex: 0.6, type: 'number',
       renderCell: (p) => (
         <Chip label={p.value ?? 0} size="small" sx={{ fontSize: '0.72rem', height: 22, fontWeight: 500 }} />
       ),
@@ -146,7 +301,7 @@ const buildColumns = (onAnalytics, onDuplicate, onDownload, onLaunch, onStop, on
       ),
     },
     {
-      field: 'EntryDate', headerName: 'CREATED ON', minWidth: 130, flex: 0.8,
+      field: 'EntryDate', headerName: 'CREATED ON', minWidth: 146, flex: 0.8,
       renderCell: (p) => (
         <Typography variant="body2" sx={{ color: 'var(--text-2nd-color)', fontSize: '0.8rem' }}>
           {formatDate(p.value) || '—'}
@@ -216,7 +371,11 @@ const CampaignGrid = () => {
   const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 100 });
   const [cardPage, setCardPage] = useState(0);
   const [cardRowsPerPage, setCardRowsPerPage] = useState(15);
-  const [headerMenuAnchor, setHeaderMenuAnchor] = useState(null);
+  const [selectedChannel, setSelectedChannel] = useState('');
+  const [contextMenu, setContextMenu] = useState(null); // { x, y, row } for right-click
+  const closeContextMenu = useCallback(() => setContextMenu(null), []);
+  const { channels } = useWallet();
+  const campaignsRef = useRef([]);
 
   const [activeTimers, setActiveTimers] = useState(() => {
     try {
@@ -240,7 +399,7 @@ const CampaignGrid = () => {
   const loadCampaigns = useCallback(async () => {
     if (!username) return;
     setLoading(true);
-    const result = await fetchCampaignLists(username);
+    const result = await fetchCampaignLists(username, selectedChannel);
     const raw = result.data || [];
     // Deduplicate by Id to prevent DataGrid duplicate key errors
     const seen = new Set();
@@ -253,8 +412,9 @@ const CampaignGrid = () => {
       }
     }
     setCampaigns(deduped);
+    campaignsRef.current = deduped;
     setLoading(false);
-  }, [username]);
+  }, [username, selectedChannel]);
 
   useEffect(() => { loadCampaigns(); }, [loadCampaigns]);
 
@@ -268,12 +428,17 @@ const CampaignGrid = () => {
     // Force re-render for UI only (spinner icon)
     setLaunchingCampaignIds(new Set(launchingCampaignIdsRef.current));
 
+    // Look up the campaign's ChannelId for AccountId
+    const campaign = campaignsRef.current.find((c) => Number(c?.Id) === Number(campaignId));
+    const accountId = campaign?.ChannelId || '';
+
     try {
       const response = await sendBulk({
         appuserid: userId || '',
         userId: userToken?.id || '',
         campaignId,
         whatsappNumber: userToken?.whatsappNumber,
+        accountId,
       });
 
       if (response?.success || response?.stat === 1 || response?.stat_code === 1000) {
@@ -340,18 +505,24 @@ const CampaignGrid = () => {
 
   // Action handlers
   const handlers = useMemo(() => ({
-    onAnalytics: (row) => router.push(`/campaign/report/${row.Id}`),
+    onAnalytics: (row) => router.push(`/campaign/report/${row.Id}?channelId=${row.ChannelId || ''}`),
     onDuplicate: async (row) => {
       try {
         toast.loading('Fetching campaign data...', { id: 'fetch-campaign' });
-        const result = await fetchCampaignDetails(userId, row.Id);
+        const [result, audienceResult] = await Promise.all([
+          fetchCampaignDetails(userId, row.Id, null, null, row.ChannelId),
+          fetchCampaignCustomerList(userId, row.Id)
+        ]);
         toast.dismiss('fetch-campaign');
 
         if (result.success && result.data) {
+          const audienceData = audienceResult.success
+            ? extractAudienceFromResponse(audienceResult.data)
+            : extractAudienceFromResponse(result.data);
           const campaignData = {
             ...result.data.rd[0],
             templateData: result.data.rd1[0],
-            audienceData: extractAudienceFromResponse(result.data),
+            audienceData,
             isClone: true
           };
           setCampaignDraft(campaignData);
@@ -386,14 +557,20 @@ const CampaignGrid = () => {
     onEdit: async (row) => {
       try {
         toast.loading('Fetching campaign data...', { id: 'fetch-campaign' });
-        const result = await fetchCampaignDetails(userId, row.Id);
+        const [result, audienceResult] = await Promise.all([
+          fetchCampaignDetails(userId, row.Id, null, null, row.ChannelId),
+          fetchCampaignCustomerList(userId, row.Id)
+        ]);
         toast.dismiss('fetch-campaign');
 
         if (result.success && result.data) {
+          const audienceData = audienceResult.success
+            ? extractAudienceFromResponse(audienceResult.data)
+            : extractAudienceFromResponse(result.data);
           const campaignData = {
             ...result.data.rd[0],
             templateData: result.data.rd1[0],
-            audienceData: extractAudienceFromResponse(result.data),
+            audienceData,
             isEdit: true
           };
           setCampaignDraft(campaignData);
@@ -408,10 +585,6 @@ const CampaignGrid = () => {
         console.error('Error:', error);
       }
     },
-    onCopyId: (id) => {
-      navigator.clipboard.writeText(id);
-      toast.success('Campaign ID copied to clipboard');
-    },
     onDelete: (row) => {
       setCampaignToDelete(row);
       setDeleteConfirmOpen(true);
@@ -425,6 +598,20 @@ const CampaignGrid = () => {
       toast.success(`Campaign "${row.Name}" stopped`);
     }
   }), [router, userId]);
+
+  const contextMenuItems = useMemo(() => {
+    if (!contextMenu?.row) return [];
+    const row = contextMenu.row;
+    const isPending = Number(row.Status) === 1;
+    return [
+      { icon: BarChart3, label: 'Analytics', description: 'View campaign report & insights', color: '29, 170, 97', onClick: () => handlers.onAnalytics(row), disabled: isPending, disabledReason: 'Available after campaign is launched' },
+      { icon: Copy, label: 'Quick Clone', description: 'Duplicate this campaign setup', color: '0, 207, 232', onClick: () => handlers.onDuplicate(row) },
+      ...(isPending ? [
+        { icon: Edit2, label: 'Edit', description: 'Modify campaign details & audience', color: '125, 127, 133', onClick: () => handlers.onEdit(row) },
+        { icon: Trash2, label: 'Delete', description: 'Permanently remove this campaign', color: '211, 47, 47', onClick: () => handlers.onDelete(row) },
+      ] : []),
+    ];
+  }, [contextMenu, handlers]);
 
   const handleLaunchConfirm = () => {
     if (campaignToLaunch) {
@@ -448,7 +635,7 @@ const CampaignGrid = () => {
     setIsDeleting(true);
     try {
       toast.loading('Deleting campaign...', { id: 'delete-campaign' });
-      const result = await deleteCampaign(userToken?.username, campaignToDelete.Id);
+      const result = await deleteCampaign(userToken?.username, campaignToDelete.Id, campaignToDelete.ChannelId);
       toast.dismiss('delete-campaign');
 
       if (result.success) {
@@ -481,7 +668,6 @@ const CampaignGrid = () => {
       handlers.onLaunch,
       handlers.onStop,
       handlers.onEdit,
-      handlers.onCopyId,
       handlers.onDelete,
       () => activeTimersRef.current,
       launchingCampaignIds
@@ -538,6 +724,25 @@ const CampaignGrid = () => {
     filteredData.slice(paginationModel.page * paginationModel.pageSize, (paginationModel.page + 1) * paginationModel.pageSize),
     [filteredData, paginationModel.page, paginationModel.pageSize]
   );
+
+  // Keep latest paginatedRows in a ref so the context menu handler doesn't need it as a dep
+  const paginatedRowsRef = useRef(paginatedRows);
+  useEffect(() => { paginatedRowsRef.current = paginatedRows; }, [paginatedRows]);
+
+  // Stable handler — no dependency on paginatedRows, reads from ref
+  const handleRowContextMenu = useCallback((e) => {
+    e.preventDefault();
+    const rowId = e.currentTarget?.getAttribute('data-id');
+    const campaign = paginatedRowsRef.current.find((c) => String(c.Id) === String(rowId));
+    if (campaign) {
+      setContextMenu({ x: e.clientX, y: e.clientY, row: campaign });
+    }
+  }, []);
+
+  // Stable slotProps object — doesn't change between renders
+  const rowSlotProps = useMemo(() => ({
+    row: { onContextMenu: handleRowContextMenu },
+  }), [handleRowContextMenu]);
 
   const cardPaginatedData = useMemo(() =>
     filteredData.slice(cardPage * cardRowsPerPage, (cardPage + 1) * cardRowsPerPage),
@@ -646,6 +851,9 @@ const CampaignGrid = () => {
         filterChips={filterChips}
         activeFilter={filterStatus}
         onFilterChange={setFilterStatus}
+        channelOptions={channels && channels.length > 0 ? channels.map((ch) => ({ value: String(ch.Id), label: ch.whatsappName || ch.mobileNumber || `Channel ${ch.Id}`, MobileNumber: ch.MobileNumber })) : []}
+        selectedChannel={selectedChannel}
+        onChannelChange={setSelectedChannel}
       />
 
       {/* Status Tabs - tablet and mobile only */}
@@ -654,14 +862,15 @@ const CampaignGrid = () => {
         gap: 0.5,
         px: 0.5,
         py: 0.5,
-        background: '#fff',
+        background: 'background.paper',
         borderRadius: '12px',
-        border: '1px solid var(--sidebar-borderColor)',
+        border: '1px solid',
+        borderColor: 'divider',
         flexShrink: 0,
         overflowX: 'auto',
         WebkitOverflowScrolling: 'touch',
         '&::-webkit-scrollbar': { height: '3px' },
-        '&::-webkit-scrollbar-thumb': { background: '#e2e8f0', borderRadius: '99px' },
+        '&::-webkit-scrollbar-thumb': { background: 'var(--text-placeholder)', borderRadius: '99px' },
       }}>
         {filterChips.map((chip) => {
           const isActive = filterStatus === chip.value;
@@ -684,10 +893,10 @@ const CampaignGrid = () => {
                 fontWeight: 600,
                 whiteSpace: 'nowrap',
                 transition: 'all 0.2s',
-                background: isActive ? '#1daa61' : 'transparent',
-                color: isActive ? '#fff' : '#64748b',
+                background: isActive ? 'var(--primary-main)' : 'transparent',
+                color: isActive ? 'var(--button-color)' : 'var(--text-tertiary)',
                 '&:hover': {
-                  background: isActive ? '#1a9a57' : '#f1f5f9',
+                  background: isActive ? 'var(--primary-main)' : 'var(--bg-light)',
                 },
               }}
             >
@@ -700,7 +909,7 @@ const CampaignGrid = () => {
       {/* Grid */}
       <div className={styles.contentArea}>
         {viewMode === 'grid' ? (
-          <Paper sx={{ borderRadius: '12px', boxShadow: 'none', border: '1px solid #e4e8ee', overflow: 'auto', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <Paper sx={{ borderRadius: '12px', boxShadow: 'none', border: '1px solid', borderColor: 'var(--border-color)', overflow: 'auto', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
             <Box sx={{ flex: 1, minHeight: 0 }}>
               <DataGrid
                 rows={paginatedRows}
@@ -712,12 +921,13 @@ const CampaignGrid = () => {
                 disableColumnMenu
                 disableColumnFilter
                 getRowClassName={getRowClassNameMemo}
+                slotProps={rowSlotProps}
                 sx={{
                   height: '100%',
                   border: 'none',
                   '& .MuiDataGrid-columnHeaders': {
-                    backgroundColor: '#f8fafc',
-                    color: 'var(--secondary-color)',
+                    backgroundColor: 'var(--bg-subtle)',
+                    color: 'var(--text-secondary)',
                     fontWeight: 600,
                     fontSize: '0.75rem',
                     textTransform: 'uppercase',
@@ -748,11 +958,12 @@ const CampaignGrid = () => {
                         display: 'flex',
                         flexDirection: 'column',
                         justifyContent: 'space-between',
-                        border: '1px solid #eef0f4',
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.02)',
+                        border: '1px solid',
+                        borderColor: 'var(--border-color)',
+                        boxShadow: 'var(--box-shadow)',
                         transition: 'box-shadow 0.3s ease, transform 0.25s ease',
                         '&:hover': {
-                          boxShadow: '0 12px 32px rgba(0,0,0,0.08), 0 4px 8px rgba(0,0,0,0.04)',
+                          boxShadow: 'var(--paper-shadow)',
                           transform: 'translateY(-3px)',
                         },
                         overflow: 'hidden',
@@ -761,36 +972,49 @@ const CampaignGrid = () => {
                     >
                     <CardContent sx={{ p: '18px 20px 16px', flex: 1, '&:last-child': { pb: '16px' } }}>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1, mb: 1.5 }}>
-                        <Typography
-                          sx={{
-                            fontFamily: 'Poppins, sans-serif',
-                            fontWeight: 600,
-                            fontSize: '1rem',
-                            lineHeight: 1.35,
-                            wordBreak: 'break-word',
-                            flex: 1,
-                          }}
-                        >
-                          {campaign.Name || '—'}
-                        </Typography>
+                        {(() => {
+                          const isPending = Number(campaign.Status) === 1;
+                          return (
+                            <Typography
+                              onClick={() => { if (!isPending) handlers.onAnalytics(campaign); }}
+                              sx={{
+                                fontFamily: 'Poppins, sans-serif',
+                                fontWeight: 600,
+                                fontSize: '1rem',
+                                lineHeight: 1.35,
+                                wordBreak: 'break-word',
+                                flex: 1,
+                                cursor: isPending ? 'default' : 'pointer',
+                                transition: 'color 0.15s ease',
+                                '&:hover': isPending ? {} : { color: 'var(--primary-main)' },
+                              }}
+                            >
+                              {campaign.Name || '—'}
+                            </Typography>
+                          );
+                        })()}
                         <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
                           {(() => {
                             const statusLabel = campaign.Status === 1 ? 'Pending' : campaign.Status === 2 ? 'Active' : campaign.Status === 3 ? 'Completed' : campaign.Status === 4 ? 'Failed' : String(campaign.Status || '');
                             const statusCfg = getStatusConfig(statusLabel);
                             return <Chip label={statusCfg.label} size="small" sx={{ backgroundColor: statusCfg.bg, color: statusCfg.color, fontSize: '0.7rem', fontWeight: 500, fontFamily: 'Poppins, sans-serif', height: 20, borderRadius: '4px' }} />;
                           })()}
-                          {Number(campaign.Status) === 1 && (
-                            <>
-                              <IconButton icon={Edit2} color="secondary" tooltip="Edit" onClick={() => handlers.onEdit(campaign)} />
-                              <IconButton icon={Trash2} color="error" tooltip="Delete" onClick={() => handlers.onDelete(campaign)} />
-                            </>
-                          )}
+                          <ActionMenu
+                            items={[
+                              { icon: BarChart3, label: 'Analytics', description: 'View campaign report & insights', color: '29, 170, 97', onClick: () => handlers.onAnalytics(campaign), disabled: Number(campaign.Status) === 1, disabledReason: 'Available after campaign is launched' },
+                              { icon: Copy, label: 'Quick Clone', description: 'Duplicate this campaign setup', color: '0, 207, 232', onClick: () => handlers.onDuplicate(campaign) },
+                              ...(Number(campaign.Status) === 1 ? [
+                                { icon: Edit2, label: 'Edit', description: 'Modify campaign details & audience', color: '125, 127, 133', onClick: () => handlers.onEdit(campaign) },
+                                { icon: Trash2, label: 'Delete', description: 'Permanently remove this campaign', color: '211, 47, 47', onClick: () => handlers.onDelete(campaign) },
+                              ] : []),
+                            ]}
+                          />
                         </Box>
                       </Box>
 
                       <Box
                         sx={{
-                          background: '#f8f9fb',
+                          background: 'var(--bg-subtle)',
                           borderRadius: '10px',
                           p: '10px 12px',
                           mb: 1.5,
@@ -802,7 +1026,7 @@ const CampaignGrid = () => {
                       >
                         <Typography
                           sx={{
-                            color: '#3d3b47',
+                            color: 'var(--text-primary)',
                             fontSize: '0.85rem',
                             lineHeight: 1.6,
                             fontFamily: 'Poppins, sans-serif',
@@ -830,7 +1054,7 @@ const CampaignGrid = () => {
                     >
                       <Typography
                         sx={{
-                          color: '#c5c8ce',
+                          color: 'var(--text-placeholder)',
                           fontSize: '0.68rem',
                           fontFamily: 'Poppins, sans-serif',
                           fontWeight: 500,
@@ -840,42 +1064,31 @@ const CampaignGrid = () => {
                         {formatDate(campaign.EntryDate) || '—'}
                       </Typography>
 
-                      <Box sx={{ display: 'flex', gap: 0.2, alignItems: 'center' }}>
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                         {(() => {
                           const timers = activeTimers;
                           const hasActiveTimer = Object.keys(timers).length > 0;
                           const rowTimer = timers[String(campaign.Id)];
                           return (
-                            <>
-                              <IconButton
-                                icon={BarChart3}
-                                color="primary"
-                                tooltip={Number(campaign.Status) === 1 ? "Analytics not available for pending campaigns" : "Analytics"}
-                                onClick={() => handlers.onAnalytics(campaign)}
-                                disabled={Number(campaign.Status) === 1}
-                              />
-                              <IconButton icon={Copy} color="info" tooltip="Quick Clone" onClick={() => handlers.onDuplicate(campaign)} />
-                              {(Number(campaign.Type) === 1 && Number(campaign.Status) === 1) && (
-                                rowTimer ? (
-                                  <CountdownButton
-                                    expiry={rowTimer}
-                                    onStop={handlers.onStop}
-                                    row={campaign}
-                                  />
-                                ) : (
-                                  <IconButton
-                                    icon={Rocket}
-                                    color="primary"
-                                    tooltip={hasActiveTimer ? "Another launch in progress" : "Launch"}
-                                    onClick={() => handlers.onLaunch(campaign)}
-                                    disabled={hasActiveTimer}
-                                    iconClassName={launchingCampaignIds.has(String(campaign.Id)) ? styles.spinning : ''}
-                                    className={styles.rocketHighlight}
-                                  />
-                                )
-                              )}
-                              <IconButton icon={Copy} color="secondary" tooltip="Copy ID" onClick={() => handlers.onCopyId(campaign.Id)} />
-                            </>
+                            (Number(campaign.Type) === 1 && Number(campaign.Status) === 1) && (
+                              rowTimer ? (
+                                <CountdownButton
+                                  expiry={rowTimer}
+                                  onStop={handlers.onStop}
+                                  row={campaign}
+                                />
+                              ) : (
+                                <IconButton
+                                  icon={Rocket}
+                                  color="primary"
+                                  tooltip={hasActiveTimer ? "Another launch in progress" : "Launch"}
+                                  onClick={() => handlers.onLaunch(campaign)}
+                                  disabled={hasActiveTimer}
+                                  iconClassName={launchingCampaignIds.has(String(campaign.Id)) ? styles.spinning : ''}
+                                  className={styles.rocketHighlight}
+                                />
+                              )
+                            )
                           );
                         })()}
                       </Box>
@@ -942,6 +1155,14 @@ const CampaignGrid = () => {
           <ConfettiCanvas active={showConfetti} duration={3000} />
         </div>
       )}
+
+      {/* Right-click context menu — always mounted, toggled via open prop */}
+      <ActionMenu
+        items={contextMenuItems}
+        anchorPos={contextMenu ? { x: contextMenu.x, y: contextMenu.y } : { x: 0, y: 0 }}
+        open={Boolean(contextMenu)}
+        onClose={closeContextMenu}
+      />
     </div>
   );
 };

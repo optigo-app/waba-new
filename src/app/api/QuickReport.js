@@ -1,10 +1,11 @@
 import { callCommonApi } from "./CommonApi";
 
-export const fetchQuickReport = async (userId, campaignId) => {
+export const fetchQuickReport = async (userId, campaignId, accountId) => {
     try {
 
         const p = {
-            CampaignId: campaignId
+            CampaignId: campaignId,
+            AccountId: accountId !== undefined && accountId !== '' ? Number(accountId) : '',
         };
 
         const response = await callCommonApi({

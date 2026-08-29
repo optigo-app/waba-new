@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import './Sidebar.scss'
-import { HomeIcon, MessageCircle, ChevronLeft, LogOut, RefreshCw, User, LayoutGrid, X, QrCode, Zap } from 'lucide-react'
+import { HomeIcon, MessageCircle, ChevronLeft, LogOut, RefreshCw, User, LayoutGrid, X, QrCode, Zap, Sun, Moon, Monitor } from 'lucide-react'
+import { useThemeMode } from '../../providers/ThemeRegistry'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { disconnectSocket, broadcastLogout } from '../../socket'
 import { logoutApi } from '../../api/LogoutConfig'
-import {Menu, MenuItem, Tooltip, IconButton, Avatar } from '@mui/material'
+import { Menu, MenuItem, Tooltip, IconButton, Avatar, Divider, Box, Typography, ToggleButtonGroup, ToggleButton } from '@mui/material'
 import { getWhatsAppAvatarConfig } from '@/app/utils/globalFunc'
 import { useAuth } from '../../hooks/useAuth'
 import { useWallet } from '../../contexts/WalletContext'
@@ -18,9 +19,15 @@ const Sidebar = ({isCollapsed = false, onCollapsedChange = () => { }, mobileOpen
     const { walletInfo } = useWallet();
     const [userMenuAnchorEl, setUserMenuAnchorEl] = useState(null);
     const isUserMenuOpen = Boolean(userMenuAnchorEl);
+    const { mode, setMode } = useThemeMode();
 
     const handleOpenUserMenu = (e) => setUserMenuAnchorEl(e.currentTarget);
     const handleCloseUserMenu = () => setUserMenuAnchorEl(null);
+
+    const handleSetTheme = (_, next) => {
+        if (next) setMode(next);
+        handleCloseUserMenu();
+    };
 
     const handleProfile = () => {
         handleCloseUserMenu();
@@ -195,18 +202,119 @@ const Sidebar = ({isCollapsed = false, onCollapsedChange = () => { }, mobileOpen
                         onClose={handleCloseUserMenu}
                         anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
                         transformOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                        slotProps={{ paper: { sx: { minWidth: 160 } } }}
+                        slotProps={{
+                            paper: {
+                                sx: {
+                                    minWidth: 220,
+                                    borderRadius: '14px',
+                                    mt: 0.5,
+                                    p: 0.5,
+                                    border: '1px solid',
+                                    borderColor: 'divider',
+                                },
+                            },
+                        }}
                     >
-                        <MenuItem onClick={handleProfile}>
-                            <User size={16} style={{ marginRight: 10 }} />
+                        <Box sx={{ px: 1.5, py: 1.25, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                            <Avatar
+                                alt={displayName}
+                                {...getWhatsAppAvatarConfig(displayName, 40)}
+                            />
+                            <Box sx={{ minWidth: 0 }}>
+                                <Typography
+                                    variant="body2"
+                                    fontWeight={600}
+                                    noWrap
+                                    sx={{ color: 'text.primary', lineHeight: 1.4 }}
+                                >
+                                    {displayName}
+                                </Typography>
+                                <Typography
+                                    variant="caption"
+                                    noWrap
+                                    sx={{ color: 'text.secondary', display: 'block', lineHeight: 1.4 }}
+                                >
+                                    {auth?.whatsappNumber || 'WhatsApp User'}
+                                </Typography>
+                            </Box>
+                        </Box>
+
+                        <Divider sx={{ my: 0.5 }} />
+
+                        <MenuItem onClick={handleProfile} sx={{ borderRadius: 1, gap: 1.5, py: 1 }}>
+                            <User size={16} />
                             Profile
                         </MenuItem>
-                        <MenuItem onClick={handleSync}>
-                            <RefreshCw size={16} style={{ marginRight: 10 }} />
+                        <MenuItem onClick={handleSync} sx={{ borderRadius: 1, gap: 1.5, py: 1 }}>
+                            <RefreshCw size={16} />
                             Data Sync
                         </MenuItem>
-                        <MenuItem onClick={handleLogout}>
-                            <LogOut size={16} style={{ marginRight: 10 }} />
+
+                        <Box sx={{ px: 1.5, py: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                <Sun size={16} />
+                                <Typography variant="body2">Theme</Typography>
+                            </Box>
+                            <ToggleButtonGroup
+                                exclusive
+                                size="small"
+                                value={mode}
+                                onChange={handleSetTheme}
+                                sx={{
+                                    bgcolor: 'action.hover',
+                                    border: '1px solid',
+                                    borderColor: 'divider',
+                                    borderRadius: '10px',
+                                    p: 0.25,
+                                    gap: 0.25,
+                                    '& .MuiToggleButtonGroup-grouped': {
+                                        border: 'none !important',
+                                        borderRadius: '8px !important',
+                                        px: 0.9,
+                                        py: 0.5,
+                                        color: 'text.secondary',
+                                        '&:not(:first-of-type)': { borderLeft: 'none !important' },
+                                    },
+                                    '& .MuiToggleButton-root': {
+                                        '&.Mui-selected': {
+                                            bgcolor: 'var(--chat-primary-light, rgba(37, 211, 102, 0.16))',
+                                            color: 'var(--chat-primary, #25d366)',
+                                            '&:hover': { bgcolor: 'var(--chat-primary-light, rgba(37, 211, 102, 0.24))' },
+                                        },
+                                        '&:hover': { bgcolor: 'rgba(0,0,0,0.06)' },
+                                    },
+                                }}
+                            >
+                                <Tooltip title="Light" arrow>
+                                    <ToggleButton value="light" aria-label="Light mode">
+                                        <Sun size={16} />
+                                    </ToggleButton>
+                                </Tooltip>
+                                <Tooltip title="Dark" arrow>
+                                    <ToggleButton value="dark" aria-label="Dark mode">
+                                        <Moon size={16} />
+                                    </ToggleButton>
+                                </Tooltip>
+                                <Tooltip title="System" arrow>
+                                    <ToggleButton value="system" aria-label="System mode">
+                                        <Monitor size={16} />
+                                    </ToggleButton>
+                                </Tooltip>
+                            </ToggleButtonGroup>
+                        </Box>
+
+                        <Divider sx={{ my: 0.5 }} />
+
+                        <MenuItem
+                            onClick={handleLogout}
+                            sx={{
+                                borderRadius: 1,
+                                gap: 1.5,
+                                py: 1,
+                                color: 'error.main',
+                            }}
+                        >
+                            <LogOut size={16} />
                             Logout
                         </MenuItem>
                     </Menu>

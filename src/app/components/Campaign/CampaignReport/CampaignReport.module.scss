@@ -146,8 +146,8 @@
 
 // ── Left Sidebar ────────────────────────────────────────────────────────────
 .leftSidebar {
-    flex: 0 0 240px;
-    max-width: 240px;
+    flex: 0 0 80px;
+    max-width: 80px;
     overflow-y: auto;
 
     &::-webkit-scrollbar {
@@ -173,10 +173,11 @@
 .stepperCard {
     background: #fff;
     border-radius: 14px;
-    padding: 0.75rem;
     display: flex;
+    align-items: center;
+    padding-block: 20px;
+    justify-content: center;
     flex-direction: column;
-    gap: 0.25rem;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 
     @media (max-width: 768px) {
@@ -209,18 +210,21 @@
 .menuItem {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
-    padding: 0.6rem 0.75rem;
-    border-radius: 10px;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.65rem;
+    border-radius: 50%;
     cursor: pointer;
     transition: all 0.2s;
     color: var(--text-2nd-color);
-    font-size: 0.82rem;
+    font-size: 0.8rem;
     font-weight: 500;
     font-family: $font-family;
     position: relative;
     white-space: nowrap;
     flex-shrink: 0;
+    width: 48px;
+    height: 48px;
 
     .menuIcon {
         color: var(--text-2nd-color);
@@ -228,21 +232,22 @@
     }
 
     &:hover {
-        background: #f4f5f7;
+        background: #f1f5f9;
     }
 
     &.active {
-        background: rgba($primary-main, 0.08);
+        background: rgba($primary-main, 0.1);
         color: var(--primary-main);
         font-weight: 600;
 
         .menuIcon {
             color: var(--primary-main);
         }
+    }
 
-        .menuStepBadge {
-            background: var(--primary-main);
-            color: #fff;
+    &.done {
+        .menuIcon {
+            color: $success-main;
         }
     }
 }
@@ -752,4 +757,166 @@
     padding: 2rem;
     background-color: #f9fafb;
     min-height: 100vh;
+}
+
+// ── Step Pills ──
+.stepProgress {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: nowrap;
+}
+
+.stepPill {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.4rem 0.85rem;
+    border: 1px solid var(--sidebar-borderColor, #e2e8f0);
+    border-radius: 999px;
+    background: #f8fafc;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: $font-family;
+
+    &:hover {
+        border-color: rgba($primary-main, 0.4);
+        background: rgba($primary-main, 0.04);
+    }
+}
+
+.stepPillActive {
+    border-color: $primary-main;
+    background: rgba($primary-main, 0.08);
+
+    .stepPillNum {
+        background: $primary-main;
+        color: #fff;
+    }
+
+    .stepPillLabel {
+        color: $primary-main;
+        font-weight: 600;
+    }
+}
+
+.stepPillDone {
+    border-color: $success-main;
+    background: rgba($success-main, 0.06);
+
+    .stepPillNum {
+        background: $success-main;
+        color: #fff;
+    }
+
+    .stepPillLabel {
+        color: $success-main;
+    }
+}
+
+.stepPillNum {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #e2e8f0;
+    color: $secondaryColor;
+    font-size: 0.65rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.2s;
+}
+
+.stepPillLabel {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: $secondaryColor;
+    white-space: nowrap;
+    transition: color 0.2s;
+
+    @media (max-width: 640px) {
+        display: none;
+    }
+}
+
+.stepConnector {
+    width: 24px;
+    height: 2px;
+    background: #e2e8f0;
+    flex-shrink: 0;
+    transition: background 0.2s;
+}
+
+.stepConnectorDone {
+    background: $success-main;
+}
+
+// ── Icon Button ──
+.iconBtn {
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 10px !important;
+    background: #fff !important;
+    color: #64748b !important;
+    padding: 8px !important;
+    flex-shrink: 0;
+    transition: all 0.2s;
+
+    &:hover {
+        border-color: $primary-main !important;
+        color: $primary-main !important;
+        background: rgba($primary-main, 0.04) !important;
+    }
+
+    &:active {
+        transform: scale(0.95);
+        background: rgba($primary-main, 0.12) !important;
+    }
+}
+
+// ── Retarget & Export Buttons ──
+.retargetBtn {
+    background: $primary-main !important;
+    color: #fff !important;
+    text-transform: none !important;
+    font-weight: 600 !important;
+    font-size: 0.82rem !important;
+    border-radius: 10px !important;
+    padding: 6px 16px !important;
+    box-shadow: 0 2px 8px rgba($primary-main, 0.25) !important;
+    transition: all 0.2s;
+
+    &:hover {
+        background: darken($primary-main, 8%) !important;
+        box-shadow: 0 4px 12px rgba($primary-main, 0.35) !important;
+    }
+
+    &:active {
+        transform: scale(0.97);
+        box-shadow: 0 1px 4px rgba($primary-main, 0.2) !important;
+    }
+}
+
+.exportBtn {
+    border: 1px solid #e2e8f0 !important;
+    color: #64748b !important;
+    background: #fff !important;
+    text-transform: none !important;
+    font-weight: 600 !important;
+    font-size: 0.82rem !important;
+    border-radius: 10px !important;
+    padding: 6px 16px !important;
+    transition: all 0.2s;
+
+    &:hover {
+        border-color: $primary-main !important;
+        color: $primary-main !important;
+        background: rgba($primary-main, 0.04) !important;
+    }
+
+    &:active {
+        transform: scale(0.97);
+        background: rgba($primary-main, 0.08) !important;
+    }
 }

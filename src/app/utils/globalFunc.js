@@ -127,12 +127,6 @@ export const formatDate = (dateString) => {
     });
 };
 
-export const previewBg = {
-    backgroundImage:
-        'linear-gradient(rgba(249, 250, 251, 0.30), rgba(249, 250, 251, 0.80)), url(/bg-3.jpg)',
-};
-
-
 export function normalizePhoneNumber(input, defaultCountryCode = "91") {
     let phone = input.replace(/[+\-\s()]/g, "");
     let hasCountryCode = /^\d{1,3}\d{10}$/.test(phone);

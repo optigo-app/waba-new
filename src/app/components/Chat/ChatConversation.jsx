@@ -39,6 +39,7 @@ export default function ChatConversation({
   onClearPendingDropFiles,
 }) {
   const [loading, setLoading] = useState(false);
+  const [hasFetched, setHasFetched] = useState(false);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [tagModalOpen, setTagModalOpen] = useState(false);
@@ -166,6 +167,7 @@ export default function ChatConversation({
     // a sidebar drop-files effect (which fires after this effect) can
     // safely repopulate it without being wiped by the async load() below.
     setMediaPreview([]);
+    setHasFetched(false);
 
     // Debounce to prevent rapid clicks / StrictMode double-fire
     debounceTimerRef.current = setTimeout(() => {
@@ -197,13 +199,16 @@ export default function ChatConversation({
         if (cached) {
           setLoading(false);
           setMessages(cached);
+          setHasFetched(true);
         } else if (existing.length > 0) {
           // Preloaded messages available — show instantly, fetch fresh in background
           setLoading(false);
           setMessages(existing);
+          setHasFetched(true);
         } else {
+          // No cached messages — keep loading state true so we don't flash "No messages yet"
           setLoading(true);
-          setMessages(existing);
+          setMessages([]);
         }
 
         try {
@@ -247,6 +252,7 @@ export default function ChatConversation({
             setMessages(merged);
             setHasMore(response?.hasMore ?? (list.length === 30));
             setPage(1);
+            setHasFetched(true);
             // Cache messages for quick restore on conversation switch
             messagesCacheRef.current.set(cacheKey, merged);
             if (messagesCacheRef.current.size > 20) {
@@ -291,6 +297,7 @@ export default function ChatConversation({
         } finally {
           if (requestId === latestRequestRef.current) {
             setLoading(false);
+            setHasFetched(true);
           }
         }
       };
@@ -315,19 +322,65 @@ export default function ChatConversation({
     }
   }, [conversationId]);
 
-  // Call readMessage API when store signals a socket message arrived for open conversation
+  // Call readMessage API when conversation is opened (no MessageId, IsTyping false)
+  useEffect(() => {
+    if (!conversationId || !auth?.userId) return;
+    readMessage(conversationId, auth.userId, '', false).catch(() => {});
+  }, [conversationId, auth?.userId]);
+
+  // Call readMessage API when a new socket message arrives in the open conversation (with MessageId, IsTyping false)
   useEffect(() => {
     if (!conversationId || !auth?.userId) return;
     const handler = (e) => {
       const cid = e?.detail?.conversationId;
       const mid = e?.detail?.messageId || '';
       if (cid && String(cid) === String(conversationId)) {
-        readMessage(cid, auth.userId, mid).catch(() => {});
+        readMessage(cid, auth.userId, mid, false).catch(() => {});
       }
     };
     window.addEventListener('waba:markConversationRead', handler);
     return () => window.removeEventListener('waba:markConversationRead', handler);
   }, [conversationId, auth?.userId]);
+
+  // Typing indicator — call readMessage with IsTyping=true when user types.
+  // Debounced so it fires at most once every 2s while typing, and once when typing stops.
+  // Sends the last message id so the backend can mark the conversation as read up to that point.
+  const typingTimerRef = useRef(null);
+  const typingActiveRef = useRef(false);
+  const latestMessagesRef = useRef(messages);
+  useEffect(() => {
+    latestMessagesRef.current = messages;
+  }, [messages]);
+
+  const handleTyping = useCallback(() => {
+    if (!conversationId || !auth?.userId) return;
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    // Only send if not already sent within the last 2s
+    if (!typingActiveRef.current) {
+      typingActiveRef.current = true;
+      // Find the last incoming message (Direction !== 1) — messages are oldest-first
+      const msgs = latestMessagesRef.current || [];
+      let lastIncomingId = '';
+      for (let i = msgs.length - 1; i >= 0; i--) {
+        const m = msgs[i];
+        const isOutgoing = m?.direction === 1 || m?.Direction === 1 || m?.direction === '1' || m?.Direction === '1';
+        if (!isOutgoing) {
+          lastIncomingId = m?.MessageId || m?.id || m?.Id || m?.autoid || '';
+          break;
+        }
+      }
+      readMessage(conversationId, auth.userId, lastIncomingId, true).catch(() => {});
+    }
+    typingTimerRef.current = setTimeout(() => {
+      typingActiveRef.current = false;
+    }, 2000);
+  }, [conversationId, auth?.userId]);
+
+  useEffect(() => {
+    return () => {
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    };
+  }, []);
 
   // Media preview helpers (must be before handleSend)
   const ALLOWED_EXTS = ['.pdf', '.doc', '.docx', '.txt', '.ppt', '.pptx', '.xls', '.xlsx'/* , '.aac', '.amr', '.mp3', '.m4a', '.ogg' */];
@@ -363,22 +416,15 @@ export default function ChatConversation({
     // Check disallowed types
     const disallowed = fileArray.filter((f) => !isFileAllowed(f));
     if (disallowed.length > 0) {
-      toast.error(`Ignored unsupported file(s): ${disallowed.map((f) => f.name).join(', ')}`);
+      toast.error(`Ignored ${disallowed.length} unsupported file(s)`);
     }
 
     let validFiles = fileArray.filter(isFileAllowed);
 
-    // Reject WebP images (not supported by the API)
-    const webpFiles = validFiles.filter((f) => f.type === 'image/webp' || f.name.toLowerCase().endsWith('.webp'));
-    if (webpFiles.length > 0) {
-      toast.error(`WebP image uploads are not currently supported: ${webpFiles.map((f) => f.name).join(', ')}`);
-      validFiles = validFiles.filter((f) => !(f.type === 'image/webp' || f.name.toLowerCase().endsWith('.webp')));
-    }
-
     // Check file size
     const oversized = validFiles.filter((f) => f.size > MAX_FILE_SIZE);
     if (oversized.length > 0) {
-      toast.error(`Ignored oversized file(s) (>16 MB): ${oversized.map((f) => f.name).join(', ')}`);
+      toast.error(`Ignored ${oversized.length} oversized file(s) (>16 MB)`);
       validFiles = validFiles.filter((f) => f.size <= MAX_FILE_SIZE);
     }
 
@@ -488,9 +534,11 @@ export default function ChatConversation({
         let serverUrl = null;
         try {
           // 1. Upload to Meta server
+          const _channel = useChatStore.getState().selectedChannel;
+          const _channelPhone = _channel?.WabaPhoneNo || _channel?.MobileNumber || auth?.whatsappPhoneNo;
           const metaResp = await uploadChatMedia(
             preview.file,
-            auth?.whatsappNumber,
+            _channelPhone,
             auth?.whatsappKey,
             (percent) => {
               setMessages((prev) =>
@@ -569,7 +617,7 @@ export default function ChatConversation({
           if (mediaApiStatus === 'pending' && mediaMsgId) {
             setTimeout(async () => {
               try {
-                const result = await fetchConversationView(conversationId, 1, 10, auth?.userId);
+                const result = await fetchConversationView(conversationId, 1, 10, auth?.userId, undefined);
                 if (result?.data) {
                   const list = Array.isArray(result.data) ? result.data : (result.data?.rd || []);
                   const found = list.find((m) =>
@@ -664,7 +712,7 @@ export default function ChatConversation({
         if (apiStatus === 'pending' && serverMsgId) {
           setTimeout(async () => {
             try {
-              const result = await fetchConversationView(conversationId, 1, 10, auth?.userId);
+              const result = await fetchConversationView(conversationId, 1, 10, auth?.userId, undefined);
               if (result?.data) {
                 const list = Array.isArray(result.data) ? result.data : (result.data?.rd || []);
                 const found = list.find((m) =>
@@ -927,7 +975,7 @@ export default function ChatConversation({
     addedCountRef.current = 0;
 
     try {
-      const response = await fetchConversationView(conversationId, nextPage, 30, auth?.userId);
+      const response = await fetchConversationView(conversationId, nextPage, 30, auth?.userId, undefined);
       let list = response?.data?.rd || [];
       list = [...list].sort((a, b) => {
         const getTime = (m) => new Date(m?.DateTime || m?.sentAt || m?.sent_at || 0).getTime();
@@ -1139,6 +1187,7 @@ export default function ChatConversation({
         conversationId={conversationId}
         messages={messages}
         loading={loading}
+        hasFetched={hasFetched}
         isDragOver={isDragOver}
         containerRef={containerRef}
         messagesListRef={messagesListRef}
@@ -1210,6 +1259,7 @@ export default function ChatConversation({
           setEmojiPickerOpen={setEmojiPickerOpen}
           emojiPickerRef={emojiPickerRef}
           addMediaFiles={addMediaFiles}
+          onTyping={handleTyping}
         />
       )}
 

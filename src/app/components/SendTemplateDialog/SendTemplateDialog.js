@@ -627,13 +627,15 @@ const SendTemplateDialog = ({ open, onClose, template, userToken }) => {
             open={open}
             onClose={handleClose}
             maxWidth='md'
-            PaperProps={{
-                sx: {
-                    borderRadius: '16px',
-                    padding: '16px',
-                    width: '100%',
-                    minWidth:'800px !important',
-                    maxWidth: '900px !important'
+            slotProps={{
+                paper: {
+                    sx: {
+                        borderRadius: '16px',
+                        padding: '16px',
+                        width: '100%',
+                        minWidth: '800px !important',
+                        maxWidth: '900px !important'
+                    }
                 }
             }}
         >

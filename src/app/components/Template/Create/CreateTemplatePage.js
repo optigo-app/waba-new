@@ -8,17 +8,19 @@ import {ChevronLeft, Plus, ArrowLeft, FileText,
     MessageSquare, Layout, Clock, BookOpen, Package, Save, Slash, Type
 } from 'lucide-react';
 import { Box, Typography, Button, TextField, CircularProgress, Grid, Paper, IconButton, Drawer } from '@mui/material';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../hooks/useAuth';
+import { useWabaId } from '../../../hooks/useWabaId';
 import { createTemplate, editTemplate } from '../../../api/TemplateApi';
 import { uploadMetaMedia } from '../../../api/uploadMetaMedia';
 import { filesUploadApi } from '../../../api/filesUploadApi';
 import { removeFileApi } from '../../../api/filesRemoveApi';
-import { fetchCrmTemplates } from '../../../api/CrmTemplates';
+import { fetchTemplateDetails } from '../../../api/TemplateDetailsApi';
 import { fetchTemplateNameApi } from '../../../api/TemplateNameApi';
 import { urlToFile, getFilenameFromUrl, isOwnServerUrl } from '../../../utils/mediaUtils';
 import { parseTemplateError, getTemplateErrorMessage, getTemplateErrorTitle } from '../../../utils/templateErrorUtils';
+import { buildQueryString } from '../../../utils/urlUtils';
 import { normalizeTemplateName, validateMediaFile, MEDIA_CONFIG } from './templateBuilderUtils';
 import {
     createButtonConfig,
@@ -52,7 +54,6 @@ const MAIN_BUTTON_LIMITS = {
 
 const CreateTemplatePage = () => {
     const router = useRouter();
-    const searchParams = useSearchParams();
     const { auth } = useAuth();
     const [step, setStep] = useState(1);
 
@@ -97,9 +98,10 @@ const CreateTemplatePage = () => {
     const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
     const templateNameDebounceRef = useRef(null);
 
-    // Edit / Clone state from URL
-    const editId = searchParams.get('id');
-    const isClone = searchParams.get('clone') === '1';
+    // Edit / Clone state from URL — use shared hook for wabaid resolution
+    const { wabaId, tempId, whatsappNo, urlParams } = useWabaId();
+    const editId = urlParams.id || '';
+    const isClone = urlParams.clone === '1';
     const [editTemplateData, setEditTemplateData] = useState(null);
     const [isEditLoading, setIsEditLoading] = useState(false);
     const isEditMode = !!editTemplateData && !isClone;
@@ -114,7 +116,7 @@ const CreateTemplatePage = () => {
             const userId = auth?.username || auth?.userid || auth?.userId || '';
             if (!userId) return;
             try {
-                const result = await fetchTemplateNameApi(userId);
+                const result = await fetchTemplateNameApi(userId, wabaId);
                 const names = result?.data || [];
                 const exists = names.some(
                     (t) => String(t?.TemplateName || '').toLowerCase() === currentName
@@ -130,16 +132,18 @@ const CreateTemplatePage = () => {
     }, [templateDetails.templateName, isEditMode, isClone, editTemplateData, auth]);
 
     // Fetch template data when editing/cloning
+    const templateDetailsLoadedRef = useRef('');
+    const authUserId = auth?.username || auth?.userid || auth?.userId || '';
     useEffect(() => {
         const loadTemplate = async () => {
             if (!editId) return;
-            const userId = auth?.username || auth?.userid || auth?.userId || '';
-            if (!userId) return;
+            if (templateDetailsLoadedRef.current === editId) return;
+            if (!authUserId) return;
+            templateDetailsLoadedRef.current = editId;
             setIsEditLoading(true);
             try {
-                const result = await fetchCrmTemplates(userId);
-                const templates = result?.data || [];
-                const found = templates.find((t) => String(t.Id) === String(editId));
+                const result = await fetchTemplateDetails(authUserId, editId, tempId, wabaId);
+                const found = result?.data;
                 if (found) {
                     setEditTemplateData(found);
                 } else {
@@ -153,7 +157,7 @@ const CreateTemplatePage = () => {
             }
         };
         loadTemplate();
-    }, [editId, auth]);
+    }, [editId, authUserId, tempId, wabaId]);
 
     const setProcessStep = (message, progress = null) => {
         setSaveProcess({
@@ -359,7 +363,8 @@ const CreateTemplatePage = () => {
     }, [builderData.headerType, headerMedia.mediaType, headerMedia.file, headerMedia.mediaUrl]);
 
     const handleClose = () => {
-        router.push('/templates');
+        const qs = buildQueryString({ tempid: tempId, wabaid: wabaId, whatsappNo: whatsappNo });
+        router.push(qs ? `/templates?${qs}` : '/templates');
     };
 
     const validateTemplate = () => {
@@ -1233,7 +1238,7 @@ const CreateTemplatePage = () => {
             }
 
             setProcessStep(isEditMode ? 'Updating template details...' : 'Creating template...', 90);
-            const result = isEditMode ? await editTemplate(payload) : await createTemplate(payload);
+            const result = isEditMode ? await editTemplate(payload, wabaId) : await createTemplate(payload, wabaId);
 
             if (!result.success) {
                 const errorData = result.error || {};
@@ -1370,7 +1375,7 @@ const CreateTemplatePage = () => {
                             {/* Left: form */}
                             <Grid size={{ lg: 8, md: 8, sm: 12, xs: 12 }}>
                                 {/* Template Type */}
-                                <Paper elevation={0} className={styles.sectionCard} sx={{ p: 3, mb: 2, border: '1px solid var(--sidebar-borderColor, #e2e8f0)', borderRadius: '12px' }}>
+                                <Paper elevation={0} className={styles.sectionCard} sx={{ p: 3, mb: 2, border: '1px solid var(--sidebar-borderColor)', borderRadius: '12px' }}>
                                     <h3 className={styles.sectionTitle}>Template Type</h3>
                                     <Box className={styles.chipRow}>
                                         {templateTypeOptions?.map((opt) => {
@@ -1408,13 +1413,13 @@ const CreateTemplatePage = () => {
                                                         padding: '0.45rem 1.1rem',
                                                         fontSize: '0.82rem',
                                                         fontWeight: 600,
-                                                        backgroundColor: isSelected ? 'var(--primary-light-bg)' : '#ffffff',
-                                                        color: isSelected ? 'var(--primary-main)' : 'var(--titleColor)',
+                                                        backgroundColor: isSelected ? 'var(--primary-light-bg)' : 'var(--bg-paper)',
+                                                        color: isSelected ? 'var(--primary-main)' : 'var(--text-primary)',
                                                         border: '1px solid',
                                                         borderColor: isSelected ? 'var(--primary-main)' : 'var(--sidebar-borderColor)',
                                                         '&:hover': {
                                                             borderColor: 'var(--primary-main)',
-                                                            backgroundColor: isSelected ? 'var(--primary-light-bg)' : 'rgba(29, 170, 97, 0.04)',
+                                                            backgroundColor: isSelected ? 'var(--primary-light-bg)' : 'var(--primary-light-bg)',
                                                             color: 'var(--primary-main)',
                                                         },
                                                         minWidth: 'auto',
@@ -1491,7 +1496,7 @@ const CreateTemplatePage = () => {
 
                                 {/* Footer */}
                                 {builderData.templateType !== 'Carousel' && (
-                                    <Paper elevation={0} className={styles.sectionCard} sx={{ p: 3, mb: 2, border: '1px solid var(--sidebar-borderColor, #e2e8f0)', borderRadius: '12px' }}>
+                                    <Paper elevation={0} className={styles.sectionCard} sx={{ p: 3, mb: 2, border: '1px solid var(--sidebar-borderColor)', borderRadius: '12px' }}>
                                         <Box className={styles.sectionHeaderRow}>
                                             <Box>
                                                 <h3 className={styles.sectionTitle}>
@@ -1512,7 +1517,7 @@ const CreateTemplatePage = () => {
 
                                 {/* Buttons */}
                                 {builderData.templateType !== 'Carousel' && (
-                                    <Paper elevation={0} className={styles.sectionCard} sx={{ p: 3, mb: 2, border: '1px solid var(--sidebar-borderColor, #e2e8f0)', borderRadius: '12px' }}>
+                                    <Paper elevation={0} className={styles.sectionCard} sx={{ p: 3, mb: 2, border: '1px solid var(--sidebar-borderColor)', borderRadius: '12px' }}>
                                         <TemplateButtonSection
                                             title={<>
                                                 Buttons <span className={styles.optionalBadge}>Optional</span>
@@ -1571,9 +1576,9 @@ const CreateTemplatePage = () => {
                                             fontFamily: 'Poppins, sans-serif',
                                             fontWeight: 600,
                                             fontSize: '0.8rem',
-                                            color: '#444050',
-                                            borderColor: '#e4e8ee',
-                                            '&:hover': { borderColor: '#1daa61', color: '#1daa61' },
+                                            color: 'var(--text-primary)',
+                                            borderColor: 'var(--border-color)',
+                                            '&:hover': { borderColor: 'var(--primary-main)', color: 'var(--primary-main)' },
                                         }}
                                     >
                                         Preview
@@ -1607,13 +1612,13 @@ const CreateTemplatePage = () => {
                             anchor="right"
                             open={mobilePreviewOpen}
                             onClose={() => setMobilePreviewOpen(false)}
-                            slotProps={{ paper: { sx: { width: { xs: '100%', sm: 420 }, background: '#f8fafc', p: 2 } } }}
+                            slotProps={{ paper: { sx: { width: { xs: '100%', sm: 420 }, background: 'var(--bg-subtle)', p: 2 } } }}
                         >
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                                <Typography sx={{ fontFamily: 'Poppins, sans-serif', fontWeight: 600, fontSize: '1rem', color: '#444050' }}>
+                                <Typography sx={{ fontFamily: 'Poppins, sans-serif', fontWeight: 600, fontSize: '1rem', color: 'var(--text-primary)' }}>
                                     Preview
                                 </Typography>
-                                <IconButton onClick={() => setMobilePreviewOpen(false)} sx={{ width: 32, height: 32, borderRadius: '50%', color: '#475569' }}>
+                                <IconButton onClick={() => setMobilePreviewOpen(false)} sx={{ width: 32, height: 32, borderRadius: '50%', color: 'var(--text-tertiary)' }}>
                                     <ChevronLeft size={18} />
                                 </IconButton>
                             </Box>

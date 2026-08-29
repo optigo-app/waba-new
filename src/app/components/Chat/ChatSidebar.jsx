@@ -1,19 +1,21 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo, useDeferredValue, memo } from 'react';
-import { Avatar, Badge, IconButton, Menu, MenuItem, Tooltip, Skeleton, CircularProgress } from '@mui/material';
+import { Avatar, Badge, IconButton, Menu, MenuItem, Tooltip, Skeleton, CircularProgress, Dialog, DialogTitle, List, ListItem, ListItemAvatar, ListItemText, DialogContent } from '@mui/material';
 import {
-  Search, Pin, PinOff, Star, StarOff, Archive, ArchiveRestore,
-  ChevronDown, UserPlus, X, User as PersonIcon, Tag, Check,
+  Search, Pin, PinOff, Star, Archive, ArchiveRestore,
+  ChevronDown, UserPlus, X, Tag, Check, MessageCircle, Smartphone, ChevronsUpDown, Flag, ArrowLeft,
 } from 'lucide-react';
 import {
   getWhatsAppAvatarConfig, getCustomerDisplayName, getCustomerAvatarSeed,
   hasCustomerName, processApiResponse, getMessageStatusIcon, getMessagePreview,
+  getChannelAvatarConfig,
 } from './utils/chatUtils';
 import { formatChatTimestamp } from './utils/dateUtils';
 import {
   fetchConversationLists,
   fetchAllTags,
+  fetchChannels,
   pinConversationApi,
   unPinConversationApi,
   favoriteApi,
@@ -23,6 +25,8 @@ import {
 } from '../../api/chat/conversationApi';
 import AddCustomerDialog from './AddCustomerDialog';
 import WhatsAppText from './WhatsAppText';
+import ChatPanelHeader from './ChatPanelHeader';
+import ProfileMenu from './ui/ProfileMenu';
 import { useAuthStore } from '../../store/authStore';
 import { useChatStore } from '../../store/chatStore';
 import toast from 'react-hot-toast';
@@ -42,7 +46,7 @@ const getMenuItems = (member, can) => {
     },
     {
       action: member?.IsStar === 1 ? 'UnStar' : 'Star',
-      icon: member?.IsStar === 1 ? <StarOff size={18} /> : <Star size={18} />,
+      icon: member?.IsStar === 1 ? <Star size={18} fill="#facc15" color="#facc15" /> : <Star size={18} />,
       label: member?.IsStar === 1 ? 'Unfavourite' : 'favourite',
     },
   ];
@@ -74,14 +78,19 @@ function ChatSidebar({
   selectedTag,
   onTagSelect,
   onFileDrop,
+  channelId,
+  channel,
+  onChannelSelect,
 }) {
   const auth = useAuthStore((s) => s.auth);
   const can = useAuthStore((s) => s.can);
   const userId = auth?.userId || auth?.userid || auth?.appuserid || '';
   const conversations = useChatStore((s) => s.conversations);
   const allConversationsCache = useChatStore((s) => s.allConversationsCache);
+  const conversationsByChannel = useChatStore((s) => s.conversationsByChannel);
   const setConversations = useChatStore.getState().setConversations;
   const setAllConversationsCache = useChatStore.getState().setAllConversationsCache;
+  const setConversationsByChannel = useChatStore.getState().setConversationsByChannel;
   const [loading, setLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
@@ -101,6 +110,10 @@ function ChatSidebar({
   const [addCustomerMember, setAddCustomerMember] = useState(null);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [dragOverId, setDragOverId] = useState(null);
+  const [channelDialogOpen, setChannelDialogOpen] = useState(false);
+  const [channelList, setChannelList] = useState([]);
+  const [channelListLoading, setChannelListLoading] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const listRef = useRef(null);
   const itemRefs = useRef({});
   const searchInputRef = useRef(null);
@@ -177,6 +190,9 @@ function ChatSidebar({
         onConversationList?.(list);
         if (!searchTerm) {
           setAllConversationsCache(list);
+          if (channelId) {
+            setConversationsByChannel(channelId, list);
+          }
         }
       }
 
@@ -189,31 +205,49 @@ function ChatSidebar({
       setLoading(false);
       setIsLoadingMore(false);
     }
-  }, [userId, onConversationList, searchTerm]);
+  }, [userId, onConversationList, searchTerm, channelId]);
+
+  // Reset archived view when switching channels
+  useEffect(() => {
+    setShowArchived(false);
+  }, [channelId]);
 
   // Handle search term changes: wait for tags first, then load conversations
   useEffect(() => {
     if (!auth?.token || !userId) return;
     if (tagsLoading) return; // tags API first
 
-    if (!searchTerm.trim()) {
-      if (allConversationsCache.length > 0) {
-        // Restore from cache instantly without API call
-        setConversations(allConversationsCache);
-        onConversationList?.(allConversationsCache);
+    // Reset archived view when switching channels or searching
+    if (searchTerm.trim()) {
+      setShowArchived(false);
+    }
+
+    // Check per-channel cache first
+    if (!searchTerm.trim() && channelId) {
+      const channelCache = conversationsByChannel[String(channelId)];
+      if (channelCache && channelCache.length > 0) {
+        setConversations(channelCache);
+        onConversationList?.(channelCache);
         setPage(1);
         setHasMore(true);
         setLoading(false);
-      } else {
-        // No cache yet (initial load), fetch from API
-        loadConversations(1, false);
+        return;
       }
+    }
+
+    // Fall back to allConversationsCache when no specific channel
+    if (!searchTerm.trim() && !channelId && allConversationsCache.length > 0) {
+      setConversations(allConversationsCache);
+      onConversationList?.(allConversationsCache);
+      setPage(1);
+      setHasMore(true);
+      setLoading(false);
     } else {
-      // Fetch search results from API
+      // Fetch results for the selected channel or search
       loadConversations(1, false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth?.token, userId, searchTerm, tagsLoading]);
+  }, [auth?.token, userId, searchTerm, tagsLoading, channelId]);
 
   const filtered = useMemo(() => {
     const term = searchTerm.toLowerCase().replace(/[+\-\s()]/g, '');
@@ -236,6 +270,18 @@ function ChatSidebar({
     });
   }, [conversations, searchTerm, tabValue, selectedTag, tagsLoading]);
 
+  const archivedConversations = useMemo(
+    () => filtered.filter((c) => c.IsArchived === 1),
+    [filtered]
+  );
+
+  const activeConversations = useMemo(
+    () => filtered.filter((c) => c.IsArchived !== 1),
+    [filtered]
+  );
+
+  const displayedConversations = showArchived ? archivedConversations : activeConversations;
+
   const deferredTagSearch = useDeferredValue(tagSearchTerm);
 
   const filteredTagsForMenu = useMemo(() => {
@@ -253,8 +299,8 @@ function ChatSidebar({
     kbRef.current.highlightedIndex = highlightedIndex;
   }, [highlightedIndex]);
   useEffect(() => {
-    kbRef.current.filtered = filtered;
-  }, [filtered]);
+    kbRef.current.filtered = displayedConversations;
+  }, [displayedConversations]);
   useEffect(() => {
     kbRef.current.anchorEl = anchorEl;
     kbRef.current.contextMenu = contextMenu;
@@ -265,7 +311,7 @@ function ChatSidebar({
   useEffect(() => {
     setHighlightedIndex(-1);
     kbRef.current.highlightedIndex = -1;
-  }, [filtered.length, searchTerm, tabValue]);
+  }, [filtered.length, searchTerm, tabValue, showArchived]);
 
   // Keyboard navigation: single listener, never re-registers (zero deps)
   useEffect(() => {
@@ -358,7 +404,7 @@ function ChatSidebar({
           setAllTags(resp.rd);
         }
       } catch (err) {
-        if (err.name !== 'AbortError') {
+        if (err.name !== 'AbortError' && err.message !== 'AbortError') {
           console.error('Failed to fetch tags:', err);
         }
       } finally {
@@ -466,6 +512,28 @@ function ChatSidebar({
     }
   }, [handleSelectCustomer, onFileDrop, selectedCustomer]);
 
+  /* ── Mobile channel picker dialog ── */
+  const handleOpenChannelDialog = useCallback(async () => {
+    if (!userId) return;
+    setChannelDialogOpen(true);
+    setChannelListLoading(true);
+    try {
+      const resp = await fetchChannels(userId);
+      const data = resp?.data || [];
+      setChannelList(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to load channels for dialog:', err);
+    } finally {
+      setChannelListLoading(false);
+    }
+  }, [userId]);
+
+  const handlePickChannel = useCallback((ch) => {
+    setChannelDialogOpen(false);
+    if (!ch || ch.IsActive === 0) return;
+    onChannelSelect?.(ch);
+  }, [onChannelSelect]);
+
   const handleAddCustomerSuccess = async () => {
     // Refresh conversation list after adding customer
     if (!auth?.userId) return;
@@ -513,7 +581,8 @@ function ChatSidebar({
     if (!member?.ConversationId || !auth?.userId) return;
 
     const convId = member.ConversationId;
-    const userId = auth.userId;
+    const userId = auth.id;
+    const appuserId = auth.userId;
     const email = auth?.email || auth?.userId || '';
 
     try {
@@ -546,34 +615,50 @@ function ChatSidebar({
 
       if (response) {
         toast.success(`${action} successful`);
-        // Refresh conversation list to reflect change
-        const res = await fetchConversationLists(userId);
-        const rawRd = res?.data?.rd || [];
-        const rawRd1 = res?.data?.rd1 || [];
-        let rawList = rawRd;
-        if (rawList.length === 0 && rawRd1.length > 0) {
-          rawList = rawRd1.map((c) => ({
-            Id: c.CustomerId,
-            ConversationId: c.CustomerId,
-            CustomerId: c.CustomerId,
-            CustomerPhone: c.CustomerPhone,
-            CustomerName: c.CustomerName,
-            WhatsappCustName: null,
-            IsPin: 0,
-            IsStar: 0,
-            IsArchived: 0,
-            UnReadMsgCount: 0,
-            LastMessage: null,
-            TagList: null,
-            BindId: null,
-            UserId: null,
-            IsAssign: null,
-            ...c,
-          }));
-        }
-        if (rawList.length > 0) {
-          const processed = processApiResponse(rawList);
-          setConversations(processed);
+
+        // For Archive/UnArchive, update locally for instant feedback
+        if (action === 'Archive' || action === 'UnArchive') {
+          const newArchivedVal = action === 'Archive' ? 1 : 0;
+          setConversations((prev) =>
+            prev.map((c) =>
+              c.Id === member.Id ? { ...c, IsArchived: newArchivedVal } : c
+            )
+          );
+          setAllConversationsCache((prev) =>
+            prev.map((c) =>
+              c.Id === member.Id ? { ...c, IsArchived: newArchivedVal } : c
+            )
+          );
+        } else {
+          // For other actions, refresh conversation list to reflect change
+          const res = await fetchConversationLists(1, 100, appuserId, '');
+          const rawRd = res?.data?.rd || [];
+          const rawRd1 = res?.data?.rd1 || [];
+          let rawList = rawRd;
+          if (rawList.length === 0 && rawRd1.length > 0) {
+            rawList = rawRd1.map((c) => ({
+              Id: c.CustomerId,
+              ConversationId: c.CustomerId,
+              CustomerId: c.CustomerId,
+              CustomerPhone: c.CustomerPhone,
+              CustomerName: c.CustomerName,
+              WhatsappCustName: null,
+              IsPin: 0,
+              IsStar: 0,
+              IsArchived: 0,
+              UnReadMsgCount: 0,
+              LastMessage: null,
+              TagList: null,
+              BindId: null,
+              UserId: null,
+              IsAssign: null,
+              ...c,
+            }));
+          }
+          if (rawList.length > 0) {
+            const processed = processApiResponse(rawList);
+            setConversations(processed);
+          }
         }
       } else {
         toast.error(`${action} failed`);
@@ -586,10 +671,25 @@ function ChatSidebar({
 
   return (
     <div className="chat-sidebar">
-      {/* Header */}
-      <div className="chat-sidebar-header">
-        <h3 className="chat-sidebar-title">Waba Chat</h3>
-      </div>
+      {/* Header — simple title only, channel info is shown in the channel panel */}
+      <ChatPanelHeader
+        title="Conversations"
+        right={
+          <>
+            {onChannelSelect && (
+              <IconButton
+                size="small"
+                className="channel-picker-btn mobile-only"
+                onClick={handleOpenChannelDialog}
+                aria-label="Switch channel"
+              >
+                <ChevronsUpDown size={18} />
+              </IconButton>
+            )}
+            <ProfileMenu variant="icon" size={18} />
+          </>
+        }
+      />
 
       {/* Search */}
       <div className="chat-sidebar-search">
@@ -658,7 +758,7 @@ function ChatSidebar({
             </>
           )}
 
-          {!tagsLoading && allTags?.slice(0, 4).map((tag) => {
+          {!tagsLoading && allTags?.slice(0, 3).map((tag) => {
             const isActive = selectedTag !== 'All' && String(getTagId(selectedTag)) === String(getTagId(tag));
             return (
               <button
@@ -676,23 +776,23 @@ function ChatSidebar({
               >
                 <span
                   className="tag-filter-dot"
-                  style={{ backgroundColor: tag.color || '#1daa61' }}
+                  style={{ backgroundColor: tag.color || 'var(--primary-main)' }}
                 />
                 <span className="tag-filter-name">{tag.TagName}</span>
               </button>
             );
           })}
 
-          {!tagsLoading && allTags?.length > 4 && (
+          {!tagsLoading && allTags?.length > 3 && (
             <button
               type="button"
               className="tag-filter-chip tag-filter-more"
               onClick={(e) => setTagMenuAnchor(e.currentTarget)}
-              title={`${allTags.length - 4} more tags`}
+              title={`${allTags.length - 3} more tags`}
             >
               <Tag size={14} />
               <span>More</span>
-              <span className="tag-filter-more-count">{allTags.length - 4}</span>
+              <span className="tag-filter-more-count">{allTags.length - 3}</span>
             </button>
           )}
         </div>
@@ -715,8 +815,8 @@ function ChatSidebar({
               minWidth: 260,
               maxHeight: 420,
               borderRadius: 3,
-              boxShadow: '0 12px 40px rgba(0,0,0,0.14)',
-              border: '1px solid rgba(0,0,0,0.06)',
+              boxShadow: 'var(--box-shadow)',
+              border: '1px solid var(--border-color)',
               overflow: 'hidden',
             },
           },
@@ -724,7 +824,7 @@ function ChatSidebar({
       >
         {/* Sticky search header */}
         <div className="tag-filter-menu-header">
-          <Search size={14} color="#888" style={{ flexShrink: 0 }} />
+          <Search size={14} color="var(--text-tertiary)" style={{ flexShrink: 0 }} />
           <input
             ref={tagSearchInputRef}
             type="text"
@@ -780,9 +880,9 @@ function ChatSidebar({
           sx={{ py: 1.2, display: 'flex', alignItems: 'center', gap: 1.5 }}
         >
           <span style={{ width: 20, display: 'flex', justifyContent: 'center' }}>
-            {selectedTag === 'All' && <Check size={16} color="#1daa61" strokeWidth={2.5} />}
+            {selectedTag === 'All' && <Check size={16} color="var(--primary-main)" strokeWidth={2.5} />}
           </span>
-          <span style={{ fontSize: 14, fontWeight: selectedTag === 'All' ? 600 : 500, color: '#555' }}>
+          <span style={{ fontSize: 14, fontWeight: selectedTag === 'All' ? 600 : 500, color: 'var(--text-secondary)' }}>
             All conversations
           </span>
         </MenuItem>
@@ -815,14 +915,14 @@ function ChatSidebar({
               sx={{ py: 1.2, display: 'flex', alignItems: 'center', gap: 1.5 }}
             >
               <span style={{ width: 20, display: 'flex', justifyContent: 'center' }}>
-                {isActive && <Check size={16} color="#1daa61" strokeWidth={2.5} />}
+                {isActive && <Check size={16} color="var(--primary-main)" strokeWidth={2.5} />}
               </span>
               <span
                 style={{
                   width: 8,
                   height: 8,
                   borderRadius: '50%',
-                  background: tag.color || '#1daa61',
+                  background: tag.color || 'var(--primary-main)',
                   display: 'inline-block',
                   flexShrink: 0,
                 }}
@@ -831,7 +931,7 @@ function ChatSidebar({
                 {tag.TagName}
               </span>
               {isActive && (
-                <span style={{ fontSize: 11, color: '#1daa61', fontWeight: 600 }}>Active</span>
+                <span style={{ fontSize: 11, color: 'var(--primary-main)', fontWeight: 600 }}>Active</span>
               )}
             </MenuItem>
           );
@@ -839,7 +939,7 @@ function ChatSidebar({
 
         {filteredTagsForMenu.length === 0 && (
           <MenuItem disabled sx={{ opacity: 0.6, justifyContent: 'center', py: 2 }}>
-            <span style={{ fontSize: 13, color: '#888' }}>No tags found</span>
+            <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>No tags found</span>
           </MenuItem>
         )}
       </Menu>
@@ -876,8 +976,46 @@ function ChatSidebar({
             </ul>
           )}
 
-          {showEmptyAfterDelay && (
+          {showEmptyAfterDelay && !showArchived && (
             <div className="chat-empty">No conversations found</div>
+          )}
+
+          {showEmptyAfterDelay && showArchived && archivedConversations.length === 0 && (
+            <div className="chat-empty">No archived conversations</div>
+          )}
+
+          {/* WhatsApp-style Archived entry (only in main view, not searching) */}
+          {!showArchived && !searchTerm.trim() && archivedConversations.length > 0 && (
+            <div
+              className="archived-entry"
+              onClick={() => setShowArchived(true)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter') setShowArchived(true); }}
+            >
+              <div className="archived-entry-icon">
+                <Archive size={20} />
+              </div>
+              <div className="archived-entry-info">
+                <span className="archived-entry-title">Archived</span>
+                <span className="archived-entry-count">{archivedConversations.length} conversation{archivedConversations.length !== 1 ? 's' : ''}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Archived view header with back button */}
+          {showArchived && (
+            <div className="archived-view-header">
+              <IconButton
+                size="small"
+                onClick={() => setShowArchived(false)}
+                className="archived-back-btn"
+              >
+                <ArrowLeft size={20} />
+              </IconButton>
+              <span className="archived-view-title">Archived</span>
+              <span className="archived-view-count">{archivedConversations.length}</span>
+            </div>
           )}
 
           <ul
@@ -891,7 +1029,7 @@ function ChatSidebar({
               }
             }}
           >
-            {filtered.map((member, index) => {
+            {displayedConversations.map((member, index) => {
               const isSelected = selectedCustomer?.Id === member.Id;
               const isMenuOpen = Boolean(anchorEl) && menuMember?.Id === member.Id;
               const isKeyboardHighlighted = highlightedIndex === index;
@@ -902,7 +1040,7 @@ function ChatSidebar({
 
               return (
                 <li
-                  key={member.Id}
+                  key={`${member.Id ?? 'id'}-${index}`}
                   ref={(el) => { itemRefs.current[index] = el; }}
                   className={`${isSelected ? 'active' : ''} ${member?.isReading ? 'reading' : ''} ${isMenuOpen ? 'menu-open' : ''} ${isKeyboardHighlighted ? 'keyboard-highlight' : ''} ${isDragOver ? 'drag-over' : ''}`}
                   onContextMenu={(e) => handleContextMenu(e, member)}
@@ -916,9 +1054,18 @@ function ChatSidebar({
                   >
                     <div className="member-avatar">
                       {!hasCustomerName(member) ? (
-                        <Avatar {...getWhatsAppAvatarConfig(getCustomerAvatarSeed(member), 38)}>
-                          <PersonIcon size={16} />
-                        </Avatar>
+                        <Tooltip title="Add to Customer" arrow>
+                          <Avatar
+                            {...getWhatsAppAvatarConfig(getCustomerAvatarSeed(member), 38)}
+                            className="lead-avatar"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenAddCustomer(member);
+                            }}
+                          >
+                            <UserPlus size={16} />
+                          </Avatar>
+                        </Tooltip>
                       ) : (
                         <Avatar {...member.avatarConfig} />
                       )}
@@ -928,6 +1075,11 @@ function ChatSidebar({
                       <div className="member-header">
                         <span className={shouldShowUnread ? 'member-name-unread' : 'member-name'}>
                           {name}
+                          {!hasCustomerName(member) && (
+                            <span className="lead-indicator-icon" title="Lead">
+                              <Flag size={13} fill="#f59e0b" />
+                            </span>
+                          )}
                         </span>
                         {member?.lastMessageText && member?.lastMessageText !== 'No message' && (
                           <span className="member-time">{member.lastMessageTime}</span>
@@ -981,24 +1133,10 @@ function ChatSidebar({
                               <Tooltip title={member?.IsStar === 1 ? 'Unfavourite' : 'favourite'} arrow>
                                 <IconButton
                                   size="small"
-                                  className={`action-btn ${member?.IsStar === 1 ? 'is-on' : ''}`}
+                                  className={`action-btn ${member?.IsStar === 1 ? 'is-star' : ''}`}
                                   onClick={(e) => { e.stopPropagation(); }}
                                 >
-                                  <Star size={17} />
-                                </IconButton>
-                              </Tooltip>
-                            )}
-                            {member?.CustomerName === '' && (
-                              <Tooltip title="Add to Customer" arrow>
-                                <IconButton
-                                  size="small"
-                                  className="action-btn add-customer-btn"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleOpenAddCustomer(member);
-                                  }}
-                                >
-                                  <UserPlus size={16} />
+                                  <Star size={17} fill="#facc15" color="#facc15" />
                                 </IconButton>
                               </Tooltip>
                             )}
@@ -1020,7 +1158,7 @@ function ChatSidebar({
                             <span key={getTagId(tag)} className="conversation-tag-chip" title={tag.TagName}>
                               <span
                                 className="conversation-tag-dot"
-                                style={{ backgroundColor: tag.color || '#1daa61' }}
+                                style={{ backgroundColor: tag.color || 'var(--primary-main)' }}
                               />
                               {tag.TagName}
                             </span>
@@ -1038,8 +1176,8 @@ function ChatSidebar({
 
             {isLoadingMore && (
               <li className="chat-sidebar-loader" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px 0', gap: 8, listStyle: 'none' }}>
-                <CircularProgress size={20} thickness={4} sx={{ color: '#1daa61' }} />
-                <span style={{ fontSize: 12, color: '#888' }}>Loading conversations...</span>
+                <CircularProgress size={20} thickness={4} sx={{ color: 'var(--chat-primary, #25d366)' }} />
+                <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Loading conversations...</span>
               </li>
             )}
           </ul>
@@ -1136,6 +1274,86 @@ function ChatSidebar({
         selectedMember={addCustomerMember}
         onSuccess={handleAddCustomerSuccess}
       />
+
+      {/* Mobile channel picker dialog */}
+      <Dialog
+        open={channelDialogOpen}
+        onClose={() => setChannelDialogOpen(false)}
+        fullWidth
+        maxWidth="xs"
+        slotProps={{
+          paper: { sx: { borderRadius: '16px', maxHeight: '70vh' } },
+        }}
+      >
+        <DialogTitle sx={{ fontSize: '1rem', fontWeight: 700, pb: 1 }}>
+          Select Channel
+        </DialogTitle>
+        <DialogContent sx={{ p: 0 }}>
+          {channelListLoading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '32px 0' }}>
+              <CircularProgress size={28} sx={{ color: 'var(--chat-primary, #25d366)' }} />
+            </div>
+          ) : (
+            <List sx={{ pt: 0 }}>
+              {channelList.map((ch) => {
+                const isActive = ch.IsActive !== 0;
+                const isSelected = channel?.Id === ch.Id;
+                const cfg = getChannelAvatarConfig(ch, 40);
+                const picUrl = ch?.ProfilePictureUrl || ch?.profilePictureUrl || '';
+                return (
+                  <ListItem
+                    key={ch.Id}
+                    button
+                    disabled={!isActive}
+                    onClick={() => handlePickChannel(ch)}
+                    sx={{
+                      py: 1.25,
+                      bgcolor: isSelected ? 'var(--chat-primary-light, rgba(37, 211, 102, 0.12))' : 'transparent',
+                      '&:hover': { bgcolor: isSelected ? 'var(--chat-primary-light, rgba(37, 211, 102, 0.18))' : 'action.hover' },
+                    }}
+                  >
+                    <ListItemAvatar sx={{ minWidth: 48 }}>
+                      {picUrl ? (
+                        <Avatar
+                          src={picUrl}
+                          sx={{ width: 40, height: 40, bgcolor: cfg.bg }}
+                          imgProps={{ onError: (e) => { e.target.style.display = 'none'; } }}
+                        >
+                          <span style={{ fontSize: 14, fontWeight: 700, color: cfg.fg }}>{cfg.initials}</span>
+                        </Avatar>
+                      ) : (
+                        <Avatar sx={{ width: 40, height: 40, bgcolor: cfg.bg, fontSize: 14, fontWeight: 700 }}>
+                          <span style={{ color: cfg.fg }}>{cfg.initials}</span>
+                        </Avatar>
+                      )}
+                    </ListItemAvatar>
+                    <ListItemText
+                      primary={
+                        <span style={{ fontWeight: 600, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          {ch.WhatsappName || 'WhatsApp Channel'}
+                          {isSelected && <Check size={16} style={{ color: 'var(--chat-primary, #25d366)' }} />}
+                        </span>
+                      }
+                      secondary={
+                        <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                          {ch.MobileNumber || ch.WabaPhoneNo}
+                        </span>
+                      }
+                    />
+                  </ListItem>
+                );
+              })}
+              {!channelListLoading && channelList.length === 0 && (
+                <ListItem>
+                  <ListItemText
+                    primary={<span style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>No channels found</span>}
+                  />
+                </ListItem>
+              )}
+            </List>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -14,6 +14,8 @@ const MEDIA_FORMATS = ['IMAGE', 'VIDEO'];
 
 // Local cache for individually-fetched templates (survives re-renders)
 const localTemplateCache = new Map();
+// In-flight request tracker: templateName -> Promise, so duplicate mounts share one fetch
+const inflightRequests = new Map();
 
 export default function DynamicTemplate({
   templateName = '',
@@ -35,22 +37,26 @@ export default function DynamicTemplate({
   // Check preloaded templates from store first
   const preloadedTemplates = useChatStore((s) => s.templates);
   const templatesLoaded = useChatStore((s) => s.templatesLoaded);
+  const selectedChannel = useChatStore((s) => s.selectedChannel);
 
   useEffect(() => {
-    if (!templateName || !token?.whatsappPhoneNo) return;
+    if (!templateName) return;
+    const _wabaid = selectedChannel?.WabaId || token?.wabaid;
+    if (!_wabaid) return;
 
     // 1. Check local cache first (individually fetched templates)
-    if (localTemplateCache.has(templateName)) {
-      setTemplateData(localTemplateCache.get(templateName));
+    if (localTemplateCache.has(templateName.toLowerCase())) {
+      setTemplateData(localTemplateCache.get(templateName.toLowerCase()));
       setLoading(false);
       return;
     }
 
-    // 2. Check if template is already preloaded in store (case-insensitive)
+    // 2. Check if template is already preloaded in store (case-insensitive, check name & Name)
     const cached = preloadedTemplates.find(
-      (t) => t.name?.toLowerCase() === templateName?.toLowerCase()
+      (t) => (t.name || t.Name || '')?.toLowerCase() === templateName?.toLowerCase()
     );
     if (cached) {
+      localTemplateCache.set(templateName.toLowerCase(), cached);
       setTemplateData(cached);
       setLoading(false);
       return;
@@ -63,16 +69,36 @@ export default function DynamicTemplate({
     }
 
     // 4. Preloader finished but this template wasn't preloaded — fetch individually
+    const key = templateName.toLowerCase();
     const fetchTemplate = async () => {
       setLoading(true);
       setError(null);
-      const data = await fetchTemplateByName(templateName, {
-        whatsappPhoneNo: token?.whatsappPhoneNo,
-        whatsappKey: token?.whatsappKey,
-        isMeta: token?.isMeta,
+
+      // If a request for this template is already in-flight, wait for it
+      if (inflightRequests.has(key)) {
+        const data = await inflightRequests.get(key);
+        if (data) {
+          setTemplateData(data);
+        } else {
+          setError('Failed to load template');
+        }
+        setLoading(false);
+        return;
+      }
+
+      // Start a new request and track it
+      const promise = fetchTemplateByName(templateName, {
+        wabaid: selectedChannel?.WabaId || token?.wabaid || '',
       });
+      inflightRequests.set(key, promise);
+
+      const data = await promise;
+      inflightRequests.delete(key);
+
       if (data) {
-        localTemplateCache.set(templateName, data);
+        localTemplateCache.set(key, data);
+        // Also add to store so other instances find it instantly
+        useChatStore.getState().setTemplates((prev) => [...prev, data]);
         setTemplateData(data);
       } else {
         setError('Failed to load template');
@@ -80,7 +106,7 @@ export default function DynamicTemplate({
       setLoading(false);
     };
     fetchTemplate();
-  }, [templateName, token?.whatsappPhoneNo, token?.whatsappKey, preloadedTemplates, templatesLoaded]);
+  }, [templateName, token?.wabaid, preloadedTemplates, templatesLoaded, selectedChannel?.Id, selectedChannel?.WabaId]);
 
   const carouselRef = useRef(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);

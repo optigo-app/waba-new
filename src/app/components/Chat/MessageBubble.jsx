@@ -9,6 +9,7 @@ import { Emoji } from 'emoji-picker-react';
 import { parseTemplateData } from './utils/chatUtils';
 import WhatsAppText from './WhatsAppText';
 import { extractTimeFromISO } from './utils/dateUtils';
+import { getStaticUrl } from '../../utils/globalFunc';
 
 const charToUnified = (char) => {
   if (!char) return null;
@@ -199,8 +200,8 @@ const MessageBubble = memo(function MessageBubble({
     >
       {!isOutgoing && (
         <Avatar
-          {...baseAvatarConfig}
-          sx={{ ...baseAvatarConfig.sx, width: 28, height: 28, mr: 1, flexShrink: 0 }}
+          children={baseAvatarConfig.children}
+          sx={{ ...baseAvatarConfig.sx, width: 35, height: 35, fontSize: '13px !important', mr: 1, flexShrink: 0 }}
         />
       )}
       <div className="message-content">
@@ -292,10 +293,10 @@ const MessageBubble = memo(function MessageBubble({
 
             const captionMediaWidth = (() => {
               if (msgType?.toLowerCase() === 'image' || msg?.imageUrl) {
-                return preImageDims ? preImageDims.width : 320;
+                return preImageDims ? preImageDims.width : 260;
               }
               if (msgType?.toLowerCase() === 'video' || msg?.videoUrl || (msg?.mediaUrl && msg?.mediaUrl.match(/\.(mp4|webm|ogg|mov)$/i)) || (msg?.MediaUrl && msg?.MediaUrl.match(/\.(mp4|webm|ogg|mov)$/i))) {
-                return preVideoDims ? preVideoDims.width : 'min(330px, 70vw)';
+                return preVideoDims ? preVideoDims.width : 260;
               }
               if (isAudio) {
                 return 'min(280px, 70vw)';
@@ -327,7 +328,7 @@ const MessageBubble = memo(function MessageBubble({
                   <>
                     <div
                       className="message-image-wrapper"
-                      style={preImageDims ? { position: 'relative', width: preImageDims.width, height: preImageDims.height, maxWidth: '100%' } : { position: 'relative', width: 260, height: 200, maxWidth: '100%' }}
+                      style={preImageDims ? { position: 'relative', width: preImageDims.width, height: preImageDims.height, maxWidth: '100%' } : { position: 'relative', width: hasCaption ? captionMediaWidth : 260, height: 200, maxWidth: '100%' }}
                       onClick={() =>
                         setMediaViewer({
                           open: true,
@@ -373,7 +374,7 @@ const MessageBubble = memo(function MessageBubble({
                 ) : msgType?.toLowerCase() === 'video' || (msg?.mediaUrl && msg?.mediaUrl.match(/\.(mp4|webm|ogg|mov)$/i)) || (msg?.MediaUrl && msg?.MediaUrl.match(/\.(mp4|webm|ogg|mov)$/i)) ? (
                   <div
                     className="message-video-wrapper"
-                    style={preVideoDims ? { width: preVideoDims.width, height: preVideoDims.height, maxWidth: '100%' } : { width: 260, height: 200, maxWidth: '100%' }}
+                    style={preVideoDims ? { width: preVideoDims.width, height: preVideoDims.height, maxWidth: '100%' } : { width: hasCaption ? captionMediaWidth : 260, height: 200, maxWidth: '100%' }}
                   >
                     <div
                       className="message-video-inner"
@@ -496,7 +497,7 @@ const MessageBubble = memo(function MessageBubble({
 
             if (hasMedia && hasCaption) {
               return (
-                <div className="message-media-caption-wrap">
+                <div className="message-media-caption-wrap" style={{ width: captionMediaWidth, maxWidth: '100%' }}>
                   {mediaBlock}
                   {textBlock}
                 </div>
@@ -594,12 +595,12 @@ const MessageBubble = memo(function MessageBubble({
 const getDocIcon = (name = '', mimeType = '') => {
   const lower = name.toLowerCase();
   const mt = (mimeType || '').toLowerCase();
-  if (lower.endsWith('.pdf') || mt === 'application/pdf') return '/pdf.png';
-  if (lower.endsWith('.doc') || lower.endsWith('.docx') || mt.includes('wordprocessingml') || mt === 'application/msword') return '/word.png';
-  if (lower.endsWith('.txt') || mt === 'text/plain') return '/txt.png';
-  if (lower.endsWith('.xls') || lower.endsWith('.xlsx') || mt.includes('spreadsheetml') || mt === 'application/vnd.ms-excel') return '/excel.png';
-  if (lower.endsWith('.ppt') || lower.endsWith('.pptx') || mt.includes('presentationml') || mt === 'application/vnd.ms-powerpoint') return '/word.png';
-  return '/pdf.png';
+  if (lower.endsWith('.pdf') || mt === 'application/pdf') return getStaticUrl('/pdf.png');
+  if (lower.endsWith('.doc') || lower.endsWith('.docx') || mt.includes('wordprocessingml') || mt === 'application/msword') return getStaticUrl('/word.png');
+  if (lower.endsWith('.txt') || mt === 'text/plain') return getStaticUrl('/txt.png');
+  if (lower.endsWith('.xls') || lower.endsWith('.xlsx') || mt.includes('spreadsheetml') || mt === 'application/vnd.ms-excel') return getStaticUrl('/excel.png');
+  if (lower.endsWith('.ppt') || lower.endsWith('.pptx') || mt.includes('presentationml') || mt === 'application/vnd.ms-powerpoint') return getStaticUrl('/word.png');
+  return getStaticUrl('/pdf.png');
 };
 
 /* Document Card */
@@ -705,7 +706,7 @@ function BrokenMediaCard({ msg, setMediaViewer, mediaCache }) {
         })
       }
     >
-      <div className="message-broken-media-icon" style={{ backgroundColor: 'rgba(255,68,68,0.12)', color: '#ff4444' }}>
+      <div className="message-broken-media-icon" style={{ backgroundColor: 'var(--error-light-bg)', color: 'var(--error-main)' }}>
         <AlertCircle size={22} />
       </div>
       <div className="message-broken-media-info">
@@ -764,7 +765,7 @@ function UploadProgressOverlay({ percent, size = 48 }) {
           />
           <circle
             cx={size / 2} cy={size / 2} r={(size - 6) / 2}
-            fill="none" stroke="#fff" strokeWidth={4}
+            fill="none" stroke="var(--button-color)" strokeWidth={4}
             strokeDasharray={`${2 * Math.PI * (size - 6) / 2}`}
             strokeDashoffset={`${2 * Math.PI * (size - 6) / 2 * (1 - safe / 100)}`}
             transform={`rotate(-90 ${size / 2} ${size / 2})`}
@@ -802,7 +803,7 @@ function MessageStatusIcon({ msg }) {
       <Tooltip
         title={
           <Box sx={{ p: 0.5 }}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#fff', fontSize: 13 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, color: 'var(--button-color)', fontSize: 13 }}>
               {errorTitle}
             </Typography>
             {errorDetails && (
@@ -815,7 +816,7 @@ function MessageStatusIcon({ msg }) {
         arrow
         placement="top"
       >
-        <span className="message-status" style={{ color: '#ff4444', display: 'inline-flex', alignItems: 'center' }}>
+        <span className="message-status" style={{ color: 'var(--error-main)', display: 'inline-flex', alignItems: 'center' }}>
           <AlertCircle size={14} />
         </span>
       </Tooltip>
@@ -824,7 +825,7 @@ function MessageStatusIcon({ msg }) {
 
   if (status === 0 || msg?.isUploading || msg?.status === 'pending' || msg?.Status === 'pending') {
     return (
-      <span className="message-status" style={{ color: '#9e9e9e', display: 'inline-flex', alignItems: 'center' }}>
+      <span className="message-status" style={{ color: 'var(--text-tertiary)', display: 'inline-flex', alignItems: 'center' }}>
         <Clock3 size={15} />
       </span>
     );
@@ -832,7 +833,7 @@ function MessageStatusIcon({ msg }) {
 
   if (status === 3) {
     return (
-      <span className="message-status" style={{ color: '#1F51FF', display: 'inline-flex', alignItems: 'center' }}>
+      <span className="message-status" style={{ color: 'var(--chat-primary, #25d366)', display: 'inline-flex', alignItems: 'center' }}>
         <CheckCheck size={15} />
       </span>
     );
@@ -840,7 +841,7 @@ function MessageStatusIcon({ msg }) {
 
   if (status === 2) {
     return (
-      <span className="message-status" style={{ color: '#9e9e9e', display: 'inline-flex', alignItems: 'center' }}>
+      <span className="message-status" style={{ color: 'var(--text-tertiary)', display: 'inline-flex', alignItems: 'center' }}>
         <CheckCheck size={15} />
       </span>
     );
@@ -848,7 +849,7 @@ function MessageStatusIcon({ msg }) {
 
   if (status === 1) {
     return (
-      <span className="message-status" style={{ color: '#9e9e9e', display: 'inline-flex', alignItems: 'center' }}>
+      <span className="message-status" style={{ color: 'var(--text-tertiary)', display: 'inline-flex', alignItems: 'center' }}>
         <Check size={15} />
       </span>
     );

@@ -1039,7 +1039,7 @@ export function autoFixFlow(nodes, edges) {
                 targetHandle: 'input',
                 type: 'smoothstep',
                 animated: true,
-                style: { strokeWidth: 2, stroke: '#1daa61' },
+                style: { strokeWidth: 2, stroke: 'var(--primary-main)' },
             });
             fixes.push(`Connected dead-end button "${btn.label}" on "${node.data.label}" → "${targetNode.data.label}".`);
         });

@@ -32,9 +32,30 @@ export const metadata = {
   description: "WhatsApp Business API Module",
 };
 
+// Runs before hydration to set data-theme from localStorage and avoid a flash.
+const themeInitScript = `
+(function() {
+  try {
+    var m = localStorage.getItem('waba-theme-mode');
+    var resolved = 'light';
+    if (m === 'dark') {
+      resolved = 'dark';
+    } else if (m === 'system') {
+      resolved = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    document.documentElement.setAttribute('data-theme', resolved);
+  } catch (e) {
+    document.documentElement.setAttribute('data-theme', 'light');
+  }
+})();
+`;
+
 export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body className={`${poppins.variable} ${greatVibes.variable}`}>
         <AuthHydrator>
           <SessionGate>

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useCallback, useRef, useEffect, lazy, Suspense } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
     Box,
     Typography,
@@ -19,6 +19,7 @@ import {
 import { useTemplates } from '../hooks/useTemplates';
 import { useAuth } from '../hooks/useAuth';
 import { useWallet } from '../contexts/WalletContext';
+import { useWabaId } from '../hooks/useWabaId';
 import TemplateCardGrid from '../components/Template/TemplateCardGrid';
 import TemplateTable from '../components/Template/TemplateTable';
 import TemplateSkelton from '../components/Template/TemplateSkelton';
@@ -26,6 +27,7 @@ import FilterBar from '../components/Common/FilterBar/FilterBar';
 import ConfirmationModal from '../components/ConfirmationModal/ConfirmationModal';
 import styles from '../components/Template/Templates.module.scss';
 import { extractTemplatePreviewData } from '../utils/templatePreviewUtils';
+import { buildQueryString, parseQueryString } from '../utils/urlUtils';
 
 const SendTemplateDialog = lazy(() => import('../components/SendTemplateDialog/SendTemplateDialog'));
 const MessagePreview = lazy(() => import('../components/Common/MessagePreview'));
@@ -47,9 +49,9 @@ const SX_WABA_CHIP = {
     px: '10px',
     py: '4px',
     borderRadius: '8px',
-    backgroundColor: 'rgba(29, 170, 97, 0.06)',
-    border: '1px solid rgba(29, 170, 97, 0.18)',
-    color: '#1daa61',
+    backgroundColor: 'var(--primary-light-bg)',
+    border: '1px solid var(--primary-light-bg)',
+    color: 'var(--primary-main)',
     fontSize: '0.72rem',
     fontWeight: 600,
     fontFamily: 'Poppins, sans-serif',
@@ -85,20 +87,20 @@ const SX_EMPTY_ICON = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    border: '1px solid rgba(29,170,97,0.12)',
+    border: '1px solid var(--primary-light-bg)',
 };
 
 const SX_TEXT_TITLE = {
     fontFamily: 'Poppins, sans-serif',
     fontWeight: 600,
     fontSize: '1.1rem',
-    color: '#444050',
+    color: 'var(--text-primary)',
 };
 
 const SX_TEXT_SUBTITLE = {
     fontFamily: 'Poppins, sans-serif',
     fontSize: '0.875rem',
-    color: '#6D6B77',
+    color: 'var(--text-tertiary)',
     mt: '0.25rem',
 };
 
@@ -116,18 +118,26 @@ const SX_BTN_CONTAINED = {
     fontFamily: 'Poppins, sans-serif',
     fontWeight: 600,
     fontSize: '0.8rem',
-    background: '#1daa61',
-    color: '#fff',
+    background: 'var(--primary-main)',
+    color: 'var(--button-color)',
     boxShadow: 'none',
-    '&:hover': { background: '#1a9a57', boxShadow: 'none' },
+    '&:hover': { background: 'var(--primary-main)', boxShadow: 'none' },
 };
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 const TemplatesPage = () => {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { auth } = useAuth();
-    const { templates, loading, syncLoading, refresh, sync, remove, publish } = useTemplates();
-    const { hasSufficientBalance, walletInfo } = useWallet();
+    const { hasSufficientBalance, walletInfo, channels: walletChannels } = useWallet();
+    const { wabaId, tempId, whatsappNo, urlParams } = useWabaId();
+    const selectedChannelId = useMemo(() => {
+        if (tempId) return tempId;
+        if (!whatsappNo || !walletChannels) return '';
+        const ch = walletChannels.find((c) => c.mobileNumber === whatsappNo);
+        return ch ? String(ch.Id) : '';
+    }, [tempId, whatsappNo, walletChannels]);
+    const { templates, loading, syncLoading, refresh, sync, remove, publish } = useTemplates(selectedChannelId, wabaId);
 
     // UI State
     const [viewMode, setViewMode] = useState('grid');
@@ -147,7 +157,13 @@ const TemplatesPage = () => {
     const [isPublishing, setIsPublishing] = useState(false);
     const [openSendDialog, setOpenSendDialog] = useState(false);
     const [selectedTemplateForSend, setSelectedTemplateForSend] = useState(null);
+    const [selectedWhatsappNo, setSelectedWhatsappNo] = useState(whatsappNo);
     const [showInsufficientBalanceDialog, setShowInsufficientBalanceDialog] = useState(false);
+
+    const channelOptions = useMemo(() => {
+        if (!walletChannels || walletChannels.length === 0) return [];
+        return walletChannels.map((ch) => ({ value: ch.mobileNumber || '', label: ch.whatsappName || ch.companyCode || ch.mobileNumber || `Channel ${ch.Id}` }));
+    }, [walletChannels]);
 
     useEffect(() => () => {
         if (pageChangeTimeoutRef.current) {
@@ -165,6 +181,14 @@ const TemplatesPage = () => {
     }, [previewTemplate]);
 
     // Reset page when search/filter changes
+    const handleChannelChange = useCallback((val) => {
+        setSelectedWhatsappNo(val);
+        const existing = parseQueryString(searchParams.toString());
+        if (val) existing.whatsappNo = val; else delete existing.whatsappNo;
+        const qs = buildQueryString(existing);
+        router.replace(qs ? `/templates?${qs}` : '/templates', { scroll: false });
+        setCurrentPage(1);
+    }, [router, searchParams]);
     const handleSearchChange = useCallback((val) => { setSearch(val); setCurrentPage(1); }, []);
     const handleFilterChange = useCallback((val) => { setFilterStatus(val); setCurrentPage(1); }, []);
 
@@ -223,17 +247,16 @@ const TemplatesPage = () => {
             setOpenSendDialog(true);
         },
         onClone: (t) => {
-            const params = new URLSearchParams();
-            params.set('clone', '1');
-            params.set('id', t.Id);
-            router.push(`/templates/create?${params.toString()}`);
+            const qs = buildQueryString({ clone: '1', id: t.Id, tempid: tempId, wabaid: wabaId, whatsappNo: selectedWhatsappNo });
+            router.push(qs ? `/templates/create?${qs}` : '/templates/create');
         },
         onEdit: (t) => {
-            router.push(`/templates/create?id=${t.Id}`);
+            const qs = buildQueryString({ id: t.Id, tempid: tempId, wabaid: wabaId, whatsappNo: selectedWhatsappNo });
+            router.push(qs ? `/templates/create?${qs}` : '/templates/create');
         },
         onDelete: (t) => setDeleteTemplateData(t),
         onPublish: (t) => setPublishTemplateData(t),
-    }), [router, hasSufficientBalance]);
+    }), [router, hasSufficientBalance, selectedWhatsappNo, tempId, wabaId]);
 
     const handleConfirmDelete = useCallback(async () => {
         if (!deleteTemplateData) return;
@@ -304,11 +327,11 @@ const TemplatesPage = () => {
                                 {templates.length} template{templates.length !== 1 ? 's' : ''} total
                             </p>
                         </div>
-                        {walletInfo?.wabaId && (
-                            <Tooltip title="WhatsApp Business Account ID" arrow>
+                        {selectedWhatsappNo && (
+                            <Tooltip title="WhatsApp Number" arrow>
                                 <Box sx={SX_WABA_CHIP}>
-                                    <span className="waba-id-label">WABA ID</span>
-                                    <span className="waba-id-value">{walletInfo.wabaId}</span>
+                                    <span className="waba-id-label">WhatsApp No</span>
+                                    <span className="waba-id-value">{selectedWhatsappNo}</span>
                                 </Box>
                             </Tooltip>
                         )}
@@ -350,7 +373,10 @@ const TemplatesPage = () => {
                         <Button
                             variant="contained"
                             startIcon={<Plus size={16} />}
-                            onClick={() => router.push('/templates/create')}
+                            onClick={() => {
+                                const qs = buildQueryString({ tempid: tempId, wabaid: wabaId, whatsappNo: selectedWhatsappNo });
+                                router.push(qs ? `/templates/create?${qs}` : '/templates/create');
+                            }}
                             sx={SX_BTN_CONTAINED}
                         >
                             Create Template
@@ -407,6 +433,9 @@ const TemplatesPage = () => {
                 filterChips={filterChips}
                 activeFilter={filterStatus}
                 onFilterChange={handleFilterChange}
+                channelOptions={channelOptions}
+                selectedChannel={selectedWhatsappNo}
+                onChannelChange={handleChannelChange}
             />
 
             {/* Content */}
@@ -416,7 +445,7 @@ const TemplatesPage = () => {
                 ) : filtered.length === 0 ? (
                     <Box sx={SX_EMPTY_OUTER}>
                         <Box sx={SX_EMPTY_ICON}>
-                            <FileText size={28} color="#1daa61" />
+                            <FileText size={28} color="var(--primary-main)" />
                         </Box>
                         <Box sx={{ textAlign: 'center' }}>
                             <Typography sx={SX_TEXT_TITLE}>
@@ -481,7 +510,7 @@ const TemplatesPage = () => {
                 anchor="right"
                 open={openPreview}
                 onClose={() => setOpenPreview(false)}
-                PaperProps={{ sx: { width: { xs: '100%', sm: 420 }, background: '#f8fafc' } }}
+                slotProps={{ paper: { sx: { width: { xs: '100%', sm: 420 }, background: 'var(--bg-subtle)' } } }}
             >
                 <div className={styles.drawerRoot}>
                     <div className={styles.drawerHeader}>

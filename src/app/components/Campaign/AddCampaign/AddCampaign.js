@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, User, MessageSquare, FileText, Send, Megaphone, ArrowLeft } from 'lucide-react';
-import { TextField, FormControlLabel, Checkbox, Button, Typography, Paper } from '@mui/material';
+import { TextField, FormControlLabel, Checkbox, Button, Typography, Paper, Tooltip } from '@mui/material';
 import dayjs from 'dayjs';
 import { useRouter } from 'next/navigation';
 import styles from './AddCampaign.module.scss';
@@ -64,6 +64,7 @@ const AddCampaign = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [saveProcess, setSaveProcess] = useState({ active: false, title: '', message: '', progress: null });
   const [templateData, setTemplateData] = useState(null);
+  const [selectedChannelId, setSelectedChannelId] = useState('');
   const [isRetargetFlow, setIsRetargetFlow] = useState(false);
   const [isEditClone, setIsEditClone] = useState(false);
   const [retargetSourceCampaignName, setRetargetSourceCampaignName] = useState('');
@@ -95,6 +96,7 @@ const AddCampaign = () => {
 
       // Pre-fill campaign details
       if (campaign.Name && !isRetarget) setCampaignName(campaign.Name);
+      if (campaign.AccountId) setSelectedChannelId(String(campaign.AccountId));
       if (campaign.Type) {
         setCampaignType(campaign.Type === 1 ? 'immediate' : campaign.Type === 2 ? 'scheduled' : 'recurring');
       }
@@ -565,7 +567,8 @@ const AddCampaign = () => {
         userId: userToken?.id ?? '',
         customerJson,
         customerFilters: customerFilters,
-        campaignId: campaignId
+        campaignId: campaignId,
+        accountId: selectedChannelId,
       };
 
       setProcessStep('Saving campaign...', 85);
@@ -675,17 +678,14 @@ const AddCampaign = () => {
           <div className={styles.stepperCard}>
             <div className={styles.stepperMenu}>
               {STEPS.map((item) => (
-                <div
-                  key={item.id}
-                  className={`${styles.menuItem} ${currentStep === item.step ? styles.active : ''} ${currentStep > item.step ? styles.done : ''}`}
-                  onClick={() => handleStepClick(item.step)}
-                >
-                  <div className={styles.menuStepBadge}>
-                    {currentStep > item.step ? '✓' : item.step}
+                <Tooltip key={item.id} title={item.label} placement="right" arrow>
+                  <div
+                    className={`${styles.menuItem} ${currentStep === item.step ? styles.active : ''} ${currentStep > item.step ? styles.done : ''}`}
+                    onClick={() => handleStepClick(item.step)}
+                  >
+                    <item.icon size={20} className={styles.menuIcon} />
                   </div>
-                  <item.icon size={16} className={styles.menuIcon} />
-                  <span className={styles.menuLabel}>{item.label}</span>
-                </div>
+                </Tooltip>
               ))}
             </div>
 
@@ -759,7 +759,7 @@ const AddCampaign = () => {
             />
           )}
           {currentStep === 3 && (
-            <Message onNext={handleNext} onBack={handleBack} onMessageConfigured={setMessageConfigured} onTemplateData={setTemplateData} showError={showError} messageError={messageError} />
+            <Message onNext={handleNext} onBack={handleBack} onMessageConfigured={setMessageConfigured} onTemplateData={setTemplateData} onChannelSelect={setSelectedChannelId} channelId={selectedChannelId} showError={showError} messageError={messageError} preSelectedTemplate={templateData} />
           )}
           {currentStep === 4 && (
             <PreviewSave

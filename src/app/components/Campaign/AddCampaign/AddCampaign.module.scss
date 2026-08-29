@@ -235,8 +235,8 @@
 
 // ── Left Sidebar ────────────────────────────────────────────────────────────
 .leftSidebar {
-    flex: 0 0 280px;
-    max-width: 280px;
+    flex: 0 0 80px;
+    max-width: 80px;
     overflow-y: auto;
 
     &::-webkit-scrollbar {
@@ -263,10 +263,11 @@
     background: #fff;
     border-radius: 12px;
     border: 1px solid var(--sidebar-borderColor);
-    padding: 1.5rem;
     display: flex;
+    align-items: center;
+    padding-block: 20px;
+    justify-content: center;
     flex-direction: column;
-    gap: 1.5rem;
 
     @media (max-width: 768px) {
         padding: 0.75rem 1rem;
@@ -298,9 +299,10 @@
 .menuItem {
     display: flex;
     align-items: center;
-    gap: 0.65rem;
-    padding: 0.65rem 0.85rem;
-    border-radius: 10px;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.65rem;
+    border-radius: 50%;
     cursor: pointer;
     transition: all 0.2s;
     color: var(--text-2nd-color);
@@ -310,6 +312,8 @@
     position: relative;
     white-space: nowrap;
     flex-shrink: 0;
+    width: 48px;
+    height: 48px;
 
     .menuIcon {
         color: var(--text-2nd-color);
@@ -328,17 +332,11 @@
         .menuIcon {
             color: var(--primary-main);
         }
-
-        .menuStepBadge {
-            background: var(--primary-main);
-            color: #fff;
-        }
     }
 
     &.done {
-        .menuStepBadge {
-            background: $success-main;
-            color: #fff;
+        .menuIcon {
+            color: $success-main;
         }
     }
 }

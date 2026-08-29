@@ -21,9 +21,12 @@ import {
     Sparkles,
     Plus,
     Wand2,
+    Check,
+    Circle,
 } from 'lucide-react';
 import { useFlowStore } from '../../../store/flowStore';
 import { useShallow } from 'zustand/react/shallow';
+import { useWallet } from '../../../contexts/WalletContext';
 import ConfirmationModal from '../../ConfirmationModal/ConfirmationModal';
 import styles from './FlowBuilder.module.scss';
 
@@ -61,6 +64,9 @@ const Toolbar = () => {
     const [showSaveSchema, setShowSaveSchema] = useState(false);
     const [showShortcuts, setShowShortcuts] = useState(false);
     const [showSaveConfirm, setShowSaveConfirm] = useState(false);
+    const [showChannelSelect, setShowChannelSelect] = useState(false);
+    const [selectedChannelId, setSelectedChannelId] = useState('');
+    const [channelError, setChannelError] = useState('');
     const [saveErrors, setSaveErrors] = useState([]);
     const [showTitlePrompt, setShowTitlePrompt] = useState(false);
     const [titleInput, setTitleInput] = useState('');
@@ -70,6 +76,32 @@ const Toolbar = () => {
 
     const flowsList = useFlowStore((state) => state.flowsList);
     const flowId = useFlowStore((state) => state.flowId);
+    const { channels: walletChannels } = useWallet();
+
+    const channelOptions = React.useMemo(() => {
+        if (!walletChannels || walletChannels.length === 0) return [];
+        return walletChannels.map((ch) => {
+            const name = ch.whatsappName || ch.companyCode || ch.mobileNumber || `Channel ${ch.Id}`;
+            const initials = name.split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() || '').join('') || 'CH';
+            // Format phone: +91 97251 50900
+            const raw = String(ch.mobileNumber || '');
+            let formattedPhone = raw;
+            if (raw.length >= 10) {
+                const cc = raw.slice(0, -10);
+                const main = raw.slice(-10);
+                formattedPhone = `+${cc} ${main.slice(0, 5)} ${main.slice(5)}`;
+            }
+            return {
+                value: String(ch.Id || ''),
+                label: name,
+                mobileNumber: ch.mobileNumber,
+                formattedPhone,
+                whatsappName: ch.whatsappName,
+                companyCode: ch.companyCode,
+                initials,
+            };
+        });
+    }, [walletChannels]);
 
     const validateFlowName = (name) => {
         if (!name || !name.trim()) {
@@ -162,7 +194,26 @@ const Toolbar = () => {
 
     const handleConfirmSave = async () => {
         setShowSaveConfirm(false);
-        const result = await saveCurrentFlow();
+        if (channelOptions.length > 0) {
+            setShowChannelSelect(true);
+        } else {
+            // No channels available — save without accountId
+            await doSave('');
+        }
+    };
+
+    const handleChannelSelectConfirm = async () => {
+        if (!selectedChannelId) {
+            setChannelError('Please select a channel to continue.');
+            return;
+        }
+        setChannelError('');
+        setShowChannelSelect(false);
+        await doSave(selectedChannelId);
+    };
+
+    const doSave = async (accountId) => {
+        const result = await saveCurrentFlow(accountId);
         if (result?.success) {
             if (result.errors?.length > 0) {
                 setSaveErrors(result.errors);
@@ -191,7 +242,7 @@ const Toolbar = () => {
         const fixes = autoFixFlowErrors();
         if (fixes && fixes.length > 0) {
             setSaveErrors([]);
-            const result = await saveCurrentFlow();
+            const result = await saveCurrentFlow(selectedChannelId || '');
             if (result?.success) {
                 setShowSaveSchema(true);
                 setView('list');
@@ -514,6 +565,224 @@ const Toolbar = () => {
                 confirmLabel="Save"
                 cancelLabel="Cancel"
             />
+
+            {/* Channel selection modal — redesigned card-based radio group */}
+            <Modal open={showChannelSelect} onClose={() => setShowChannelSelect(false)}>
+                <div className={styles.saveModal} style={{ width: 520 }}>
+                    {/* Header */}
+                    <div className={styles.saveModalHeader}>
+                        <span className={styles.saveModalHeaderText}>Select Channel</span>
+                        <IconButton size="small" onClick={() => setShowChannelSelect(false)} className={styles.saveModalCloseBtn}>
+                            <X size={18} />
+                        </IconButton>
+                    </div>
+
+                    {/* Body */}
+                    <div style={{ padding: '16px 20px' }}>
+                        <Typography
+                            sx={{
+                                fontFamily: 'Poppins, sans-serif',
+                                fontSize: '0.82rem',
+                                color: 'var(--text-secondary)',
+                                mb: 2,
+                            }}
+                        >
+                            Select the WhatsApp channel for this flow.
+                        </Typography>
+
+                        {channelOptions.length === 0 ? (
+                            <Typography sx={{ color: 'var(--text-tertiary)', textAlign: 'center', py: 3, fontSize: '0.85rem' }}>
+                                No channels available. Please connect a WhatsApp channel first.
+                            </Typography>
+                        ) : (
+                            <Box
+                                role="radiogroup"
+                                aria-label="WhatsApp channel"
+                                sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, maxHeight: 320, overflowY: 'auto', pr: 0.5 }}
+                            >
+                                {channelOptions.map((ch) => {
+                                    const isSelected = selectedChannelId === ch.value;
+                                    return (
+                                        <Box
+                                            key={ch.value}
+                                            role="radio"
+                                            aria-checked={isSelected}
+                                            tabIndex={0}
+                                            onClick={() => { setSelectedChannelId(ch.value); setChannelError(''); }}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' || e.key === ' ') {
+                                                    e.preventDefault();
+                                                    setSelectedChannelId(ch.value);
+                                                    setChannelError('');
+                                                }
+                                            }}
+                                            sx={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 1.5,
+                                                p: '14px 16px',
+                                                borderRadius: '14px',
+                                                cursor: 'pointer',
+                                                outline: 'none',
+                                                border: `2px solid ${isSelected ? 'var(--primary-main)' : 'var(--border-color)'}`,
+                                                background: isSelected ? 'var(--primary-light-bg)' : 'var(--bg-paper)',
+                                                transition: 'border-color 0.2s ease, background 0.2s ease',
+                                                '&:hover': {
+                                                    borderColor: 'var(--primary-main)',
+                                                },
+                                                '&:focus-visible': {
+                                                    boxShadow: '0 0 0 3px color-mix(in srgb, var(--primary-main) 25%, transparent)',
+                                                },
+                                            }}
+                                        >
+                                            {/* Avatar badge */}
+                                            <Box
+                                                sx={{
+                                                    width: 44,
+                                                    height: 44,
+                                                    borderRadius: '50%',
+                                                    flexShrink: 0,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    fontSize: '0.88rem',
+                                                    fontWeight: 700,
+                                                    fontFamily: 'Poppins, sans-serif',
+                                                    color: '#fff',
+                                                    background: 'linear-gradient(135deg, var(--primary-main), #128c7e)',
+                                                    letterSpacing: '0.5px',
+                                                }}
+                                            >
+                                                {ch.initials}
+                                            </Box>
+
+                                            {/* Channel info */}
+                                            <Box sx={{ flex: 1, minWidth: 0 }}>
+                                                <Typography
+                                                    sx={{
+                                                        fontFamily: 'Poppins, sans-serif',
+                                                        fontSize: '0.88rem',
+                                                        fontWeight: 600,
+                                                        color: 'var(--titleColor)',
+                                                        lineHeight: 1.3,
+                                                        whiteSpace: 'nowrap',
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis',
+                                                    }}
+                                                >
+                                                    {ch.label}
+                                                </Typography>
+                                                {ch.formattedPhone && (
+                                                    <Typography
+                                                        sx={{
+                                                            fontFamily: 'Poppins, sans-serif',
+                                                            fontSize: '0.76rem',
+                                                            fontWeight: 400,
+                                                            color: 'var(--text-tertiary)',
+                                                            lineHeight: 1.4,
+                                                            mt: 0.25,
+                                                            letterSpacing: '0.3px',
+                                                        }}
+                                                    >
+                                                        {ch.formattedPhone}
+                                                    </Typography>
+                                                )}
+                                            </Box>
+
+                                            {/* Radio indicator */}
+                                            <Box
+                                                sx={{
+                                                    width: 24,
+                                                    height: 24,
+                                                    borderRadius: '50%',
+                                                    flexShrink: 0,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    border: `2px solid ${isSelected ? 'var(--primary-main)' : 'var(--border-color)'}`,
+                                                    background: isSelected ? 'var(--primary-main)' : 'transparent',
+                                                    transition: 'all 0.2s ease',
+                                                }}
+                                            >
+                                                {isSelected ? (
+                                                    <Check size={14} strokeWidth={3} color="#fff" />
+                                                ) : (
+                                                    <Circle size={8} strokeWidth={0} sx={{ color: 'transparent' }} />
+                                                )}
+                                            </Box>
+                                        </Box>
+                                    );
+                                })}
+                            </Box>
+                        )}
+
+                        {channelError && (
+                            <Typography sx={{ color: 'var(--error-main)', fontSize: '0.78rem', mt: 1.5, fontFamily: 'Poppins, sans-serif' }}>
+                                {channelError}
+                            </Typography>
+                        )}
+                    </div>
+
+                    {/* Action bar */}
+                    <Box
+                        sx={{
+                            display: 'flex',
+                            justifyContent: 'flex-end',
+                            gap: 1.5,
+                            px: '20px',
+                            py: '14px',
+                            borderTop: '1px solid var(--border-color)',
+                        }}
+                    >
+                        <Button
+                            size="small"
+                            variant="outlined"
+                            onClick={() => setShowChannelSelect(false)}
+                            sx={{
+                                borderRadius: '10px',
+                                textTransform: 'none',
+                                fontFamily: 'Poppins, sans-serif',
+                                fontWeight: 600,
+                                fontSize: '0.82rem',
+                                borderColor: 'var(--border-color)',
+                                color: 'var(--text-secondary)',
+                                '&:hover': {
+                                    borderColor: 'var(--border-color)',
+                                    background: 'var(--bg-subtle)',
+                                },
+                            }}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            size="small"
+                            variant="contained"
+                            onClick={handleChannelSelectConfirm}
+                            disabled={!selectedChannelId}
+                            startIcon={<Save size={16} />}
+                            sx={{
+                                borderRadius: '10px',
+                                textTransform: 'none',
+                                fontFamily: 'Poppins, sans-serif',
+                                fontWeight: 600,
+                                fontSize: '0.82rem',
+                                background: 'var(--primary-main)',
+                                boxShadow: '0 4px 12px color-mix(in srgb, var(--primary-main) 30%, transparent)',
+                                '&:hover': {
+                                    background: 'var(--primary-dark, #1a9a58)',
+                                    boxShadow: '0 6px 16px color-mix(in srgb, var(--primary-main) 35%, transparent)',
+                                },
+                                '&:disabled': {
+                                    background: 'var(--bg-light)',
+                                    color: 'var(--text-tertiary)',
+                                },
+                            }}
+                        >
+                            Save Flow
+                        </Button>
+                    </Box>
+                </div>
+            </Modal>
 
             {/* Title prompt modal — asks user for flow name before save */}
             <Modal open={showTitlePrompt} onClose={() => setShowTitlePrompt(false)}>

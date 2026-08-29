@@ -4,8 +4,8 @@
     align-items: center;
     margin-top: 8px;
     position: relative;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 6px 10px;
 }

@@ -2,7 +2,6 @@
 
 import { create } from 'zustand';
 import {
-  getMessagePreview,
   getCustomerDisplayName,
   getCustomerAvatarSeed,
   getWhatsAppAvatarConfig,
@@ -29,10 +28,17 @@ const normalizeMessage = (data) => ({
 });
 
 const buildPreview = (msg) => {
-  const preview = getMessagePreview(msg);
+  const type = msg?.MessageType;
+  const text = type === 'text' ? (msg?.Message || '')
+    : type === 'image' ? 'Photo'
+      : type === 'video' ? 'Video'
+        : type === 'document' ? 'Document'
+          : type === 'file' ? 'File'
+            : type === 'template' ? (msg?.Message ? `Template: ${msg.Message}` : 'Template')
+              : 'New message';
   return {
-    lastMessage: preview.node,
-    lastMessageText: preview.text,
+    lastMessage: text,
+    lastMessageText: text,
     lastMessageTime: formatChatTimestamp(msg?.DateTime || new Date().toISOString()),
     lastMessageTimestamp: msg?.DateTime || new Date().toISOString(),
     lastMessageDirection: msg?.Direction ?? msg?.direction ?? 0,
@@ -45,7 +51,11 @@ export const useChatStore = create((set, get) => ({
   /* state */
   conversations: [],
   allConversationsCache: [],
+  conversationsByChannel: {},
   selectedConversationId: null,
+  selectedChannelId: null,
+  selectedChannel: null,
+  defaultChannelId: null,
   messagesByConversationId: {},
   templates: [],
   templatesLoaded: false,
@@ -63,7 +73,20 @@ export const useChatStore = create((set, get) => ({
           ? allConversationsCache(s.allConversationsCache)
           : allConversationsCache,
     })),
+  setConversationsByChannel: (channelId, conversations) =>
+    set((s) => ({
+      conversationsByChannel: {
+        ...s.conversationsByChannel,
+        [String(channelId)]:
+          typeof conversations === 'function'
+            ? conversations(s.conversationsByChannel[String(channelId)] || [])
+            : conversations,
+      },
+    })),
   setSelectedConversationId: (selectedConversationId) => set({ selectedConversationId }),
+  setSelectedChannelId: (selectedChannelId) => set({ selectedChannelId }),
+  setSelectedChannel: (selectedChannel) => set({ selectedChannel }),
+  setDefaultChannelId: (defaultChannelId) => set({ defaultChannelId }),
 
   setTemplates: (templates) =>
     set((s) => ({
@@ -157,9 +180,13 @@ export const useChatStore = create((set, get) => ({
     const normalized = normalizeMessage(data);
     const isSelected = String(state.selectedConversationId) === msgConversationId;
 
-    /* 1. update messages if conversation is open */
-    if (isSelected) {
-      set((s) => {
+    /* Batch both updates (messages + conversation list) into a single set()
+       to avoid double re-renders on every incoming socket message. */
+    set((s) => {
+      const next = {};
+
+      /* 1. update messages if conversation is open */
+      if (isSelected) {
         const existing = s.messagesByConversationId[msgConversationId] || [];
         const msgId = String(normalized.id);
         const msgMessageId = String(normalized.MessageId);
@@ -169,38 +196,28 @@ export const useChatStore = create((set, get) => ({
             return mId === msgId || mId === msgMessageId;
           }
         );
-        if (exists) return {};
 
-        // Race-condition guard: socket may arrive before API updates tempId → wamid
-        const hasRecentOptimistic = existing.some((m) => {
-          const mId = String(m.id ?? '');
-          if (!mId.startsWith('temp-')) return false;
-          const mContent = String(m.content || m.message || m.Message || '');
-          const sContent = String(normalized.content || normalized.message || normalized.Message || '');
-          if (mContent !== sContent) return false;
-          return (m.direction ?? m.Direction ?? 0) === (normalized.direction ?? normalized.Direction ?? 0);
-        });
-        if (hasRecentOptimistic) return {};
+        if (!exists) {
+          // Race-condition guard: socket may arrive before API updates tempId → wamid
+          const hasRecentOptimistic = existing.some((m) => {
+            const mId = String(m.id ?? '');
+            if (!mId.startsWith('temp-')) return false;
+            const mContent = String(m.content || m.message || m.Message || '');
+            const sContent = String(normalized.content || normalized.message || normalized.Message || '');
+            if (mContent !== sContent) return false;
+            return (m.direction ?? m.Direction ?? 0) === (normalized.direction ?? normalized.Direction ?? 0);
+          });
 
-        return {
-          messagesByConversationId: {
-            ...s.messagesByConversationId,
-            [msgConversationId]: [...existing, normalized],
-          },
-        };
-      });
-      // Signal that the open conversation received a message and should be marked read on backend
-      if (typeof window !== 'undefined') {
-        try {
-          window.dispatchEvent(
-            new CustomEvent('waba:markConversationRead', { detail: { conversationId: msgConversationId, messageId: normalized?.MessageId || normalized?.id || '' } })
-          );
-        } catch (_) { /* ignore */ }
+          if (!hasRecentOptimistic) {
+            next.messagesByConversationId = {
+              ...s.messagesByConversationId,
+              [msgConversationId]: [...existing, normalized],
+            };
+          }
+        }
       }
-    }
 
-    /* 2. update conversation list */
-    set((s) => {
+      /* 2. update conversation list */
       const idx = s.conversations.findIndex((c) => {
         const cid = String(c?.ConversationId ?? c?.Id ?? c?.CustomerId);
         return cid === msgConversationId;
@@ -208,73 +225,68 @@ export const useChatStore = create((set, get) => ({
 
       if (idx !== -1) {
         /* existing conversation — update preview & unread */
-        const updated = [...s.conversations];
-        const conv = { ...updated[idx] };
-        const preview = buildPreview(data);
+        const conv = { ...s.conversations[idx], ...buildPreview(data) };
+        conv.unreadCount = isSelected ? 0 : (conv.unreadCount || 0) + 1;
 
-        Object.assign(conv, preview);
-
-        if (isSelected) {
-          conv.unreadCount = 0;
-        } else {
-          conv.unreadCount = (conv.unreadCount || 0) + 1;
-        }
-
-        updated.splice(idx, 1);
-        updated.unshift(conv);
+        // Move to top without splice/unshift (cheaper)
+        const updated = [conv, ...s.conversations.filter((_, i) => i !== idx)];
 
         /* mirror in cache */
         const cacheIdx = s.allConversationsCache.findIndex((c) => {
           const cid = String(c?.ConversationId ?? c?.Id ?? c?.CustomerId);
           return cid === msgConversationId;
         });
-        const updatedCache =
-          cacheIdx !== -1
-            ? s.allConversationsCache.map((c, i) => (i === cacheIdx ? conv : c))
-            : [...s.allConversationsCache];
+        let updatedCache = s.allConversationsCache;
         if (cacheIdx !== -1) {
-          const item = updatedCache[cacheIdx];
-          updatedCache.splice(cacheIdx, 1);
-          updatedCache.unshift(item);
+          updatedCache = [conv, ...s.allConversationsCache.filter((_, i) => i !== cacheIdx)];
         }
 
-        return { conversations: updated, allConversationsCache: updatedCache };
+        next.conversations = updated;
+        next.allConversationsCache = updatedCache;
+      } else {
+        /* new conversation from socket — create minimal record */
+        const rawConv = {
+          Id: msgConversationId,
+          ConversationId: msgConversationId,
+          CustomerId: msgConversationId,
+          CustomerPhone: data?.Sender || '',
+          CustomerName: '',
+          WhatsappCustName: data.WhatsappCustName ?? '',
+          IsPin: 0,
+          IsStar: 0,
+          IsArchived: 0,
+          UnReadMsgCount: isSelected ? 0 : 1,
+          LastMessage: data,
+          DateTime: normalized.DateTime,
+          TagList: null,
+        };
+
+        const enriched = {
+          ...rawConv,
+          ...buildPreview(data),
+          name: getCustomerDisplayName(rawConv),
+          avatar: null,
+          avatarConfig: getWhatsAppAvatarConfig(getCustomerAvatarSeed(rawConv), 38),
+          unreadCount: isSelected ? 0 : 1,
+          tags: [],
+          ticketStatus: null,
+        };
+
+        next.conversations = [enriched, ...s.conversations];
+        next.allConversationsCache = [enriched, ...s.allConversationsCache];
       }
 
-      /* new conversation from socket — create minimal record */
-      const rawConv = {
-        Id: msgConversationId,
-        ConversationId: msgConversationId,
-        CustomerId: msgConversationId,
-        CustomerPhone: data?.Sender || '',
-        CustomerName: '',
-        WhatsappCustName: data.WhatsappCustName ?? '',
-        IsPin: 0,
-        IsStar: 0,
-        IsArchived: 0,
-        UnReadMsgCount: isSelected ? 0 : 1,
-        LastMessage: data,
-        DateTime: normalized.DateTime,
-        TagList: null,
-      };
-
-      const preview = buildPreview(data);
-      const enriched = {
-        ...rawConv,
-        ...preview,
-        name: getCustomerDisplayName(rawConv),
-        avatar: null,
-        avatarConfig: getWhatsAppAvatarConfig(getCustomerAvatarSeed(rawConv), 38),
-        unreadCount: isSelected ? 0 : 1,
-        tags: [],
-        ticketStatus: null,
-      };
-
-      return {
-        conversations: [enriched, ...s.conversations],
-        allConversationsCache: [enriched, ...s.allConversationsCache],
-      };
+      return next;
     });
+
+    // Signal that the open conversation received a message and should be marked read on backend
+    if (isSelected && typeof window !== 'undefined') {
+      try {
+        window.dispatchEvent(
+          new CustomEvent('waba:markConversationRead', { detail: { conversationId: msgConversationId, messageId: normalized?.MessageId || normalized?.id || '' } })
+        );
+      } catch (_) { /* ignore */ }
+    }
   },
 
   handleSocketStatusChange: (data) => {

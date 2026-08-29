@@ -52,14 +52,14 @@ export const buildApiBody = async ({ mode, f, p = '', userId = '', extraCon = {}
     };
 };
 
-export const callCommonApi = async ({ mode, f, p = '', userId = '', extraCon = {}, signal }) => {
+export const callCommonApi = async ({ mode, f, p = '', userId = '', extraCon = {}, signal, wabaid = '' }) => {
     const body = await buildApiBody({ mode, f, p, userId, extraCon });
-    return CommonAPI(body, signal);
+    return CommonAPI(body, signal, { wabaid });
 };
 
-export const CommonAPI = async (body, signal) => {
+export const CommonAPI = async (body, signal, headerInit = {}) => {
     try {
-        const headers = getHeaders();
+        const headers = getHeaders(headerInit);
         const fetchOptions = {
             method: "POST",
             headers: {

@@ -3,13 +3,13 @@
 import { useEffect, useState } from 'react';
 import { Box, Typography, LinearProgress } from '@mui/material';
 import { MessageCircle } from 'lucide-react';
+import { useChatStore } from '../../store/chatStore';
+import { useAuthStore } from '../../store/authStore';
+import { fetchChannels, fetchConversationLists } from '../../api/chat/conversationApi';
 import { fetchPreloadChat } from '../../api/chat/preloadApi';
-import { fetchConversationLists } from '../../api/chat/conversationApi';
 import { processApiResponse, extractTopTemplates, extractMediaInfo } from './utils/chatUtils';
 import { fetchTemplatesByName } from '../../api/TemplateApi';
 import { setCachedMediaUrls } from '../../utils/mediaCacheService';
-import { useChatStore } from '../../store/chatStore';
-import { useAuthStore } from '../../store/authStore';
 import { getToken } from '../../utils/storage';
 
 export default function ChatPreloader({ onComplete }) {
@@ -25,20 +25,41 @@ export default function ChatPreloader({ onComplete }) {
       const userId = auth?.userId || auth?.userid || auth?.appuserid || '';
 
       setStage('conversations');
-      setStatusMsg('Fetching conversations…');
+      setStatusMsg('Loading chat…');
 
       const apiPromise = (async () => {
         if (!userId) return;
         try {
-          // 1. Fetch conversations AND messages in parallel
+          if (mounted) setStatusMsg('Loading channels…');
+
+          // 1. Fetch channels to find the default one
+          const channelsResp = await fetchChannels(userId);
+          const channels = channelsResp?.data || [];
+          if (!mounted) return;
+
+          // 2. Find default channel (IsDefault === 1), fall back to first active
+          const defaultChannel =
+            channels.find((c) => Number(c.IsDefault) === 1) ||
+            channels.find((c) => c.IsActive !== 0) ||
+            channels[0] ||
+            null;
+
+          if (defaultChannel) {
+            const store = useChatStore.getState();
+            store.setDefaultChannelId(defaultChannel.Id || null);
+            // Set as selected channel so fetchConversationLists sends the right AccountId
+            store.setSelectedChannelId(defaultChannel.Id || null);
+            store.setSelectedChannel(defaultChannel);
+          }
+
+          // 3. Fetch conversations AND preload messages in parallel
+          if (mounted) setStatusMsg('Loading chats…');
           const [convResp, preloadResp] = await Promise.all([
             fetchConversationLists(1, 100, userId, ''),
-            fetchPreloadChat(userId, 1, 100),
+            fetchPreloadChat(userId, 1, 100, defaultChannel?.Id || ''),
           ]);
 
-          if (mounted) setStatusMsg(`Loaded ${convResp?.data?.rd?.length || convResp?.data?.rd1?.length || 0} conversations`);
-
-          // 2. Store conversations
+          // 4. Store conversations in the store
           if (mounted) {
             const rawList = convResp?.data?.rd || [];
             const rd1List = convResp?.data?.rd1 || [];
@@ -48,12 +69,16 @@ export default function ChatPreloader({ onComplete }) {
               const store = useChatStore.getState();
               store.setConversations(processed);
               store.setAllConversationsCache(processed);
+              // Also cache per-channel so ChatSidebar uses cache instead of re-fetching
+              if (defaultChannel?.Id) {
+                store.setConversationsByChannel(defaultChannel.Id, processed);
+              }
             }
           }
 
           if (mounted) { setStage('messages'); setStatusMsg('Loading messages…'); }
 
-          // 3. Store ALL messages from API (no limit)
+          // 5. Store ALL messages from preload data into the store
           const preloadData = preloadResp?.data || [];
           if (preloadData.length && mounted) {
             const store = useChatStore.getState();
@@ -66,11 +91,12 @@ export default function ChatPreloader({ onComplete }) {
             });
           }
 
-          // 4. Extract ALL templates & ALL media info from all conversations
+          // 6. Extract ALL templates & ALL media info from preload data
           if (preloadData.length && mounted) {
             const allTemplateNames = extractTopTemplates(preloadData, 0);
             const { fileUrlCache, imageUrls } = extractMediaInfo(preloadData, 0);
             const creds = getToken() || {};
+            const wabaid = defaultChannel?.WabaId || creds?.wabaid || '';
 
             // Preload ALL images into browser cache so skeleton doesn't show
             if (imageUrls.length > 0) {
@@ -80,19 +106,18 @@ export default function ChatPreloader({ onComplete }) {
               });
             }
 
-            if (mounted) { setStage('templates'); setStatusMsg(`Fetching ${allTemplateNames.length} templates & caching ${Object.keys(fileUrlCache).length} media…`); }
+            if (mounted) { setStage('templates'); setStatusMsg('Finishing up…'); }
 
             await Promise.all([
               // Fetch ALL templates
               (async () => {
                 try {
                   if (allTemplateNames.length > 0) {
-                    const fetchedTemplates = await fetchTemplatesByName(allTemplateNames, creds);
+                    const fetchedTemplates = await fetchTemplatesByName(allTemplateNames, { wabaid });
                     if (mounted) {
                       const store = useChatStore.getState();
                       store.setTemplates(fetchedTemplates);
                       store.setTemplatesLoaded(true);
-                      if (mounted) setStatusMsg(`Loaded ${fetchedTemplates.length} templates`);
                     }
                   } else if (mounted) {
                     useChatStore.getState().setTemplatesLoaded(true);
@@ -106,18 +131,16 @@ export default function ChatPreloader({ onComplete }) {
               (async () => {
                 if (Object.keys(fileUrlCache).length > 0) {
                   setCachedMediaUrls(fileUrlCache);
-                  if (mounted) setStatusMsg(`Cached ${Object.keys(fileUrlCache).length} media files`);
                 }
               })(),
             ]);
           } else {
-            // No preload data — still mark templates as loaded so DynamicTemplate doesn't wait
+            // No preload data — still mark templates as loaded
             useChatStore.getState().setTemplatesLoaded(true);
           }
         } catch (err) {
-          console.error('Preload API error:', err);
+          console.error('Preload setup error:', err);
         } finally {
-          // Always mark templates as loaded so DynamicTemplate doesn't wait forever
           if (mounted && !useChatStore.getState().templatesLoaded) {
             useChatStore.getState().setTemplatesLoaded(true);
           }
@@ -171,9 +194,9 @@ export default function ChatPreloader({ onComplete }) {
   }, [onComplete]);
 
   const stageText = {
-    conversations: 'Loading conversations…',
+    conversations: 'Loading chats…',
     messages: 'Loading messages…',
-    templates: 'Loading templates & media…',
+    templates: 'Finishing up…',
     done: 'Almost there…',
   };
 
@@ -186,9 +209,9 @@ export default function ChatPreloader({ onComplete }) {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        bgcolor: '#f0f2f5',
+        bgcolor: 'var(--bg-default)',
         zIndex: 9999,
-        gap: 2,
+        gap: 3,
         opacity: fading ? 0 : 1,
         transition: 'opacity 0.35s ease-out',
         pointerEvents: fading ? 'none' : 'auto',
@@ -200,37 +223,31 @@ export default function ChatPreloader({ onComplete }) {
           '0%, 100%': { transform: 'scale(1)' },
           '50%': { transform: 'scale(1.08)' },
         },
-        '@keyframes shimmer': {
-          '0%': { backgroundPosition: '-200% 0' },
-          '100%': { backgroundPosition: '200% 0' },
-        },
       }}
     >
       {/* WhatsApp-style chat bubble icon */}
       <Box
         sx={{
-          width: 80,
-          height: 80,
+          width: 72,
+          height: 72,
           borderRadius: '50%',
-          background: 'linear-gradient(135deg, #25d366 0%, #128c7e 100%)',
+          background: 'linear-gradient(135deg, var(--primary-main) 0%, var(--wa-header) 100%)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          boxShadow: '0 12px 40px rgba(37, 211, 102, 0.3)',
+          boxShadow: '0 12px 40px color-mix(in srgb, var(--primary-main) 30%, transparent)',
           animation: 'pulseScale 2s ease-in-out infinite',
         }}
       >
-        <MessageCircle size={40} color="#fff" strokeWidth={2.5} />
+        <MessageCircle size={34} color="var(--button-color)" strokeWidth={2.5} />
       </Box>
 
       <Typography
-        variant="h6"
         sx={{
           fontWeight: 700,
-          color: '#444050',
+          color: 'var(--text-primary)',
           fontFamily: 'Poppins, sans-serif',
-          fontSize: '1.25rem',
-          mt: 1,
+          fontSize: '1.15rem',
           letterSpacing: '-0.3px',
         }}
       >
@@ -245,9 +262,9 @@ export default function ChatPreloader({ onComplete }) {
           sx={{
             height: 6,
             borderRadius: 3,
-            bgcolor: 'rgba(0,0,0,0.08)',
+            bgcolor: 'var(--bg-light)',
             '& .MuiLinearProgress-bar': {
-              bgcolor: '#25d366',
+              bgcolor: 'var(--primary-main)',
               borderRadius: 3,
               transition: 'transform 0.3s ease-out',
             },
@@ -259,7 +276,7 @@ export default function ChatPreloader({ onComplete }) {
             right: 0,
             top: -20,
             fontSize: '0.7rem',
-            color: '#25d366',
+            color: 'var(--primary-main)',
             fontWeight: 600,
             fontFamily: 'Poppins, sans-serif',
           }}
@@ -268,14 +285,13 @@ export default function ChatPreloader({ onComplete }) {
         </Typography>
       </Box>
 
-      {/* Dynamic status message */}
+      {/* Simple status text */}
       <Typography
         key={statusMsg}
-        variant="body2"
         sx={{
-          color: '#667781',
+          color: 'var(--text-secondary)',
           fontFamily: 'Poppins, sans-serif',
-          fontSize: '0.8rem',
+          fontSize: '0.95rem',
           mt: 0.5,
           minHeight: '1.2em',
           animation: 'chatFadeIn 0.3s ease-out',

@@ -118,6 +118,16 @@ export const parseTemplateError = (error) => {
     };
   }
 
+  if (payload.originalMessage) {
+    return {
+      ...TEMPLATE_ERRORS.GENERIC_ERROR,
+      isKnownError: false,
+      title: TEMPLATE_ERRORS.GENERIC_ERROR.title,
+      message: payload.originalMessage,
+      originalError: payload.originalMessage
+    };
+  }
+
   const errorCode = payload.code;
   const errorSubcode = payload.error_subcode;
   const errorMessage = (payload.message || '').toLowerCase();
@@ -184,7 +194,7 @@ export const parseTemplateError = (error) => {
     ...TEMPLATE_ERRORS.GENERIC_ERROR,
     isKnownError: false,
     title: errorUserTitle || TEMPLATE_ERRORS.GENERIC_ERROR.title,
-    message: payload.error_user_msg || errorMessage || TEMPLATE_ERRORS.GENERIC_ERROR.message,
+    message: payload.error_user_msg || payload.message || TEMPLATE_ERRORS.GENERIC_ERROR.message,
     originalError: originalServerMessage || 'Unknown error'
   };
 };

@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { Typography } from '@mui/material';
 import { ArrowLeft, Users, Phone, MoreVertical, CheckCheck, ChevronLeft, ChevronRight, FileText, Image, Video, ExternalLink, PhoneCall, Reply } from 'lucide-react';
 import styles from './MessagePreview.module.scss';
-import { previewBg, getStaticUrl } from '../../utils/globalFunc';
+import { getStaticUrl } from '../../utils/globalFunc';
 import { isOwnServerUrl } from '../../utils/mediaUtils';
 import { useObjectUrl, useObjectUrls } from '../../utils/useObjectUrl';
 const imagePlaceholder = getStaticUrl('/imagePlaceholder.png');
@@ -53,12 +53,12 @@ const MessagePreview = ({
             .replace(/\*(.+?)\*/g, '<strong>$1</strong>')
             .replace(/_(.+?)_/g, '<em>$1</em>')
             .replace(/~(.+?)~/g, '<s>$1</s>')
-            .replace(/`(.+?)`/g, '<code style="background: rgba(0,0,0,0.06); padding: 1px 4px; border-radius: 3px; font-family: monospace; font-size: 0.9em;">$1</code>');
+            .replace(/`(.+?)`/g, '<code style="background: var(--wa-code-bg); padding: 1px 4px; border-radius: 3px; font-family: monospace; font-size: 0.9em;">$1</code>');
         // Replace variable placeholders (numeric or named)
         return text.replace(/\{\{([^}]+)\}\}/g, (_, k) => {
             const value = variableValues[k]?.trim();
             if (value) {
-                return `<span style="color: #000; font-weight: 600; background: rgba(0, 0, 0, 0.05); padding: 0 2px; border-radius: 2px;">${value}</span>`;
+                return `<span style="color: var(--wa-bubble-text); font-weight: 600; background: var(--wa-variable-bg); padding: 0 2px; border-radius: 2px;">${value}</span>`;
             }
             return `{{${k}}}`;
         });
@@ -100,7 +100,7 @@ const MessagePreview = ({
     const renderPlaceholder = (text, type = 'text') => {
         const baseStyle = {
             display: 'block',
-            color: '#94a3b8',
+            color: 'var(--text-placeholder)',
             fontSize: type === 'small' ? '0.7rem' : '0.78rem',
             fontStyle: 'italic',
             lineHeight: 1.4,
@@ -108,7 +108,7 @@ const MessagePreview = ({
         if (type === 'box') {
             return (
                 <div style={{
-                    background: '#f1f5f9',
+                    background: 'var(--bg-light)',
                     borderRadius: '8px',
                     padding: '12px',
                     marginBottom: '0.55rem',
@@ -117,9 +117,9 @@ const MessagePreview = ({
                     justifyContent: 'center',
                     minHeight: '60px',
                     fontSize: '0.72rem',
-                    color: '#94a3b8',
+                    color: 'var(--text-placeholder)',
                     fontStyle: 'italic',
-                    border: '1px dashed #cbd5e1',
+                    border: '1px dashed var(--border-strong)',
                 }}>
                     {text}
                 </div>
@@ -143,7 +143,7 @@ const MessagePreview = ({
                         <MoreVertical size={15} className={styles.headerIcon} />
                     </div>
                 </div>
-                <div className={styles.previewChatBg} style={previewBg}>
+                <div className={styles.previewChatBg}>
                     {showPreviewBubble ? (
                         <div className={`${styles.previewBubbleWrap} ${templateType === 'Carousel' ? styles.previewBubbleWrapCarousel : ''}`}>
                             {templateType === 'Carousel' ? (
@@ -194,12 +194,12 @@ const MessagePreview = ({
                                                                     onError={(e) => { e.currentTarget.style.display = 'none'; }}
                                                                 />
                                                             ) : (
-                                                                <div className={styles.previewCardMedia} style={{ background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                                    <Video size={24} color="#fff" />
+                                                                <div className={styles.previewCardMedia} style={{ background: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                    <Video size={24} color="var(--button-color)" />
                                                                 </div>
                                                             )
                                                         ) : (
-                                                            <div className={styles.previewCardMedia} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cbd5e1' }}>
+                                                            <div className={styles.previewCardMedia} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-placeholder)' }}>
                                                                 {card.header.mediaType === 'image' ? <Image size={24} /> : <Video size={24} />}
                                                             </div>
                                                         )}
@@ -213,7 +213,7 @@ const MessagePreview = ({
                                                                             .replace(/\*(.+?)\*/g, '<strong>$1</strong>')
                                                                             .replace(/_(.+?)_/g, '<em>$1</em>')
                                                                             .replace(/~(.+?)~/g, '<s>$1</s>')
-                                                                            .replace(/`(.+?)`/g, '<code style="background: rgba(0,0,0,0.06); padding: 1px 4px; border-radius: 3px; font-family: monospace; font-size: 0.9em;">$1</code>')
+                                                                            .replace(/`(.+?)`/g, '<code style="background: var(--wa-code-bg); padding: 1px 4px; border-radius: 3px; font-family: monospace; font-size: 0.9em;">$1</code>')
                                                                     }}
                                                                 />
                                                             )}
@@ -263,7 +263,7 @@ const MessagePreview = ({
                                                         .replace(/\*(.+?)\*/g, '<strong>$1</strong>')
                                                         .replace(/_(.+?)_/g, '<em>$1</em>')
                                                         .replace(/~(.+?)~/g, '<s>$1</s>')
-                                                        .replace(/`(.+?)`/g, '<code style="background: rgba(0,0,0,0.06); padding: 1px 4px; border-radius: 3px; font-family: monospace; font-size: 0.9em;">$1</code>')
+                                                        .replace(/`(.+?)`/g, '<code style="background: var(--wa-code-bg); padding: 1px 4px; border-radius: 3px; font-family: monospace; font-size: 0.9em;">$1</code>')
                                                         .replace(/\{\{1\}\}/g, headerTextExample || '{{1}}')
                                                 }}
                                             />

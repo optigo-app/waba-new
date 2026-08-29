@@ -31,10 +31,10 @@ const Pagination = ({
                     display: 'flex',
                     alignItems: 'center',
                     gap: 1,
-                    backgroundColor: '#fff',
+                    backgroundColor: 'var(--bg-paper)',
                     borderRadius: '999px',
-                    boxShadow: '0 10px 32px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.06)',
-                    border: '1px solid #e8eaef',
+                    boxShadow: 'var(--paper-shadow)',
+                    border: '1px solid var(--border-color)',
                     px: 2,
                     py: '6px',
                     whiteSpace: 'nowrap',
@@ -42,7 +42,7 @@ const Pagination = ({
                 }}
             >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <Typography sx={{ fontSize: '0.875rem', color: '#8b8a94', fontFamily: 'Poppins, sans-serif', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                    <Typography sx={{ fontSize: '0.875rem', color: 'var(--text-placeholder)', fontFamily: 'Poppins, sans-serif', fontWeight: 500, whiteSpace: 'nowrap' }}>
                         Rows per page
                     </Typography>
                     <FormControl size="small" sx={{ minWidth: 48 }}>
@@ -54,13 +54,13 @@ const Pagination = ({
                             sx={{
                                 fontSize: '0.875rem',
                                 fontFamily: 'Poppins, sans-serif',
-                                color: '#444050',
+                                color: 'var(--text-primary)',
                                 fontWeight: 600,
                                 '.MuiSelect-select': { py: 0, px: '2px', pr: '18px' },
                                 '&:before, &:after': { display: 'none' },
-                                '& .MuiSvgIcon-root': { right: 0, color: '#8b8a94' },
+                                '& .MuiSvgIcon-root': { right: 0, color: 'var(--text-placeholder)' },
                             }}
-                            MenuProps={{ PaperProps: { sx: { borderRadius: '10px', mt: 0.5, boxShadow: '0 4px 16px rgba(0,0,0,0.1)' } } }}
+                            MenuProps={{ slotProps: { paper: { sx: { borderRadius: '10px', mt: 0.5, boxShadow: 'var(--box-shadow)' } } } }}
                         >
                             {rowsPerPageOptions.map((n) => (
                                 <MenuItem key={n} value={n} sx={{ fontSize: '0.875rem', fontFamily: 'Poppins, sans-serif' }}>{n}</MenuItem>
@@ -69,13 +69,13 @@ const Pagination = ({
                     </FormControl>
                 </Box>
 
-                <Box sx={{ width: 1, height: 14, backgroundColor: '#e4e8ee' }} />
+                <Box sx={{ width: 1, height: 14, backgroundColor: 'var(--border-color)' }} />
 
-                <Typography sx={{ fontSize: '0.875rem', color: '#444050', fontFamily: 'Poppins, sans-serif', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                <Typography sx={{ fontSize: '0.875rem', color: 'var(--text-primary)', fontFamily: 'Poppins, sans-serif', fontWeight: 500, whiteSpace: 'nowrap' }}>
                     {page * rowsPerPage + 1}-{Math.min((page + 1) * rowsPerPage, count)} of {count}
                 </Typography>
 
-                <Box sx={{ width: 1, height: 14, backgroundColor: '#e4e8ee' }} />
+                <Box sx={{ width: 1, height: 14, backgroundColor: 'var(--border-color)' }} />
 
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
                     <Box
@@ -89,9 +89,9 @@ const Pagination = ({
                             justifyContent: 'center',
                             cursor: page === 0 ? 'not-allowed' : 'pointer',
                             opacity: page === 0 ? 0.3 : 1,
-                            color: '#6D6B77',
+                            color: 'var(--text-tertiary)',
                             transition: 'all 0.15s',
-                            '&:hover': { backgroundColor: page === 0 ? 'transparent' : '#f1f5f9', color: page === 0 ? '#6D6B77' : '#444050' },
+                            '&:hover': { backgroundColor: page === 0 ? 'transparent' : 'var(--bg-light)', color: page === 0 ? 'var(--text-tertiary)' : 'var(--text-primary)' },
                         }}
                     >
                         <ChevronLeft size={15} strokeWidth={2.5} />
@@ -107,9 +107,9 @@ const Pagination = ({
                             justifyContent: 'center',
                             cursor: page >= Math.ceil(count / rowsPerPage) - 1 ? 'not-allowed' : 'pointer',
                             opacity: page >= Math.ceil(count / rowsPerPage) - 1 ? 0.3 : 1,
-                            color: '#6D6B77',
+                            color: 'var(--text-tertiary)',
                             transition: 'all 0.15s',
-                            '&:hover': { backgroundColor: page >= Math.ceil(count / rowsPerPage) - 1 ? 'transparent' : '#f1f5f9', color: page >= Math.ceil(count / rowsPerPage) - 1 ? '#6D6B77' : '#444050' },
+                            '&:hover': { backgroundColor: page >= Math.ceil(count / rowsPerPage) - 1 ? 'transparent' : 'var(--bg-light)', color: page >= Math.ceil(count / rowsPerPage) - 1 ? 'var(--text-tertiary)' : 'var(--text-primary)' },
                         }}
                     >
                         <ChevronRight size={15} strokeWidth={2.5} />

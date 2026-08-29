@@ -9,6 +9,7 @@ export const useWalletStore = create(
   persist(
     (set, get) => ({
       billingData: null,
+      channels: [],
       lastAppUserId: null,
       isLoading: false,
       error: null,
@@ -32,16 +33,17 @@ export const useWalletStore = create(
           if (response?.success) {
             set({
               billingData: response.data,
+              channels: response.channels || [],
               lastAppUserId: appUserId,
               isLoading: false,
               error: null,
             });
           } else {
-            set({ billingData: null, lastAppUserId: null, isLoading: false, error: 'Failed to load wallet data' });
+            set({ billingData: null, channels: [], lastAppUserId: null, isLoading: false, error: 'Failed to load wallet data' });
           }
         } catch (err) {
           console.error('Error fetching wallet data:', err);
-          set({ billingData: null, lastAppUserId: null, isLoading: false, error: err.message || 'Failed to load wallet data' });
+          set({ billingData: null, channels: [], lastAppUserId: null, isLoading: false, error: err.message || 'Failed to load wallet data' });
         }
       },
 
@@ -54,7 +56,7 @@ export const useWalletStore = create(
       },
 
       clearWallet: () => {
-        set({ billingData: null, lastAppUserId: null, error: null, isLoading: false });
+        set({ billingData: null, channels: [], lastAppUserId: null, error: null, isLoading: false });
       },
     }),
     {
@@ -62,6 +64,7 @@ export const useWalletStore = create(
       storage: createSessionStorageAdapter(),
       partialize: (state) => ({
         billingData: state.billingData,
+        channels: state.channels,
         lastAppUserId: state.lastAppUserId,
       }),
     }

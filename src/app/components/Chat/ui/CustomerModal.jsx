@@ -10,11 +10,11 @@ import {
 } from '@mui/material';
 
 const defaultBackdropSx = {
-  backgroundColor: 'rgba(10, 12, 16, 0.55)',
+  backgroundColor: 'rgba(10, 12, 16, 0.6)',
 };
 
 const defaultPaperSx = {
-  bgcolor: '#fff',
+  bgcolor: 'var(--bg-paper)',
   boxShadow: '0 16px 40px rgba(0,0,0,0.12)',
   border: '1px solid rgba(0,0,0,0.08)',
   borderRadius: 3,
@@ -25,6 +25,7 @@ export default function CustomerModal({
   open,
   onClose,
   title,
+  subtitle,
   children,
   actions,
   maxWidth = 'sm',
@@ -32,7 +33,9 @@ export default function CustomerModal({
   backdropSx,
   paperSx,
   contentSx,
+  dialogContentSx,
   actionsSx,
+  titleSx,
   ...dialogProps
 }) {
   return (
@@ -54,14 +57,19 @@ export default function CustomerModal({
       {...dialogProps}
     >
       {title ? (
-        <DialogTitle>
-          <Typography variant="h6" component="div" sx={{ fontWeight: 600, color: 'text.primary' }}>
+        <DialogTitle sx={{ ...(titleSx || {}) }}>
+          <Typography variant="h6" component="div" sx={{ fontWeight: 700, color: 'text.primary', letterSpacing: '-0.01em' }}>
             {title}
           </Typography>
+          {subtitle ? (
+            <Typography variant="body2" sx={{ mt: 0.4, color: 'var(--text-secondary)', fontSize: '0.78rem', fontWeight: 400 }}>
+              {subtitle}
+            </Typography>
+          ) : null}
         </DialogTitle>
       ) : null}
 
-      <DialogContent>
+      <DialogContent sx={{ ...(dialogContentSx || {}) }}>
         <Box sx={{ pt: 2, ...(contentSx || {}) }}>{children}</Box>
       </DialogContent>
 

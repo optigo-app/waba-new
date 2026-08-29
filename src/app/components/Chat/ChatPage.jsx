@@ -2,13 +2,12 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
-import { Button, Typography } from '@mui/material';
 import { MessageCircle } from 'lucide-react';
 import ChatSidebar from './ChatSidebar';
+import ChatChannelPanel from './ChatChannelPanel';
 import ChatConversation from './ChatConversation';
 import CustomerDetails from './CustomerDetails';
 import ChatPreloader from './ChatPreloader';
-import { useAuthStore } from '../../store/authStore';
 import { useChatStore } from '../../store/chatStore';
 import './styles/global-chat.css';
 import './styles/chat-page.css';
@@ -20,6 +19,8 @@ import './styles/ChatOverlays.scss';
 export default function ChatPage() {
   const pathname = usePathname();
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [selectedChannel, setSelectedChannel] = useState(null);
+  const [channelCollapsed, setChannelCollapsed] = useState(false);
   const [converList, setConvList] = useState([]);
   const [isConversationRead, setIsConversationRead] = useState(false);
   const [viewConversationRead, setViewConversationRead] = useState(false);
@@ -28,9 +29,46 @@ export default function ChatPage() {
   const [pendingDropFiles, setPendingDropFiles] = useState(null);
   const [preloading, setPreloading] = useState(true);
   const layoutRef = useRef(null);
+  const wasCollapsedByBreakpoint = useRef(false);
+
+  // Auto-collapse channel panel on screens <= 1024px
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 1024px)');
+    const handleChange = (e) => {
+      if (e.matches) {
+        wasCollapsedByBreakpoint.current = true;
+        setChannelCollapsed(true);
+      } else if (wasCollapsedByBreakpoint.current) {
+        wasCollapsedByBreakpoint.current = false;
+        setChannelCollapsed(false);
+      }
+    };
+    handleChange(mq);
+    mq.addEventListener('change', handleChange);
+    return () => mq.removeEventListener('change', handleChange);
+  }, []);
 
   const handlePreloadComplete = useCallback(() => {
     setPreloading(false);
+    // Sync local selectedChannel from store (set by ChatPreloader)
+    const storeChannel = useChatStore.getState().selectedChannel;
+    if (storeChannel) {
+      setSelectedChannel(storeChannel);
+    }
+  }, []);
+
+  const handleChannelSelect = useCallback((channel) => {
+    setSelectedChannel(channel);
+    setSelectedCustomer(null);
+    const store = useChatStore.getState();
+    store.setSelectedChannelId(channel?.Id || null);
+    store.setSelectedChannel(channel || null);
+    // Clear current conversations so ChatSidebar re-checks cache or fetches for the new channel
+    store.setConversations([]);
+  }, []);
+
+  const toggleChannelCollapse = useCallback(() => {
+    setChannelCollapsed((prev) => !prev);
   }, []);
 
   const toggleDetailsPanel = useCallback(() => {
@@ -102,59 +140,51 @@ export default function ChatPage() {
     };
   }, []);
 
-  const auth = useAuthStore((s) => s.auth);
   const isAddConversation = pathname === '/chat/add-conversation';
-
-  const hasChannel = !!auth?.whatsappNumber && !!auth?.whatsappKey;
 
   if (preloading) {
     return <ChatPreloader onComplete={handlePreloadComplete} />;
   }
 
-  if (!hasChannel) {
-    return (
-      <div className="chat-page-container">
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '100%',
-          width: '100%',
-          background: '#f8f9fa',
-          gap: 16,
-        }}>
-          <MessageCircle size={48} color="#9ca3af" />
-          <Typography variant="h6" color="text.secondary" fontWeight={600}>
-            WhatsApp channel not connected
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Please complete onboarding to start chatting.
-          </Typography>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="chat-page-container">
       <div ref={layoutRef} className={`chat-page-layout${selectedCustomer ? ' chat-active' : ''}`}>
-        {/* Left sidebar: conversation list */}
-        <div className="chat-sidebar-section">
-          <ChatSidebar
-            onCustomerSelect={handleCustomerSelect}
-            selectedCustomer={selectedCustomer}
-            isConversationRead={isConversationRead}
-            viewConversationRead={viewConversationRead}
-            onConversationList={handleConversationList}
-            isAddConversation={isAddConversation}
-            selectedTag={selectedTag}
-            onTagSelect={setSelectedTag}
-            onFileDrop={handleFileDrop}
+        {/* Left: channel list (collapsible) */}
+        <div className={`chat-channel-section${channelCollapsed ? ' channel-collapsed' : ''}`}>
+          <ChatChannelPanel
+            selectedChannel={selectedChannel}
+            onChannelSelect={handleChannelSelect}
+            collapsed={channelCollapsed}
+            onToggleCollapse={toggleChannelCollapse}
           />
         </div>
 
-        {/* Middle: conversation area */}
+        {/* Middle: conversation list */}
+        <div className="chat-sidebar-section">
+          {selectedChannel ? (
+            <ChatSidebar
+              onCustomerSelect={handleCustomerSelect}
+              selectedCustomer={selectedCustomer}
+              isConversationRead={isConversationRead}
+              viewConversationRead={viewConversationRead}
+              onConversationList={handleConversationList}
+              isAddConversation={isAddConversation}
+              selectedTag={selectedTag}
+              onTagSelect={setSelectedTag}
+              onFileDrop={handleFileDrop}
+              channelId={selectedChannel.Id}
+              channel={selectedChannel}
+              onChannelSelect={handleChannelSelect}
+            />
+          ) : (
+            <div className="chat-sidebar-placeholder">
+              <MessageCircle size={40} />
+              <p>Select a WhatsApp channel to view conversations</p>
+            </div>
+          )}
+        </div>
+
+        {/* Right: conversation area */}
         <div className="chat-conversation-section">
           <ChatConversation
             selectedCustomer={selectedCustomer}

@@ -8,7 +8,10 @@ import {
     Box,
 } from '@mui/material';
 
-const AutomationSkelton = ({ count = 8 }) => {
+const SKELETON_BG = 'rgba(0, 0, 0, 0.04)';
+
+/* ─── Card/Grid skeleton ─── */
+const GridSkeleton = ({ count = 8 }) => {
     return (
         <Grid container spacing={2.5}>
             {[...Array(count)].map((_, i) => (
@@ -19,9 +22,9 @@ const AutomationSkelton = ({ count = 8 }) => {
                             height: '100%',
                             overflow: 'hidden',
                             position: 'relative',
-                            background: 'linear-gradient(145deg, #ffffff, #f8f9fb)',
+                            background: 'linear-gradient(145deg, var(--bg-paper), var(--bg-subtle))',
                             boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.02)',
-                            border: '1px solid #eef0f4',
+                            border: '1px solid var(--border-color)',
                             transition: 'all 0.3s ease',
                             display: 'flex',
                             flexDirection: 'column',
@@ -56,59 +59,21 @@ const AutomationSkelton = ({ count = 8 }) => {
                                     width="55%"
                                     height={24}
                                     animation="wave"
-                                    sx={{ borderRadius: '6px', bgcolor: 'rgba(0, 0, 0, 0.04)' }}
+                                    sx={{ borderRadius: '6px', bgcolor: SKELETON_BG }}
                                 />
                                 <Skeleton
                                     variant="rounded"
                                     width={60}
                                     height={22}
                                     animation="wave"
-                                    sx={{ borderRadius: '20px', bgcolor: 'rgba(0, 0, 0, 0.04)' }}
-                                />
-                            </Stack>
-
-                            {/* Meta Chips */}
-                            <Stack direction="row" spacing={0.5} sx={{ mb: 1.75 }}>
-                                <Skeleton
-                                    variant="rounded"
-                                    width={80}
-                                    height={20}
-                                    animation="wave"
-                                    sx={{ borderRadius: '4px', bgcolor: 'rgba(0, 0, 0, 0.04)' }}
-                                />
-                                <Skeleton
-                                    variant="rounded"
-                                    width={70}
-                                    height={20}
-                                    animation="wave"
-                                    sx={{ borderRadius: '4px', bgcolor: 'rgba(0, 0, 0, 0.04)' }}
+                                    sx={{ borderRadius: '20px', bgcolor: SKELETON_BG }}
                                 />
                             </Stack>
 
                             {/* Body Preview */}
-                            <Box sx={{ background: '#f8f9fb', borderRadius: '10px', p: '10px 12px' }}>
+                            <Box sx={{ background: 'var(--bg-subtle)', borderRadius: '10px', p: '10px 12px' }}>
                                 <Stack spacing={1}>
-                                    <Skeleton
-                                        variant="text"
-                                        width="100%"
-                                        height={18}
-                                        animation="wave"
-                                        sx={{ bgcolor: 'rgba(0, 0, 0, 0.04)' }}
-                                    />
-                                    <Skeleton
-                                        variant="text"
-                                        width="90%"
-                                        height={18}
-                                        animation="wave"
-                                        sx={{ bgcolor: 'rgba(0, 0, 0, 0.04)' }}
-                                    />
-                                    <Skeleton
-                                        variant="text"
-                                        width="75%"
-                                        height={18}
-                                        animation="wave"
-                                        sx={{ bgcolor: 'rgba(0, 0, 0, 0.04)' }}
-                                    />
+                                    <Skeleton variant="text" width="100%" height={18} animation="wave" sx={{ bgcolor: SKELETON_BG }} />
                                 </Stack>
                             </Box>
                         </CardContent>
@@ -130,30 +95,12 @@ const AutomationSkelton = ({ count = 8 }) => {
                                 width={50}
                                 height={14}
                                 animation="wave"
-                                sx={{ borderRadius: '4px', bgcolor: 'rgba(0, 0, 0, 0.04)' }}
+                                sx={{ borderRadius: '4px', bgcolor: SKELETON_BG }}
                             />
                             <Stack direction="row" spacing={0.5}>
-                                <Skeleton
-                                    variant="circular"
-                                    width={28}
-                                    height={28}
-                                    animation="wave"
-                                    sx={{ bgcolor: 'rgba(0, 0, 0, 0.04)' }}
-                                />
-                                <Skeleton
-                                    variant="circular"
-                                    width={28}
-                                    height={28}
-                                    animation="wave"
-                                    sx={{ bgcolor: 'rgba(0, 0, 0, 0.04)' }}
-                                />
-                                <Skeleton
-                                    variant="circular"
-                                    width={28}
-                                    height={28}
-                                    animation="wave"
-                                    sx={{ bgcolor: 'rgba(0, 0, 0, 0.04)' }}
-                                />
+                                <Skeleton variant="circular" width={28} height={28} animation="wave" sx={{ bgcolor: SKELETON_BG }} />
+                                <Skeleton variant="circular" width={28} height={28} animation="wave" sx={{ bgcolor: SKELETON_BG }} />
+                                <Skeleton variant="circular" width={28} height={28} animation="wave" sx={{ bgcolor: SKELETON_BG }} />
                             </Stack>
                         </Stack>
                     </Card>
@@ -161,6 +108,10 @@ const AutomationSkelton = ({ count = 8 }) => {
             ))}
         </Grid>
     );
+};
+
+const AutomationSkelton = ({ count = 8 }) => {
+    return <GridSkeleton count={count} />;
 };
 
 export default AutomationSkelton;

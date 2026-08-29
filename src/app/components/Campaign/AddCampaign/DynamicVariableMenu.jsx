@@ -27,15 +27,17 @@ const DynamicVariableMenu = ({ anchorEl, open, onClose, onSelect }) => {
                 vertical: 'top',
                 horizontal: 'left',
             }}
-            PaperProps={{
-                sx: {
-                    maxHeight: 300,
-                    minWidth: 220,
-                    borderRadius: '12px',
-                    boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
-                    border: '1px solid #e2e8f0',
-                    mt: 0.5
-                },
+            slotProps={{
+                paper: {
+                    sx: {
+                        maxHeight: 300,
+                        minWidth: 220,
+                        borderRadius: '12px',
+                        boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+                        border: '1px solid #e2e8f0',
+                        mt: 0.5
+                    },
+                }
             }}
         >
             {predefinedVariables.map((variable) => (

@@ -1,7 +1,7 @@
 /* ChatPage layout — matches waba-chat Customers.scss */
 .chat-page-container {
   width: 100%;
-  background-color: #fff;
+  background-color: var(--bg-paper);
   height: 100vh;
   overflow: hidden;
 }
@@ -10,38 +10,92 @@
   display: flex;
   height: 100%;
   width: 100%;
+  padding: 10px;
+  gap: 10px;
+  box-sizing: border-box;
+}
+
+.chat-channel-section {
+  width: 300px;
+  min-width: 300px;
+  background-color: transparent;
+  display: flex;
+  flex-direction: column;
+  transition: width 0.25s ease, min-width 0.25s ease;
+}
+
+.chat-channel-section.channel-collapsed {
+  width: 70px;
+  min-width: 70px;
 }
 
 .chat-sidebar-section {
-  width: 440px;
-  min-width: 440px;
-  background-color: #fff;
+  width: 420px;
+  min-width: 420px;
+  background-color: var(--bg-paper);
   display: flex;
   flex-direction: column;
-  border-right: 1px solid rgba(0, 0, 0, 0.06);
+  border: 1px solid var(--sidebar-borderColor, var(--border-color));
+  border-radius: 16px;
+  box-shadow: var(--sidebar-box-shadow, 0 1px 3px rgba(0,0,0,0.04));
+  overflow: hidden;
 }
 
 .chat-conversation-section {
   flex: 1;
-  background-color: #fff;
+  background-color: var(--bg-paper);
   display: flex;
   flex-direction: column;
   min-width: 0;
   overflow: hidden;
+  border: 1px solid var(--sidebar-borderColor, var(--border-color));
+  border-radius: 16px;
+  box-shadow: var(--sidebar-box-shadow, 0 1px 3px rgba(0,0,0,0.04));
+}
+
+.chat-sidebar-placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--text-secondary);
+  padding: 24px;
+  text-align: center;
 }
 
 /* Responsive */
 @media (max-width: 1440px) {
+  .chat-channel-section:not(.channel-collapsed) {
+    width: 260px;
+    min-width: 260px;
+  }
   .chat-sidebar-section {
     width: 380px;
     min-width: 380px;
   }
 }
 
-@media (max-width: 1000px) {
+@media (max-width: 1280px) {
+  .chat-channel-section:not(.channel-collapsed) {
+    width: 220px;
+    min-width: 220px;
+  }
   .chat-sidebar-section {
-    width: 350px;
-    min-width: 350px;
+    width: 340px;
+    min-width: 340px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .chat-channel-section:not(.channel-collapsed) {
+    width: 200px;
+    min-width: 200px;
+  }
+  .chat-sidebar-section {
+    width: 300px;
+    min-width: 300px;
   }
 }
 
@@ -49,35 +103,47 @@
 @media (max-width: 1000px) {
   .chat-page-layout {
     position: relative;
+    padding: 0;
+    gap: 0;
+  }
+
+  .chat-channel-section {
+    display: none;
   }
 
   .chat-sidebar-section {
     width: 100%;
     min-width: 100%;
     height: 100%;
-    border-right: none;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
     position: absolute;
     inset: 0;
     z-index: 1;
-    transition: transform 0.25s ease;
+    transition: opacity 0.2s ease;
   }
 
   .chat-conversation-section {
     position: absolute;
     inset: 0;
     z-index: 2;
-    transform: translateX(100%);
-    transition: transform 0.25s ease;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
   }
 
   .chat-page-layout.chat-active .chat-sidebar-section {
-    transform: translateX(-30%);
     opacity: 0;
     pointer-events: none;
   }
 
   .chat-page-layout.chat-active .chat-conversation-section {
-    transform: translateX(0);
+    opacity: 1;
+    pointer-events: auto;
   }
 }
 
@@ -88,8 +154,10 @@
   overflow: hidden;
   transition: width 0.25s ease, min-width 0.25s ease;
   will-change: width, min-width;
-  background: #fff;
-  border-left: 1px solid rgba(0, 0, 0, 0.06);
+  background: var(--bg-paper);
+  border: 1px solid var(--sidebar-borderColor, var(--border-color));
+  border-radius: 16px;
+  box-shadow: var(--sidebar-box-shadow, 0 1px 3px rgba(0,0,0,0.04));
   display: flex;
   flex-direction: column;
 }
@@ -116,17 +184,43 @@
 @media (max-width: 768px) {
   .chat-page-layout {
     flex-direction: column;
+    padding: 0;
+    gap: 0;
   }
 
   .chat-sidebar-section {
     width: 100%;
     min-width: 100%;
     height: 100%;
-    border-right: none;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
   }
 
   .chat-conversation-section {
     width: 100%;
     height: 100%;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
+
+/* ─── Mobile channel picker ─────────────────────────────────────────────────── */
+/* Hidden on desktop, shown on tablet/mobile where the channel panel is hidden */
+.channel-picker-btn.mobile-only {
+  display: none;
+}
+
+@media (max-width: 1000px) {
+  .channel-picker-btn.mobile-only {
+    display: inline-flex !important;
+    color: var(--text-secondary) !important;
+  }
+
+  /* Make the header avatar/title area look tappable on mobile */
+  .chat-panel-header__avatar.clickable,
+  .chat-panel-header__icon-bg.clickable {
+    cursor: pointer;
   }
 }

@@ -6,7 +6,7 @@
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
-    background: #f8fafc;
+    background: var(--bg-subtle);
     height: 100vh;
     box-sizing: border-box;
 
@@ -19,9 +19,9 @@
 
 // ── Top bar wrapper ───────────────────────────────────────────────────────────
 .topBarWrapper {
-    background: #fff;
+    background: var(--bg-paper);
     border-radius: 12px;
-    border: 1px solid $sidebar-borderColor;
+    border: 1px solid var(--sidebar-borderColor);
     box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
     flex-shrink: 0;
     overflow: hidden;
@@ -32,7 +32,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 0.75rem 1.5rem;
-    border-bottom: 1px solid $sidebar-borderColor;
+    border-bottom: 1px solid var(--sidebar-borderColor);
     flex-wrap: nowrap;
     gap: 1rem;
 
@@ -69,15 +69,15 @@
     height: 34px;
     border: 1px solid var(--sidebar-borderColor);
     border-radius: 8px;
-    background: #fff;
+    background: var(--bg-paper);
     cursor: pointer;
-    color: #475569;
+    color: var(--text-tertiary);
     transition: all 0.15s;
     flex-shrink: 0;
 
     &:hover {
-        background: #f1f5f9;
-        border-color: #cbd5e1;
+        background: var(--bg-light);
+        border-color: var(--border-strong);
     }
 }
 
@@ -86,7 +86,7 @@
     height: 36px;
     border-radius: 10px;
     background: rgba($primary-main, 0.1);
-    color: $primary-main;
+    color: var(--primary-main);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -96,7 +96,7 @@
 .pageTitle {
     font-size: 1rem;
     font-weight: 600;
-    color: $titleColor;
+    color: var(--text-primary);
     margin: 0;
     font-family: $font-family;
     line-height: 1.2;
@@ -107,7 +107,7 @@
 
 .pageSubtitle {
     font-size: 0.75rem;
-    color: $secondaryColor;
+    color: var(--text-secondary);
     margin: 0;
     font-family: $font-family;
     line-height: 1.2;
@@ -198,10 +198,10 @@
     border-radius: 8px;
     font-size: 0.82rem;
     outline: none;
-    background: #fff;
+    background: var(--bg-paper);
 
     &:focus {
-        border-color: var(--background-theme, #1daa61);
+        border-color: var(--primary-main);
     }
 }
 
@@ -212,12 +212,12 @@
         border-radius: 8px;
         font-size: 0.82rem;
         outline: none;
-        background: #fff;
-        color: var(--text-2nd-color);
+        background: var(--bg-paper);
+        color: var(--text-tertiary);
         cursor: pointer;
 
         &:focus {
-            border-color: var(--background-theme, #1daa61);
+            border-color: var(--primary-main);
         }
     }
 }
@@ -232,25 +232,25 @@
     padding: 0.35rem 0.75rem;
     border: 1px solid var(--sidebar-borderColor);
     border-radius: 20px;
-    background: #fff;
+    background: var(--bg-paper);
     font-size: 0.78rem;
-    color: var(--placeholder-color);
+    color: var(--text-placeholder);
     cursor: pointer;
     transition: all 0.15s;
 
     &:hover {
-        border-color: var(--background-theme, #1daa61);
-        color: var(--background-theme, #1daa61);
+        border-color: var(--primary-main);
+        color: var(--primary-main);
     }
 }
 
 .activeFilter {
-    background: var(--background-theme, #1daa61);
-    border-color: var(--background-theme, #1daa61);
-    color: #fff;
+    background: var(--primary-main);
+    border-color: var(--primary-main);
+    color: var(--button-color);
 
     &:hover {
-        color: #fff;
+        color: var(--button-color);
     }
 }
 
@@ -265,7 +265,7 @@
 
     &::-webkit-scrollbar { width: 4px; }
     &::-webkit-scrollbar-track { background: transparent; }
-    &::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 99px; }
+    &::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 99px; }
 }
 
 // ── Grid View ─────────────────────────────────────────────────────────────────
@@ -291,19 +291,19 @@
     }
 
     &::-webkit-scrollbar-thumb {
-        background: #e2e8f0;
+        background: var(--border-color);
         border-radius: 99px;
     }
 }
 
 .bodyPreview {
     font-size: 0.78rem;
-    color: #374151;
+    color: var(--text-primary);
     line-height: 1.5;
     white-space: pre-wrap;
     word-break: break-word;
     margin: 0;
-    background: #f9fafb;
+    background: var(--bg-subtle);
     border-radius: 8px;
     padding: 0.5rem 0.65rem;
     display: -webkit-box;
@@ -315,7 +315,7 @@
 
 .footerPreview {
     font-size: 0.72rem;
-    color: #9ca3af;
+    color: var(--text-placeholder);
     margin: 0;
     font-style: italic;
 }
@@ -328,16 +328,16 @@
 
 .buttonChip {
     padding: 0.25rem 0.65rem;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--border-color);
     border-radius: 6px;
     font-size: 0.72rem;
-    color: #059669;
-    background: #f0fdf4;
+    color: var(--success-main);
+    background: var(--success-light-bg);
 }
 
 .dateText {
     font-size: 0.72rem;
-    color: #9ca3af;
+    color: var(--text-placeholder);
 }
 
 // ── Empty State ───────────────────────────────────────────────────────────────
@@ -348,12 +348,12 @@
     justify-content: center;
     gap: 0.75rem;
     padding: 4rem 1rem;
-    color: #9ca3af;
+    color: var(--text-placeholder);
     font-size: 0.9rem;
 }
 
 .emptyIcon {
-    color: #d1d5db;
+    color: var(--text-placeholder);
 }
 
 // ── Drawer Styles ─────────────────────────────────────────────────────────────
@@ -361,7 +361,7 @@
     height: 100%;
     display: flex;
     flex-direction: column;
-    background: #fff;
+    background: var(--bg-paper);
 }
 
 .drawerHeader {
@@ -369,8 +369,8 @@
     align-items: center;
     justify-content: space-between;
     padding: 1rem 1.5rem;
-    background: #fff;
-    border-bottom: 1px solid #e4e8ee;
+    background: var(--bg-paper);
+    border-bottom: 1px solid var(--border-color);
 
     @media (max-width: 640px) {
         padding: 0.875rem 1rem;
@@ -395,7 +395,7 @@
     border-radius: 50%;
 
     &:hover {
-        background: #f1f5f9;
+        background: var(--bg-light);
     }
 }
 
@@ -413,7 +413,7 @@
 
 // ── WhatsApp Card Preview ─────────────────────────────────────────────────────
 .whatsappCard {
-    background: #d9fdd3;
+    background: var(--success-light-bg);
     border-radius: 12px;
     box-shadow: 0 1px 0.5px rgba(0, 0, 0, 0.13);
     width: 100%;
@@ -426,14 +426,14 @@
 
 .waHeaderImage,
 .waHeaderVideo {
-    background: #e9edef;
+    background: var(--bg-light);
     height: 180px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    color: $text2ndColor;
+    color: var(--text-tertiary);
     font-size: 0.85rem;
     font-weight: 500;
 }
@@ -441,7 +441,7 @@
 .waBody {
     padding: 0.75rem 0.75rem 0.5rem;
     font-size: 0.88rem;
-    color: $titleColor;
+    color: var(--text-primary);
     line-height: 1.4;
     white-space: pre-wrap;
 
@@ -453,11 +453,11 @@
 .waFooter {
     padding: 0 0.75rem 0.5rem;
     font-size: 0.75rem;
-    color: #667781;
+    color: var(--text-tertiary);
 }
 
 .waButtons {
-    border-top: 1px solid #f0f2f5;
+    border-top: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
 }
@@ -465,9 +465,9 @@
 .waBtn {
     background: transparent;
     border: none;
-    border-bottom: 1px solid #f0f2f5;
+    border-bottom: 1px solid var(--border-color);
     padding: 0.65rem;
-    color: #008069;
+    color: var(--primary-main);
     font-size: 0.85rem;
     font-weight: 500;
     cursor: pointer;
@@ -478,6 +478,6 @@
     }
 
     &:hover {
-        background: #f8fafc;
+        background: var(--bg-subtle);
     }
 }

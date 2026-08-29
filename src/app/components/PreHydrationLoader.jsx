@@ -22,7 +22,7 @@ export default function PreHydrationLoader({ show = true, text = 'Preparing your
         .pre-hydration-loader {
           position: fixed;
           inset: 0;
-          background: linear-gradient(160deg, #f8fafc 0%, #f3f0fa 100%);
+          background: linear-gradient(160deg, var(--bg-default) 0%, var(--bg-elevated) 100%);
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -83,11 +83,11 @@ export default function PreHydrationLoader({ show = true, text = 'Preparing your
           font-family: 'Poppins', sans-serif;
           font-weight: 700;
           font-size: 1rem;
-          color: #444050;
+          color: var(--text-primary);
           letter-spacing: -0.01em;
         }
         .pl-brand span {
-          background: linear-gradient(90deg, #1daa61, #128C7E);
+          background: linear-gradient(90deg, var(--primary-main), var(--wa-header));
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
@@ -96,7 +96,7 @@ export default function PreHydrationLoader({ show = true, text = 'Preparing your
           font-family: 'Poppins', sans-serif;
           font-weight: 500;
           font-size: 0.72rem;
-          color: #9e9e9e;
+          color: var(--text-placeholder);
           letter-spacing: 0.04em;
           margin-top: -0.5rem;
         }
@@ -107,12 +107,12 @@ export default function PreHydrationLoader({ show = true, text = 'Preparing your
         <svg className="pl" viewBox="0 0 200 200" width="200" height="200" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <linearGradient id="pl-grad1" x1="1" y1="0.5" x2="0" y2="0.5">
-              <stop offset="0%" stopColor="#128C7E" />
-              <stop offset="100%" stopColor="#1daa61" />
+              <stop offset="0%" stopColor="var(--wa-header)" />
+              <stop offset="100%" stopColor="var(--primary-main)" />
             </linearGradient>
             <linearGradient id="pl-grad2" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#128C7E" />
-              <stop offset="100%" stopColor="#1daa61" />
+              <stop offset="0%" stopColor="var(--wa-header)" />
+              <stop offset="100%" stopColor="var(--primary-main)" />
             </linearGradient>
           </defs>
           <circle className="pl__ring" cx="100" cy="100" r="82" fill="none" stroke="url(#pl-grad1)" strokeWidth="36" strokeDasharray="0 257 1 257" strokeDashoffset="0.01" strokeLinecap="round" transform="rotate(-90,100,100)" />

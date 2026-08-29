@@ -136,7 +136,7 @@ const NODE_TYPE_LABELS = {
 };
 
 const NodeWrapper = ({ id, type, selected, title, icon: Icon, children, warnings = [], onTitleChange }) => {
-    const color = colorMap[type] || '#64748b';
+    const color = colorMap[type] || 'var(--text-tertiary)';
     const duplicateNode = useFlowStore((state) => state.duplicateNode);
 
     return (
@@ -468,7 +468,7 @@ const SendQuestionNode = ({ id, selected, data }) => {
                             <div className={styles.flowNodeSectionLabel}>Fallback Branches:</div>
                             <div className={`${styles.flowNodeFallbackItem} ${styles.flowNodeFallbackTimeout}`}>
                                 <span>⏳ No Input Timeout ({safeData.timeoutMinutes || 30}m)</span>
-                                <Handle type="source" position={Position.Right} id="no_input" className={styles.flowNodeHandleMini} style={{ background: '#f59e0b', top: '50%' }} />
+                                <Handle type="source" position={Position.Right} id="no_input" className={styles.flowNodeHandleMini} style={{ background: 'var(--warning-main)', top: '50%' }} />
                             </div>
                             <div className={`${styles.flowNodeFallbackItem} ${styles.flowNodeFallbackNoMatch}`}>
                                 <span>❌ No Match Exception</span>
@@ -567,11 +567,11 @@ const ConditionNode = ({ id, selected, data }) => {
             <div className={styles.flowNodeOutputList}>
                 <div className={`${styles.flowNodeOutputItem} ${styles.flowNodeOutputTrue}`}>
                     <span>True</span>
-                    <Handle type="source" position={Position.Right} id="true" className={styles.flowNodeHandleMini} style={{ background: '#10b981', top: '50%' }} />
+                    <Handle type="source" position={Position.Right} id="true" className={styles.flowNodeHandleMini} style={{ background: 'var(--success-main)', top: '50%' }} />
                 </div>
                 <div className={`${styles.flowNodeOutputItem} ${styles.flowNodeOutputFalse}`}>
                     <span>False</span>
-                    <Handle type="source" position={Position.Right} id="false" className={styles.flowNodeHandleMini} style={{ background: '#ef4444', top: '50%' }} />
+                    <Handle type="source" position={Position.Right} id="false" className={styles.flowNodeHandleMini} style={{ background: 'var(--error-main)', top: '50%' }} />
                 </div>
             </div>
         </NodeWrapper>
@@ -693,11 +693,11 @@ const APICallNode = ({ id, selected, data }) => {
             <div className={styles.flowNodeOutputList}>
                 <div className={`${styles.flowNodeOutputItem} ${styles.flowNodeOutputSuccess}`}>
                     <span>Success</span>
-                    <Handle type="source" position={Position.Right} id="success" className={styles.flowNodeHandleMini} style={{ background: '#10b981', top: '50%' }} />
+                    <Handle type="source" position={Position.Right} id="success" className={styles.flowNodeHandleMini} style={{ background: 'var(--success-main)', top: '50%' }} />
                 </div>
                 <div className={`${styles.flowNodeOutputItem} ${styles.flowNodeOutputError}`}>
                     <span>Error</span>
-                    <Handle type="source" position={Position.Right} id="error" className={styles.flowNodeHandleMini} style={{ background: '#ef4444', top: '50%' }} />
+                    <Handle type="source" position={Position.Right} id="error" className={styles.flowNodeHandleMini} style={{ background: 'var(--error-main)', top: '50%' }} />
                 </div>
             </div>
         </NodeWrapper>

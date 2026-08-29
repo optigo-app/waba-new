@@ -6,7 +6,7 @@
     flex-direction: column;
     gap: 0.75rem;
     padding: 0.75rem 1rem;
-    background: #f8fafc;
+    background: var(--bg-default);
     height: 100vh;
     overflow: hidden;
     box-sizing: border-box;
@@ -18,8 +18,8 @@
     justify-content: space-between;
     align-items: center;
     padding: 0.75rem 1.5rem;
-    background: #fff;
-    border-bottom: 1px solid $sidebar-borderColor;
+    background: var(--bg-paper);
+    border-bottom: 1px solid var(--sidebar-borderColor);
     border-radius: 12px;
     flex-shrink: 0;
     flex-wrap: wrap;
@@ -37,8 +37,8 @@
     width: 36px;
     height: 36px;
     border-radius: 10px;
-    background: rgba($primary-main, 0.1);
-    color: $primary-main;
+    background: var(--primary-light-bg);
+    color: var(--primary-main);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -48,7 +48,7 @@
 .pageTitle {
     font-size: 1rem !important;
     font-weight: 600 !important;
-    color: $titleColor !important;
+    color: var(--titleColor) !important;
     margin: 0 0 4px 0 !important;
     font-family: $font-family !important;
     line-height: 1.25 !important;
@@ -58,7 +58,7 @@
 .pageSubtitle {
     font-size: 0.78rem !important;
     font-weight: 400 !important;
-    color: $secondaryColor !important;
+    color: var(--secondary-color) !important;
     margin: 0 !important;
     font-family: $font-family !important;
     line-height: 1.4 !important;
@@ -78,14 +78,14 @@
     font-size: 0.78rem !important;
     font-weight: 600 !important;
     border-radius: 10px !important;
-    border-color: #e2e8f0 !important;
-    color: #475569 !important;
-    background: #fff !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-tertiary) !important;
+    background: var(--bg-paper) !important;
     transition: all 0.2s ease !important;
 
     &:hover {
-        border-color: #1daa61 !important;
-        color: #1daa61 !important;
+        border-color: var(--primary-main) !important;
+        color: var(--primary-main) !important;
         background: #f0fdf4 !important;
     }
 }
@@ -151,7 +151,7 @@
     display: flex;
     align-items: stretch;
     position: relative;
-    background: linear-gradient(135deg, #075E54 0%, #1daa61 100%);
+    background: linear-gradient(135deg, #075E54 0%, var(--primary-main) 100%);
     border: none;
     border-radius: 14px;
     margin-bottom: 1rem;
@@ -193,15 +193,15 @@
     }
 
     &__highlight {
-        color: #25D366;
+        color: var(--success-main);
         font-weight: 700 !important;
-        border-bottom: 2px solid #25D366;
+        border-bottom: 2px solid var(--success-main);
         padding-bottom: 3px;
     }
 
     &__desc {
         font-size: 0.78rem !important;
-        color: #cbd5e1;
+        color: var(--border-strong);
         line-height: 1.5;
         padding: 0;
         font-family: 'Poppins', sans-serif !important;
@@ -220,13 +220,13 @@
         display: flex;
         align-items: center;
         gap: 0.4rem;
-        color: #cbd5e1;
+        color: var(--border-strong);
         font-size: 0.7rem;
         font-weight: 500;
         font-family: 'Poppins', sans-serif;
 
         svg {
-            color: #25D366;
+            color: var(--success-main);
             flex-shrink: 0;
         }
     }
@@ -246,10 +246,10 @@
         border-radius: 10px !important;
         font-family: $font-family !important;
         font-size: 0.82rem !important;
-        background: #fff;
+        background: var(--bg-paper);
 
         svg {
-            color: $secondaryColor;
+            color: var(--secondary-color);
         }
     }
 }
@@ -270,13 +270,22 @@
     }
 }
 
+.automationTable {
+    flex: 1;
+    min-height: 0;
+    background: var(--bg-paper);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
 .automationCard {
     height: 100%;
     border-radius: 16px !important;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    border: 1px solid #eef0f4 !important;
+    border: 1px solid var(--border-color) !important;
     box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.02) !important;
     transition: box-shadow 0.3s ease, transform 0.25s ease !important;
     cursor: pointer;
@@ -303,7 +312,7 @@
     width: 72px;
     height: 72px;
     border-radius: 50%;
-    background: #f1f5f9;
+    background: var(--bg-light);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -311,20 +320,20 @@
 }
 
 .emptyStateIcon {
-    color: #cbd5e1;
+    color: var(--border-strong);
 }
 
 .emptyStateTitle {
     font-size: 1rem !important;
     font-weight: 600 !important;
-    color: $titleColor;
+    color: var(--titleColor);
     font-family: $font-family !important;
     margin: 0 0 0.5rem 0 !important;
 }
 
 .emptyStateDesc {
     font-size: 0.82rem !important;
-    color: $secondaryColor !important;
+    color: var(--secondary-color) !important;
     font-family: $font-family !important;
     margin: 0 !important;
     max-width: 320px;
@@ -336,7 +345,7 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background: #fff;
+    background: var(--bg-paper);
     border-radius: 14px;
     box-shadow: 0 12px 40px rgba(15, 23, 42, 0.2);
     width: 400px;
@@ -346,13 +355,13 @@
 
 .draftModalHeader {
     padding: 1.25rem 1.5rem;
-    border-bottom: 1px solid $sidebar-borderColor;
+    border-bottom: 1px solid var(--sidebar-borderColor);
 }
 
 .draftModalTitle {
     font-size: 1rem;
     font-weight: 700;
-    color: $titleColor;
+    color: var(--titleColor);
     font-family: $font-family;
 }
 
@@ -362,7 +371,7 @@
 
 .draftModalText {
     font-size: 0.85rem;
-    color: $secondaryColor;
+    color: var(--secondary-color);
     font-family: $font-family;
     margin: 0 0 1.25rem 0;
     line-height: 1.6;
@@ -379,6 +388,6 @@
     font-family: $font-family !important;
     font-size: 0.8rem !important;
     border-radius: 10px !important;
-    border-color: $sidebar-borderColor !important;
-    color: $secondaryColor !important;
+    border-color: var(--sidebar-borderColor) !important;
+    color: var(--secondary-color) !important;
 }

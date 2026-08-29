@@ -7,10 +7,10 @@ import EmojiPicker from 'emoji-picker-react';
 import ReplyPreview from './ReplyPreview';
 
 const ATTACH_MENU_ITEMS = [
-  { icon: Image, label: 'Image', accept: 'image/*', color: '#8b5cf6', bg: '#f3f0ff' },
-  { icon: Video, label: 'Video', accept: 'video/*', color: '#06b6d4', bg: '#ecfeff' },
-  { icon: FileText, label: 'Document', accept: 'application/pdf,.doc,.docx,.txt,.ppt,.pptx,.xls,.xlsx', color: '#f59e0b', bg: '#fffbeb' },
-  // { icon: Headphones, label: 'Audio', accept: 'audio/*,.aac,.amr,.mp3,.m4a,.ogg', color: '#10b981', bg: '#ecfdf5' },
+  { icon: Image, label: 'Image', accept: 'image/*', color: '#8b5cf6', bg: 'var(--bg-light)' },
+  { icon: Video, label: 'Video', accept: 'video/*', color: '#06b6d4', bg: 'var(--bg-light)' },
+  { icon: FileText, label: 'Document', accept: 'application/pdf,.doc,.docx,.txt,.ppt,.pptx,.xls,.xlsx', color: '#f59e0b', bg: 'var(--bg-light)' },
+  // { icon: Headphones, label: 'Audio', accept: 'audio/*,.aac,.amr,.mp3,.m4a,.ogg', color: '#10b981', bg: 'var(--bg-light)' },
 ];
 
 export default function ChatInputArea({
@@ -28,6 +28,7 @@ export default function ChatInputArea({
   setEmojiPickerOpen,
   emojiPickerRef,
   addMediaFiles,
+  onTyping,
 }) {
   const textareaRef = useRef(null);
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
@@ -45,6 +46,7 @@ export default function ChatInputArea({
   }, [input, adjustHeight]);
 
   useEffect(() => {
+    if (window.matchMedia('(max-width: 1024px)').matches) return;
     textareaRef.current?.focus();
   }, []);
 
@@ -87,7 +89,7 @@ export default function ChatInputArea({
                 onClick={() => setAttachMenuOpen((prev) => !prev)}
                 disabled={uploading}
               >
-                {uploading ? <CircularProgress size={18} /> : <Paperclip size={18} />}
+                {uploading ? <CircularProgress size={18} sx={{ color: 'var(--chat-primary, #25d366)' }} /> : <Paperclip size={18} />}
               </IconButton>
             </Tooltip>
 
@@ -97,9 +99,9 @@ export default function ChatInputArea({
                   position: 'absolute',
                   bottom: 'calc(100% + 10px)',
                   left: 0,
-                  background: '#fff',
+                  background: 'var(--bg-paper)',
                   borderRadius: 16,
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08)',
+                  boxShadow: 'var(--box-shadow)',
                   padding: '10px 6px',
                   minWidth: 180,
                   zIndex: 100,
@@ -133,7 +135,7 @@ export default function ChatInputArea({
                         transition: 'background 0.15s ease',
                         fontFamily: 'var(--font-poppins), Poppins, sans-serif',
                         fontSize: '0.88rem',
-                        color: '#1f2937',
+                        color: 'var(--text-primary)',
                         textAlign: 'left',
                         width: '100%',
                       }}
@@ -176,6 +178,7 @@ export default function ChatInputArea({
             onChange={(e) => {
               setInput(e.target.value);
               adjustHeight();
+              onTyping?.();
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
@@ -220,7 +223,7 @@ export default function ChatInputArea({
             onClick={handleSend}
             disabled={sending || (!input.trim() && mediaPreviewLength === 0)}
           >
-            {sending ? <CircularProgress size={18} sx={{ color: '#fff' }} /> : <Send size={18} />}
+            {sending ? <CircularProgress size={18} sx={{ color: 'var(--button-color)' }} /> : <Send size={18} />}
           </button>
         </div>
     </div>

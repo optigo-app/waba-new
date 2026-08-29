@@ -742,14 +742,14 @@ export const useFlowStore = create((set, get) => ({
     setTriggerMode: (mode) => { set({ triggerMode: mode, isDirty: true }); saveDraft(get()); },
     setIsActive: (val) => { set({ isActive: val, isDirty: true }); saveDraft(get()); },
 
-    saveTriggerToBackend: async () => {
+    saveTriggerToBackend: async (accountId = '') => {
         const s = get();
         if (!s.flowId) return;
 
         const token = getToken();
         const session = getDecodedSession();
         const companyCode = token?.companycode || token?.CompanyCode || session?.companycode || session?.cc || '';
-        const accountId = token?.AccountId || token?.accountid || session?.accountid || 1;
+        const finalAccountId = accountId || token?.AccountId || token?.accountid || session?.accountid || 1;
         const userId = token?.id || '';
         const appUserId = token?.email || token?.Email || session?.email || 'admin@orail.co.in';
 
@@ -760,7 +760,7 @@ export const useFlowStore = create((set, get) => ({
         const numericFlowId = parseInt(s.flowId);
         const payload = {
             companycode: companyCode,
-            AccountId: accountId,
+            AccountId: finalAccountId,
             TriggerMessage: s.triggerKeyword,
             FlowName: s.flowName,
             StartNode: startNode,
@@ -790,7 +790,7 @@ export const useFlowStore = create((set, get) => ({
     },
 
     // Save & Export
-    saveCurrentFlow: async () => {
+    saveCurrentFlow: async (accountId = '') => {
         const currentId = get().flowId;
         if (!currentId) return { success: false, error: 'No active flow.' };
 
@@ -905,7 +905,7 @@ export const useFlowStore = create((set, get) => ({
 
             // 2. Save trigger keyword to backend via report API
             try {
-                await get().saveTriggerToBackend();
+                await get().saveTriggerToBackend(accountId);
             } catch (triggerErr) {
                 console.error('Trigger save error:', triggerErr.message);
             }

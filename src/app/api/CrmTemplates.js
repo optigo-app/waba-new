@@ -1,14 +1,15 @@
 import { callCommonApi } from "./CommonApi";
 
-export const fetchCrmTemplates = async (userId, signal) => {
+export const fetchCrmTemplates = async (userId, signal, accountId, wabaid = '') => {
     try {
 
         const response = await callCommonApi({
             mode: "broadcast_crm_temp_list",
             f: "Broadcast ( Template List )",
-            p: "",
+            p: JSON.stringify({ AccountId: accountId !== undefined && accountId !== '' ? Number(accountId) : '' }),
             userId,
             signal,
+            wabaid,
         });
         if (response?.Data) {
             return {

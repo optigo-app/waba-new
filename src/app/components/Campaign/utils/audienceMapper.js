@@ -26,5 +26,6 @@ export const extractAudienceFromResponse = (data) => {
     if (!data) return [];
     if (data.rd3 && data.rd3.length > 0) return mapAudienceData(data.rd3);
     if (data.rd2 && data.rd2.length > 0) return mapAudienceData(data.rd2);
+    if (data.rd && data.rd.length > 0) return mapAudienceData(data.rd);
     return [];
 };

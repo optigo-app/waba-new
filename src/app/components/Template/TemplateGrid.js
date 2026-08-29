@@ -8,11 +8,11 @@ const STATUS_CONFIG = {
     REJECTED: { label: 'Rejected', icon: XCircle, color: 'var(--error-main)', bg: 'rgba(211, 47, 47, 0.16)' },
     PENDING: { label: 'Pending', icon: Clock, color: 'var(--warning-main)', bg: 'rgba(245, 124, 0, 0.16)' },
     IN_APPEAL: { label: 'In Appeal', icon: AlertCircle, color: 'var(--primary-main)', bg: 'rgba(115, 103, 240, 0.16)' },
-    DRAFT: { label: 'Draft', icon: BookOpen, color: 'var(--secondary-color)', bg: 'rgba(125, 127, 133, 0.16)' },
+    DRAFT: { label: 'Draft', icon: BookOpen, color: 'var(--text-tertiary)', bg: 'rgba(125, 127, 133, 0.16)' },
 };
 
 const getStatusConfig = (status) =>
-    STATUS_CONFIG[status?.toUpperCase()] || { label: status || 'Unknown', icon: Clock, color: '#6b7280', bg: '#f3f4f6' };
+    STATUS_CONFIG[status?.toUpperCase()] || { label: status || 'Unknown', icon: Clock, color: 'var(--text-tertiary)', bg: 'var(--bg-light)' };
 
 const getHeaderType = (components = []) => {
     const carousel = components.find((c) => c.type === 'CAROUSEL');
@@ -32,7 +32,7 @@ const HEADER_ICONS = {
     image: { Icon: Image, label: 'Image', color: 'var(--primary-main)', bg: 'rgba(115, 103, 240, 0.16)' },
     video: { Icon: Video, label: 'Video', color: 'var(--info-main)', bg: 'rgba(0, 207, 232, 0.16)' },
     document: { Icon: FileType, label: 'Document', color: 'var(--warning-main)', bg: 'rgba(245, 124, 0, 0.16)' },
-    text: { Icon: FileQuestion, label: 'Text', color: 'var(--title-color)', bg: 'rgba(68, 64, 80, 0.16)' },
+    text: { Icon: FileQuestion, label: 'Text', color: 'var(--text-primary)', bg: 'rgba(68, 64, 80, 0.16)' },
 };
 
 const canEditTemplate = (template) => {
@@ -57,7 +57,7 @@ const TemplateGrid = ({ items, onView, onSend, onClone, onEdit, onDelete, onPubl
                 py: 2,
                 '&::-webkit-scrollbar': { width: '4px' },
                 '&::-webkit-scrollbar-track': { background: 'transparent' },
-                '&::-webkit-scrollbar-thumb': { background: '#e2e8f0', borderRadius: '99px' }
+                '&::-webkit-scrollbar-thumb': { background: 'var(--border-color)', borderRadius: '99px' }
             }}
         >
             {items.map((template) => {
@@ -91,7 +91,7 @@ const TemplateGrid = ({ items, onView, onSend, onClone, onEdit, onDelete, onPubl
                                 {/* Header */}
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                        <FileText size={16} color="#6b7280" />
+                                        <FileText size={16} color="var(--text-tertiary)" />
                                         <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                                             {template.TemplateName}
                                         </Typography>
@@ -132,14 +132,14 @@ const TemplateGrid = ({ items, onView, onSend, onClone, onEdit, onDelete, onPubl
 
                                 {/* Body Preview */}
                                 {body?.text && (
-                                    <Typography variant="body2" sx={{ color: '#374151', fontSize: '0.78rem', mb: 1, whiteSpace: 'pre-wrap' }}>
+                                    <Typography variant="body2" sx={{ color: 'var(--text-primary)', fontSize: '0.78rem', mb: 1, whiteSpace: 'pre-wrap' }}>
                                         {body.text}
                                     </Typography>
                                 )}
 
                                 {/* Footer Preview */}
                                 {footer?.text && (
-                                    <Typography variant="caption" sx={{ color: '#6b7280', fontSize: '0.72rem', display: 'block', mb: 1 }}>
+                                    <Typography variant="caption" sx={{ color: 'var(--text-tertiary)', fontSize: '0.72rem', display: 'block', mb: 1 }}>
                                         {footer.text}
                                     </Typography>
                                 )}
@@ -156,7 +156,7 @@ const TemplateGrid = ({ items, onView, onSend, onClone, onEdit, onDelete, onPubl
 
                             {/* Footer Actions */}
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', px: 2, pb: 1.5 }}>
-                                <Typography variant="caption" sx={{ color: '#9ca3af', fontSize: '0.72rem' }}>
+                                <Typography variant="caption" sx={{ color: 'var(--text-placeholder)', fontSize: '0.72rem' }}>
                                     {formattedDate}
                                 </Typography>
 
@@ -195,8 +195,8 @@ const TemplateGrid = ({ items, onView, onSend, onClone, onEdit, onDelete, onPubl
             })}
 
             <Grid size={{ xs: 12 }}>
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', borderTop: '1px solid #e4e8ee', pt: 2, mt: 'auto', borderRadius: '0 0 12px 12px' }}>
-                    <Typography variant="body2" sx={{ color: 'var(--text-2nd-color)', fontSize: '0.9rem', mb: 1 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', borderTop: '1px solid var(--border-color)', pt: 2, mt: 'auto', borderRadius: '0 0 12px 12px' }}>
+                    <Typography variant="body2" sx={{ color: 'var(--text-tertiary)', fontSize: '0.9rem', mb: 1 }}>
                         Showing {page * rowsPerPage + 1} to {Math.min((page + 1) * rowsPerPage, count)} of {count} entries
                     </Typography>
                     <Pagination

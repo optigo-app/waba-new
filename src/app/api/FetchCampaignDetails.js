@@ -1,9 +1,10 @@
 import { callCommonApi } from "./CommonApi";
 
-export const fetchCampaignDetails = async (userId, campaignId, chatMsgStatus = null, templateId = null) => {
+export const fetchCampaignDetails = async (userId, campaignId, chatMsgStatus = null, templateId = null, accountId) => {
     try {
         const p = {
-            CampaignId: campaignId
+            CampaignId: campaignId,
+            AccountId: Number(accountId) || 1,
         };
 
         // Add ChatMsgStatus to parameters if provided

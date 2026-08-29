@@ -1,40 +1,54 @@
 /**
- * MUI component overrides for the light theme.
+ * MUI component overrides for light & dark themes.
  * Import the font string so we don't repeat it.
+ *
+ * Pass `mode: 'light' | 'dark'` to getComponentOverrides(). Defaults to 'light'.
  */
 
 const poppinsFont = "'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif";
 
-export const getComponentOverrides = () => {
+export const getComponentOverrides = (mode = 'light') => {
+  const isDark = mode === 'dark';
+  const bgDefault = isDark ? '#0f172a' : '#f5f5f5';
+  const textPrimary = isDark ? '#e2e8f0' : '#444050';
+  const scrollbarTrack = isDark ? '#0f172a' : '#f5f5f5';
+  const scrollbarThumb = isDark ? '#475569' : '#bdbdbd';
+  const scrollbarThumbHover = isDark ? '#64748b' : '#9e9e9e';
+  const borderColor = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)';
+  const outlinedBorderColor = isDark ? 'rgba(255,255,255,0.23)' : 'rgba(0,0,0,0.23)';
+  const outlinedBorderHover = isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)';
+  const dataGridHeaderBg = isDark ? '#1e293b' : '#f5f5f5';
+
   return {
     MuiCssBaseline: {
       styleOverrides: {
         html: { height: '100%' },
         body: {
           fontFamily: poppinsFont,
-          backgroundColor: '#f5f5f5',
-          color: '#444050',
+          backgroundColor: bgDefault,
+          color: textPrimary,
           minHeight: '100%',
           WebkitFontSmoothing: 'antialiased',
-          MozOsxFontSmoothing: 'grayscale',
+          MozosxFontSmoothing: 'grayscale',
+          transition: 'background-color 200ms ease, color 200ms ease',
         },
         '::-webkit-scrollbar': {
           width: '8px',
           height: '8px',
         },
         '::-webkit-scrollbar-track': {
-          background: '#f5f5f5',
+          background: scrollbarTrack,
         },
         '::-webkit-scrollbar-thumb': {
-          background: '#bdbdbd',
+          background: scrollbarThumb,
           borderRadius: '4px',
         },
         '::-webkit-scrollbar-thumb:hover': {
-          background: '#9e9e9e',
+          background: scrollbarThumbHover,
         },
         '*': {
           scrollbarWidth: 'thin',
-          scrollbarColor: '#bdbdbd #f5f5f5',
+          scrollbarColor: `${scrollbarThumb} ${scrollbarTrack}`,
         },
       },
     },
@@ -86,7 +100,7 @@ export const getComponentOverrides = () => {
           borderRadius: 12,
         },
         outlined: {
-          borderColor: 'rgba(0,0,0,0.08)',
+          borderColor,
         },
       },
     },
@@ -95,7 +109,9 @@ export const getComponentOverrides = () => {
       styleOverrides: {
         root: {
           borderRadius: 12,
-          boxShadow: 'rgba(0, 0, 0, 0.05) 0px 6px 24px, rgba(0, 0, 0, 0.03) 0px 0px 0px 1px',
+          boxShadow: isDark
+            ? 'rgba(0, 0, 0, 0.3) 0px 6px 24px, rgba(0, 0, 0, 0.2) 0px 0px 0px 1px'
+            : 'rgba(0, 0, 0, 0.05) 0px 6px 24px, rgba(0, 0, 0, 0.03) 0px 0px 0px 1px',
         },
       },
     },
@@ -106,10 +122,10 @@ export const getComponentOverrides = () => {
           fontFamily: poppinsFont,
           borderRadius: 8,
           '& fieldset': {
-            borderColor: 'rgba(0,0,0,0.23)',
+            borderColor: outlinedBorderColor,
           },
           '&:hover fieldset': {
-            borderColor: 'rgba(0,0,0,0.4)',
+            borderColor: outlinedBorderHover,
           },
           '&.Mui-focused fieldset': {
             borderWidth: 1,
@@ -239,7 +255,7 @@ export const getComponentOverrides = () => {
     MuiDivider: {
       styleOverrides: {
         root: {
-          borderColor: 'rgba(0,0,0,0.08)',
+          borderColor,
         },
       },
     },
@@ -258,7 +274,7 @@ export const getComponentOverrides = () => {
           fontFamily: poppinsFont,
           border: 'none',
           '& .MuiDataGrid-columnHeaders': {
-            backgroundColor: '#f5f5f5',
+            backgroundColor: dataGridHeaderBg,
           },
         },
       },

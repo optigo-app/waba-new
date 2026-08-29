@@ -5,8 +5,8 @@ import {
   Avatar, Box, Button, TextField, Typography,
   MenuList, MenuItem, ListItemAvatar, ListItemText, Checkbox, Chip,
 } from '@mui/material';
-import { Search, User, Send } from 'lucide-react';
-import { getCustomerDisplayName, getCustomerAvatarSeed, getWhatsAppAvatarConfig } from './utils/chatUtils';
+import { Search, User, Send, Check, X, UsersRound } from 'lucide-react';
+import { getCustomerDisplayName, getCustomerAvatarSeed, getWhatsAppAvatarConfig, hasCustomerName } from './utils/chatUtils';
 import { fetchConversationLists } from '../../api/chat/conversationApi';
 import { useAuth } from '../../hooks/useAuth';
 import CustomerModal from './ui/CustomerModal';
@@ -22,12 +22,26 @@ const useDebounce = (value, delay) => {
   return debouncedValue;
 };
 
+const getContactId = (contact) => contact?.CustomerId || contact?.Id || contact?.id;
+
+// Returns { title, subtitle } — falls back to phone number as the title and
+// an "Unsaved Contact" label instead of duplicating the phone on both lines.
+const getContactIdentity = (contact) => {
+  const phone = contact?.CustomerPhone || contact?.Sender || '';
+  if (hasCustomerName(contact)) {
+    const name = getCustomerDisplayName(contact);
+    return { title: name, subtitle: phone && phone !== name ? phone : undefined };
+  }
+  return { title: phone || getCustomerDisplayName(contact), subtitle: 'Unsaved Contact' };
+};
+
 export default function ForwardMessageModal({ message, onSend, onClose }) {
   const [selectedContacts, setSelectedContacts] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 400);
   const [loading, setLoading] = useState(false);
   const [contacts, setContacts] = useState([]);
+  const [activeTab, setActiveTab] = useState('all');
   const { auth } = useAuth();
 
   const loadContacts = useCallback(async () => {
@@ -49,6 +63,12 @@ export default function ForwardMessageModal({ message, onSend, onClose }) {
     loadContacts();
   }, [loadContacts]);
 
+  useEffect(() => {
+    if (activeTab === 'selected' && selectedContacts.length === 0) {
+      setActiveTab('all');
+    }
+  }, [activeTab, selectedContacts.length]);
+
   const filteredContacts = useMemo(() => {
     if (!searchTerm.trim()) return contacts;
     const term = searchTerm.toLowerCase();
@@ -59,42 +79,40 @@ export default function ForwardMessageModal({ message, onSend, onClose }) {
     });
   }, [contacts, searchTerm]);
 
+  // "All" tab shows the fetched/searched contacts; "Selected" tab lets the user review picks
+  const displayedContacts = activeTab === 'selected' ? selectedContacts : filteredContacts;
+
   const handleContactSelect = (contact) => {
     setSelectedContacts((prev) => {
-      const cid = contact.CustomerId || contact.Id || contact.id;
-      const isSelected = prev.find((c) => (c.CustomerId || c.Id || c.id) === cid);
-      return isSelected ? prev.filter((c) => (c.CustomerId || c.Id || c.id) !== cid) : [...prev, contact];
+      const cid = getContactId(contact);
+      const isSelected = prev.find((c) => getContactId(c) === cid);
+      return isSelected ? prev.filter((c) => getContactId(c) !== cid) : [...prev, contact];
     });
   };
 
   const handleRemoveContact = (contact) => {
-    const cid = contact.CustomerId || contact.Id || contact.id;
-    setSelectedContacts((prev) => prev.filter((c) => (c.CustomerId || c.Id || c.id) !== cid));
+    const cid = getContactId(contact);
+    setSelectedContacts((prev) => prev.filter((c) => getContactId(c) !== cid));
   };
 
-  const allFilteredSelected = useMemo(() => {
-    if (filteredContacts.length === 0) return false;
-    return filteredContacts.every((contact) => {
-      const cid = contact.CustomerId || contact.Id || contact.id;
-      return selectedContacts.some((c) => (c.CustomerId || c.Id || c.id) === cid);
+  const allDisplayedSelected = useMemo(() => {
+    if (displayedContacts.length === 0) return false;
+    return displayedContacts.every((contact) => {
+      const cid = getContactId(contact);
+      return selectedContacts.some((c) => getContactId(c) === cid);
     });
-  }, [filteredContacts, selectedContacts]);
+  }, [displayedContacts, selectedContacts]);
 
   const handleToggleSelectAll = () => {
-    if (allFilteredSelected) {
-      // Deselect all filtered contacts
-      const filteredIds = filteredContacts.map((c) => c.CustomerId || c.Id || c.id);
-      setSelectedContacts((prev) => prev.filter((c) => {
-        const id = c.CustomerId || c.Id || c.id;
-        return !filteredIds.includes(id);
-      }));
+    if (allDisplayedSelected) {
+      const displayedIds = displayedContacts.map(getContactId);
+      setSelectedContacts((prev) => prev.filter((c) => !displayedIds.includes(getContactId(c))));
     } else {
-      // Select all filtered contacts
       setSelectedContacts((prev) => {
         const next = [...prev];
-        filteredContacts.forEach((contact) => {
-          const cid = contact.CustomerId || contact.Id || contact.id;
-          if (!next.some((c) => (c.CustomerId || c.Id || c.id) === cid)) {
+        displayedContacts.forEach((contact) => {
+          const cid = getContactId(contact);
+          if (!next.some((c) => getContactId(c) === cid)) {
             next.push(contact);
           }
         });
@@ -112,91 +130,126 @@ export default function ForwardMessageModal({ message, onSend, onClose }) {
     onClose?.();
   };
 
+  const selectedCount = selectedContacts.length;
+
   return (
     <CustomerModal
       open={true}
       onClose={onClose}
-      title="Forward to"
+      title="Forward to..."
+      subtitle="Share message with contacts"
       maxWidth="xs"
+      dialogContentSx={{ p: 0, '&:first-of-type': { pt: 0 } }}
       contentSx={{ p: 0, pt: 0, fontFamily: 'var(--chat-font)' }}
+      paperSx={{ borderRadius: 4 }}
       actions={
-        <>
-          <Button
-            onClick={onClose}
-            variant="outlined"
-            color="secondary"
-            size="medium"
-            sx={{
-              textTransform: 'none',
-              borderRadius: '10px',
-              px: 3,
-              fontFamily: 'var(--chat-font)',
-              fontWeight: 600,
-              borderColor: '#d1d5db',
-              color: '#374151',
-              '&:hover': {
-                borderColor: '#9ca3af',
-                backgroundColor: '#f9fafb',
-              },
-            }}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSend}
-            disabled={selectedContacts.length === 0}
-            variant="contained"
-            size="medium"
-            startIcon={<Send size={15} />}
-            sx={{
-              textTransform: 'none',
-              borderRadius: '10px',
-              px: 3,
-              fontFamily: 'var(--chat-font)',
-              fontWeight: 600,
-              backgroundColor: 'var(--chat-btn-bg, #1daa61)',
-              '&:hover': { backgroundColor: 'var(--chat-btn-hover-color, #128c7e)' },
-              '&:disabled': { backgroundColor: '#e5e7eb', color: '#9ca3af' },
-            }}
-          >
-            Send
-          </Button>
-        </>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography
+              variant="caption"
+              sx={{
+                fontFamily: 'var(--chat-font)',
+                fontWeight: 500,
+                fontSize: '0.78rem',
+                color: selectedCount > 0 ? 'var(--chat-primary, #25d366)' : 'var(--text-secondary)',
+              }}
+            >
+              {selectedCount > 0 ? `${selectedCount} contact${selectedCount > 1 ? 's' : ''} selected` : 'No contacts selected'}
+            </Typography>
+          </Box>
+
+          <Box sx={{ display: 'flex', gap: 1.25 }}>
+            <Button
+              onClick={onClose}
+              variant="text"
+              size="medium"
+              sx={{
+                textTransform: 'none',
+                borderRadius: '10px',
+                px: 2,
+                fontFamily: 'var(--chat-font)',
+                fontWeight: 600,
+                color: 'var(--text-secondary)',
+                '&:hover': {
+                  backgroundColor: 'var(--bg-default)',
+                },
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSend}
+              disabled={selectedContacts.length === 0}
+              variant="contained"
+              size="medium"
+              startIcon={<Send size={15} />}
+              sx={{
+                textTransform: 'none',
+                borderRadius: '10px',
+                px: 2.5,
+                fontFamily: 'var(--chat-font)',
+                fontWeight: 600,
+                boxShadow: 'none',
+                backgroundColor: 'var(--chat-btn-bg, #1daa61)',
+                '&:hover': { backgroundColor: 'var(--chat-btn-hover-color, #128c7e)', boxShadow: 'none' },
+                '&:disabled': { backgroundColor: 'var(--border-color)', color: 'var(--text-tertiary)' },
+              }}
+            >
+              Send
+            </Button>
+          </Box>
+        </Box>
       }
     >
-      {/* Search */}
-      <Box sx={{ px: 3, pb: 2, pt: 1, borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+      {/* Search — edge-to-edge, no nested card */}
+      <Box sx={{ px: 2.5, py: 1.5, borderBottom: '1px solid var(--border-color)' }}>
         <TextField
           fullWidth
           size="small"
           placeholder="Search contacts..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          InputProps={{
-            startAdornment: (
-              <Search size={16} style={{ color: '#6b7280', marginRight: 8 }} />
-            ),
+          slotProps={{
+            input: {
+              startAdornment: (
+                <Search size={16} style={{ color: 'var(--text-secondary)', marginRight: 8, flexShrink: 0 }} />
+              ),
+              endAdornment: searchTerm ? (
+                <Box
+                  component="button"
+                  type="button"
+                  onClick={() => setSearchTerm('')}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: 'none',
+                    background: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--text-tertiary)',
+                    p: 0.25,
+                    '&:hover': { color: 'var(--text-primary)' },
+                  }}
+                >
+                  <X size={14} />
+                </Box>
+              ) : null,
+            },
           }}
           sx={{
             '& .MuiOutlinedInput-root': {
-              borderRadius: '12px',
-              fontSize: '0.875rem',
-              backgroundColor: '#ffffff',
+              borderRadius: '10px',
+              fontSize: '0.85rem',
+              backgroundColor: 'var(--bg-default)',
               fontFamily: 'var(--chat-font)',
-              color: '#1f2937',
-              '& fieldset': {
-                borderColor: '#d1d5db',
-                borderWidth: '1.5px',
-              },
-              '&:hover fieldset': {
-                borderColor: '#9ca3af',
-              },
-              '&.Mui-focused fieldset': {
-                borderColor: 'var(--chat-primary, #25d366)',
-                borderWidth: '2px',
+              color: 'var(--text-primary)',
+              '& fieldset': { border: 'none' },
+              '&.Mui-focused': {
+                backgroundColor: 'var(--bg-paper)',
+                boxShadow: '0 0 0 1.5px var(--chat-primary, #25d366)',
               },
               '& input::placeholder': {
-                color: '#6b7280',
+                color: 'var(--text-secondary)',
                 opacity: 1,
               },
             },
@@ -204,141 +257,235 @@ export default function ForwardMessageModal({ message, onSend, onClose }) {
         />
       </Box>
 
-      {/* Select All Toggle */}
-      {filteredContacts.length > 0 && (
-        <Box
-          sx={{
-            px: 3,
-            py: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            borderBottom: '1px solid rgba(0,0,0,0.06)',
-            backgroundColor: '#f9fafb',
-            cursor: 'pointer',
-            userSelect: 'none',
-          }}
-          onClick={handleToggleSelectAll}
-        >
-          <Typography
-            variant="body2"
+      {/* Filter tabs + Select all — single edge-to-edge bar */}
+      <Box
+        sx={{
+          px: 2.5,
+          py: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 1,
+          borderBottom: '1px solid var(--border-color)',
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+          {[
+            { key: 'all', label: 'All', count: contacts.length },
+            { key: 'selected', label: 'Selected', count: selectedCount },
+          ].map((tab) => {
+            if (tab.key === 'selected' && selectedCount === 0) return null;
+            const active = activeTab === tab.key;
+            return (
+              <Box
+                key={tab.key}
+                component="button"
+                type="button"
+                onClick={() => setActiveTab(tab.key)}
+                sx={{
+                  border: 'none',
+                  cursor: 'pointer',
+                  borderRadius: '20px',
+                  px: 1.4,
+                  py: 0.4,
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  fontFamily: 'var(--chat-font)',
+                  transition: 'all 0.15s ease',
+                  backgroundColor: active ? 'var(--chat-primary, #25d366)' : 'var(--bg-default)',
+                  color: active ? '#fff' : 'var(--text-secondary)',
+                }}
+              >
+                {tab.label} {tab.count > 0 ? `(${tab.count})` : ''}
+              </Box>
+            );
+          })}
+        </Box>
+
+        {displayedContacts.length > 0 && (
+          <Box
+            onClick={handleToggleSelectAll}
             sx={{
-              fontFamily: 'var(--chat-font)',
-              fontWeight: 600,
-              fontSize: '0.82rem',
-              color: '#4b5563',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.5,
+              cursor: 'pointer',
+              userSelect: 'none',
             }}
           >
-            {allFilteredSelected ? 'Deselect all' : 'Select all'} ({filteredContacts.length} contacts)
-          </Typography>
-          <Checkbox
-            size="small"
-            checked={allFilteredSelected}
-            onChange={handleToggleSelectAll}
-            onClick={(e) => e.stopPropagation()}
-            sx={{
-              color: '#9ca3af',
-              '&.Mui-checked': { color: 'var(--chat-primary, #25d366)' },
-              p: 0.5,
-            }}
-          />
-        </Box>
-      )}
+            <Typography
+              variant="caption"
+              sx={{ fontFamily: 'var(--chat-font)', fontWeight: 600, fontSize: '0.72rem', color: 'var(--text-secondary)' }}
+            >
+              {allDisplayedSelected ? 'Deselect all' : 'Select all'}
+            </Typography>
+            <Checkbox
+              size="small"
+              checked={allDisplayedSelected}
+              onChange={handleToggleSelectAll}
+              onClick={(e) => e.stopPropagation()}
+              sx={{
+                color: 'var(--text-tertiary)',
+                '&.Mui-checked': { color: 'var(--chat-primary, #25d366)' },
+                p: 0.5,
+              }}
+            />
+          </Box>
+        )}
+      </Box>
 
-      {/* Selected chips */}
+      {/* Selected contacts chips — max 3 visible + "+N more" */}
       {selectedContacts.length > 0 && (
         <Box
           sx={{
-            px: 3,
-            py: 1.5,
-            borderBottom: '1px solid rgba(0,0,0,0.06)',
+            px: 2.5,
+            py: 1.1,
+            borderBottom: '1px solid var(--border-color)',
             display: 'flex',
-            flexWrap: 'wrap',
+            alignItems: 'center',
             gap: '6px',
-            maxHeight: 100,
-            overflowY: 'auto',
           }}
         >
-          {selectedContacts.map((contact) => (
-            <Chip
-              key={contact.CustomerId || contact.Id || contact.id}
-              label={getCustomerDisplayName(contact)}
-              onDelete={() => handleRemoveContact(contact)}
-              size="small"
+          {selectedContacts.slice(0, 3).map((contact) => {
+            const { title } = getContactIdentity(contact);
+            return (
+              <Chip
+                key={getContactId(contact)}
+                avatar={(
+                  <Avatar {...getWhatsAppAvatarConfig(getCustomerAvatarSeed(contact), 20)}>
+                    <User size={11} />
+                  </Avatar>
+                )}
+                label={title?.split(' ')[0]}
+                onDelete={() => handleRemoveContact(contact)}
+                size="small"
+                sx={{
+                  height: 26,
+                  fontSize: '0.75rem',
+                  fontWeight: 500,
+                  borderRadius: '20px',
+                  backgroundColor: 'var(--chat-primary-light, rgba(37, 211, 102, 0.14))',
+                  color: 'var(--text-primary)',
+                  fontFamily: 'var(--chat-font)',
+                  '& .MuiChip-avatar': { width: 20, height: 20 },
+                  '& .MuiChip-deleteIcon': { color: 'var(--text-secondary)', fontSize: '15px', '&:hover': { color: 'error.main' } },
+                }}
+              />
+            );
+          })}
+          {selectedCount > 3 && (
+            <Box
+              component="button"
+              type="button"
+              onClick={() => setActiveTab('selected')}
               sx={{
+                border: 'none',
+                cursor: 'pointer',
+                borderRadius: '20px',
                 height: 26,
-                fontSize: '0.78rem',
-                fontWeight: 500,
-                borderRadius: '8px',
-                backgroundColor: 'var(--chat-primary-light, rgba(37, 211, 102, 0.12))',
-                color: '#1f2937',
-                border: '1px solid rgba(37, 211, 102, 0.2)',
+                px: 1.2,
+                fontSize: '0.72rem',
+                fontWeight: 700,
                 fontFamily: 'var(--chat-font)',
-                '& .MuiChip-deleteIcon': { color: '#6b7280', fontSize: '15px', '&:hover': { color: 'error.main' } },
+                backgroundColor: 'var(--chat-primary, #25d366)',
+                color: '#fff',
               }}
-            />
-          ))}
+            >
+              +{selectedCount - 3} more
+            </Box>
+          )}
         </Box>
       )}
 
-      {/* Contact list */}
-      <Box sx={{ maxHeight: 280, minHeight: 180, overflowY: 'auto', px: 2, py: 1 }}>
+      {/* Contact list — flat rows, edge-to-edge dividers, ultra-thin scrollbar */}
+      <Box
+        sx={{
+          maxHeight: 300,
+          minHeight: 180,
+          overflowY: 'auto',
+          '&::-webkit-scrollbar': { width: '5px' },
+          '&::-webkit-scrollbar-track': { background: 'transparent' },
+          '&::-webkit-scrollbar-thumb': { backgroundColor: 'transparent', borderRadius: '10px' },
+          '&:hover::-webkit-scrollbar-thumb': { backgroundColor: 'var(--text-tertiary)', opacity: 0.4 },
+        }}
+      >
         <MenuList dense sx={{ py: 0 }}>
-          {loading && filteredContacts.length === 0 && (
-            <MenuItem disabled sx={{ py: 1.5 }}>
+          {loading && displayedContacts.length === 0 && (
+            <MenuItem disabled sx={{ py: 1.5, px: 2.5 }}>
               <ListItemText
                 primary="Loading contacts..."
-                primaryTypographyProps={{ fontSize: '0.875rem', color: 'text.secondary', fontFamily: 'var(--chat-font)' }}
+                slotProps={{ primary: { sx: { fontSize: '0.85rem', color: 'text.secondary', fontFamily: 'var(--chat-font)' } } }}
               />
             </MenuItem>
           )}
-          {!loading && filteredContacts.length === 0 && (
-            <MenuItem disabled sx={{ py: 1.5 }}>
-              <ListItemText
-                primary="No contacts found"
-                primaryTypographyProps={{ fontSize: '0.875rem', color: 'text.secondary', fontFamily: 'var(--chat-font)' }}
-              />
-            </MenuItem>
+          {!loading && displayedContacts.length === 0 && (
+            <Box sx={{ py: 5, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, color: 'var(--text-tertiary)' }}>
+              <UsersRound size={30} strokeWidth={1.5} style={{ opacity: 0.6 }} />
+              <Typography
+                variant="body2"
+                sx={{ fontSize: '0.82rem', fontWeight: 500, fontFamily: 'var(--chat-font)', color: 'var(--text-secondary)' }}
+              >
+                No contacts found
+              </Typography>
+            </Box>
           )}
-          {filteredContacts.map((contact) => {
-            const cid = contact.CustomerId || contact.Id || contact.id;
-            const isSelected = selectedContacts.find((c) => (c.CustomerId || c.Id || c.id) === cid);
-            const name = getCustomerDisplayName(contact);
+          {displayedContacts.map((contact, index) => {
+            const cid = getContactId(contact);
+            const isSelected = !!selectedContacts.find((c) => getContactId(c) === cid);
+            const { title, subtitle } = getContactIdentity(contact);
             return (
               <MenuItem
                 key={cid}
+                divider={index < displayedContacts.length - 1}
                 onClick={() => handleContactSelect(contact)}
                 sx={{
-                  borderRadius: '10px',
-                  py: 1,
-                  px: 1.5,
-                  my: 0.25,
-                  backgroundColor: isSelected ? 'var(--chat-primary-light, rgba(37, 211, 102, 0.12))' : 'transparent',
-                  borderLeft: isSelected ? '3px solid var(--chat-primary, #25d366)' : '3px solid transparent',
-                  '&:hover': { backgroundColor: isSelected ? 'var(--chat-primary-light, rgba(37, 211, 102, 0.16))' : 'action.hover' },
+                  py: 1.1,
+                  px: 2.5,
+                  backgroundColor: isSelected ? 'var(--chat-primary-light, rgba(37, 211, 102, 0.06))' : 'transparent',
+                  borderBottomColor: 'var(--border-color)',
+                  '&:hover': { backgroundColor: isSelected ? 'var(--chat-primary-light, rgba(37, 211, 102, 0.1))' : 'action.hover' },
                 }}
               >
                 <ListItemAvatar sx={{ minWidth: 44 }}>
                   <Avatar
-                    sx={{ width: 34, height: 34 }}
-                    {...getWhatsAppAvatarConfig(getCustomerAvatarSeed(contact), 34)}
+                    sx={{ width: 36, height: 36 }}
+                    {...getWhatsAppAvatarConfig(getCustomerAvatarSeed(contact), 36)}
                   >
                     <User size={16} />
                   </Avatar>
                 </ListItemAvatar>
                 <ListItemText
-                  primary={name}
-                  primaryTypographyProps={{ fontSize: '0.875rem', fontWeight: 600, color: 'text.primary', fontFamily: 'var(--chat-font)' }}
-                />
-                <Checkbox
-                  size="small"
-                  checked={!!isSelected}
-                  sx={{
-                    color: 'action.disabled',
-                    '&.Mui-checked': { color: 'var(--chat-primary, #25d366)' },
-                    p: 0.5,
+                  primary={title}
+                  secondary={subtitle}
+                  slotProps={{
+                    primary: { sx: { fontSize: '0.875rem', fontWeight: 600, color: 'text.primary', fontFamily: 'var(--chat-font)' } },
+                    secondary: {
+                      sx: {
+                        fontSize: '0.72rem',
+                        fontFamily: 'var(--chat-font)',
+                        color: subtitle === 'Unsaved Contact' ? 'var(--text-tertiary)' : 'var(--text-secondary)',
+                        fontStyle: subtitle === 'Unsaved Contact' ? 'italic' : 'normal',
+                      },
+                    },
                   }}
                 />
+                <Box
+                  sx={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: '50%',
+                    flexShrink: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: isSelected ? 'none' : '1.5px solid var(--border-strong, var(--border-color))',
+                    backgroundColor: isSelected ? 'var(--chat-primary, #25d366)' : 'transparent',
+                    color: '#fff',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  {isSelected && <Check size={13} strokeWidth={3} />}
+                </Box>
               </MenuItem>
             );
           })}

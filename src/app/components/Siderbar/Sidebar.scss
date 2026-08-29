@@ -4,11 +4,12 @@
     min-width: 260px;
     width: 260px;
     height: calc(100vh - 20px);
-    background: $sidebar-Bgcolor;
+    background: var(--sidebar-bg);
     padding: 0px 12px 12px 12px;
-    border: 1px solid $sidebar-borderColor;
+    border: 1px solid var(--sidebar-borderColor);
     border-radius: 16px;
-    box-shadow: $side-bar-boxShadow;
+    box-shadow: var(--sidebar-box-shadow);
+    color: var(--text-primary);
     position: fixed;
     top: 10px;
     left: 10px;
@@ -185,7 +186,7 @@
                 height: 8px;
                 border-radius: 999px;
                 flex: 0 0 auto;
-                box-shadow: 0 0 0 3px rgba($sidebar-Bgcolor, 0.95);
+                box-shadow: 0 0 0 3px var(--sidebar-bg);
             }
 
             .sidebar_tags_selected_name {
@@ -193,7 +194,7 @@
                 min-width: 0;
                 font-size: 11px;
                 font-weight: 600;
-                color: $titleColor;
+                color: var(--text-primary);
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
@@ -231,9 +232,9 @@
         font-size: 11px;
         font-weight: 500;
         font-family: $font-family;
-        color: $text2ndColor;
+        color: var(--text-tertiary);
         opacity: 0.85;
-        border-top: 1px solid $sidebar-borderColor;
+        border-top: 1px solid var(--sidebar-borderColor);
         transition: transform $transition-duration ease, opacity $transition-duration ease;
 
         &:hover {
@@ -243,7 +244,7 @@
 
         span {
             line-height: 1;
-            color: $text2ndColor;
+            color: var(--text-tertiary);
             white-space: nowrap;
         }
 
@@ -271,14 +272,14 @@
         display: flex;
         align-items: center;
         padding: 12px 0px;
-        border-top: 1px solid $sidebar-borderColor;
+        border-top: 1px solid var(--sidebar-borderColor);
         cursor: pointer;
         transition: background-color 0.2s ease;
 
         &.collapsed {
             justify-content: center;
             padding: 12px 0;
-            border-top: 1px solid $sidebar-borderColor;
+            border-top: 1px solid var(--sidebar-borderColor);
         }
 
         .sidebar-user-trigger {
@@ -289,7 +290,7 @@
             width: 100%;
             padding: 8px 12px;
             background: rgba($primary-main, 0.04);
-            border: 1px solid $sidebar-borderColor;
+            border: 1px solid var(--sidebar-borderColor);
             border-radius: 14px;
             transition: all 0.2s ease;
             outline: none !important;
@@ -318,7 +319,7 @@
         .sidebar-user-name {
             font-size: 13px;
             font-weight: 600;
-            color: $titleColor;
+            color: var(--text-primary);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -354,7 +355,7 @@
                     border: 1px solid transparent;
                     border-radius: $sidebar-item-radius;
                     text-decoration: none;
-                    color: $titleColor;
+                    color: var(--text-primary);
                     font-weight: 500;
                     transition: all $transition-duration ease;
                     position: relative;
@@ -362,7 +363,7 @@
                     &:hover {
                         background-color: rgba(255, 255, 255, 0.7);
                         border-color: rgba($primary-main, 0.14);
-                        color: $titleColor;
+                        color: var(--text-primary);
                         transform: translateX(2px);
                     }
 
@@ -395,7 +396,7 @@
                     svg {
                         width: $sidebar-icon-size;
                         height: $sidebar-icon-size;
-                        color: $titleColor;
+                        color: var(--text-primary);
                         transition: color 0.2s ease;
                         opacity: 0.85;
                     }
@@ -422,14 +423,14 @@
             font-size: 12px;
             font-weight: 600;
             text-transform: uppercase;
-            color: $text2ndColor;
+            color: var(--text-tertiary);
             padding: 12px 16px 10px;
             letter-spacing: 0.5px;
             position: sticky;
             top: 0;
             z-index: 2;
-            background: $sidebar-Bgcolor;
-            border-bottom: 1px solid $sidebar-borderColor;
+            background: var(--sidebar-bg);
+            border-bottom: 1px solid var(--sidebar-borderColor);
         }
 
         ul {
@@ -446,7 +447,7 @@
             li {
                 padding: 0 10px;
                 font-size: 12.5px;
-                color: $titleColor;
+                color: var(--text-primary);
                 cursor: pointer;
                 transition: all $transition-duration ease;
                 border-radius: 14px;
@@ -461,7 +462,7 @@
                     gap: $sidebar-tag-gap;
                     padding: 7px 10px;
                     border-radius: 999px;
-                    border: 1px solid $sidebar-borderColor;
+                    border: 1px solid var(--sidebar-borderColor);
                     transition: all $transition-duration ease;
                     box-shadow: 0 1px 0 rgba(17, 24, 39, 0.02);
 
@@ -476,14 +477,14 @@
                     width: 9px;
                     height: 9px;
                     border-radius: 999px;
-                    box-shadow: 0 0 0 3px rgba($sidebar-Bgcolor, 0.95);
+                    box-shadow: 0 0 0 3px var(--sidebar-bg);
                     flex: 0 0 auto;
                 }
 
                 .tag-name {
                     font-size: 12.5px;
                     font-weight: 600;
-                    color: $text2ndColor;
+                    color: var(--text-tertiary);
                     white-space: nowrap;
                     overflow: hidden;
                     text-overflow: ellipsis;
@@ -499,7 +500,7 @@
                     }
 
                     .tag-name {
-                        color: $titleColor;
+                        color: var(--text-primary);
                     }
 
                     .tag-dot {
@@ -515,7 +516,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    border-bottom: 1px solid $sidebar-borderColor;
+    border-bottom: 1px solid var(--sidebar-borderColor);
     padding-block: 0.65rem;
     cursor: pointer;
     transition: all $transition-duration ease;
@@ -545,7 +546,7 @@
     .title {
         font-size: 1.25rem;
         font-weight: 600;
-        color: $titleColor;
+        color: var(--text-primary);
         margin: 0;
         line-height: 1.2;
     }
@@ -554,7 +555,7 @@
         width: 32px;
         height: 32px;
         border-radius: 12px;
-        border: 1px solid $sidebar-borderColor;
+        border: 1px solid var(--sidebar-borderColor);
         background: rgba($primary-main, 0.04);
         transition: transform $transition-duration ease, background-color $transition-duration ease;
 
@@ -568,7 +569,7 @@
         width: 32px;
         height: 32px;
         border-radius: 12px;
-        border: 1px solid $sidebar-borderColor;
+        border: 1px solid var(--sidebar-borderColor);
         background: #fff;
         transition: all 0.2s ease;
 
@@ -577,13 +578,6 @@
             border-color: rgba($error-main, 0.3);
             color: $error-main !important;
         }
-    }
-
-    &:hover {
-        background-color: rgba(255, 255, 255, 0.7);
-        opacity: 0.95;
-        transform: translateY(-1px);
-        transition: all 0.2s ease-in-out;
     }
 
     @media (max-width: 768px) {

@@ -1,12 +1,12 @@
 import { callCommonApi } from "./CommonApi";
 
-export const fetchTemplateLists = async (userId) => {
+export const fetchTemplateLists = async (userId, accountId) => {
     try {
         
         const response = await callCommonApi({
             mode: "broadcast_temp_list",
             f: "Broadcast ( Template List )",
-            p: "",
+            p: JSON.stringify({ AccountId: accountId !== undefined && accountId !== '' ? Number(accountId) : '' }),
             userId,
         });
         if (response?.Data) {

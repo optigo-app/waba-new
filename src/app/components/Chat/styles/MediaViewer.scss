@@ -50,7 +50,7 @@
 }
 
 .media-viewer-counter {
-  color: #fff;
+  color: var(--button-color);
   font-size: 14px;
   font-weight: 500;
   opacity: 0.9;
@@ -67,7 +67,7 @@
   border-radius: 50%;
   border: none;
   background: rgba(255,255,255,0.2);
-  color: #fff;
+  color: var(--button-color);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -107,7 +107,7 @@
   border-radius: 50%;
   border: none;
   background: rgba(255,255,255,0.15);
-  color: #fff;
+  color: var(--button-color);
   display: flex;
   align-items: center;
   justify-content: center;

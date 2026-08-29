@@ -625,7 +625,7 @@ const AudienceSection = ({ audience, onAudienceChange, onDataSourceChange, onNex
                     onClose={closeSourceSelectionDialog}
                     maxWidth="md"
                     fullWidth
-                    PaperProps={{ className: styles.sourceSelectionDialogPaper }}
+                    slotProps={{ paper: { className: styles.sourceSelectionDialogPaper } }}
                 >
                     <Box className={styles.sourceSelectionDialogBody}>
                         <Typography className={styles.sourceSelectionTitle}>

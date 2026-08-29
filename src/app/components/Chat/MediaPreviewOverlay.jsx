@@ -10,6 +10,7 @@ import 'swiper/css/navigation';
 import {
   X, Plus, Paperclip, Smile, Send, ChevronLeft, ChevronRight,
 } from 'lucide-react';
+import { getStaticUrl } from '../../utils/globalFunc';
 
 export default function MediaPreviewOverlay({
   mediaPreview,
@@ -80,12 +81,12 @@ export default function MediaPreviewOverlay({
 
   const getDocIcon = (name = '') => {
     const lower = name.toLowerCase();
-    if (lower.endsWith('.pdf')) return '/pdf.png';
-    if (lower.endsWith('.doc') || lower.endsWith('.docx')) return '/doc.png';
-    if (lower.endsWith('.txt')) return '/txt.png';
-    if (lower.endsWith('.xls') || lower.endsWith('.xlsx')) return '/excel.png';
-    if (lower.endsWith('.ppt') || lower.endsWith('.pptx')) return '/ppt.png';
-    return '/pdf.png';
+    if (lower.endsWith('.pdf')) return getStaticUrl('/pdf.png');
+    if (lower.endsWith('.doc') || lower.endsWith('.docx')) return getStaticUrl('/doc.png');
+    if (lower.endsWith('.txt')) return getStaticUrl('/txt.png');
+    if (lower.endsWith('.xls') || lower.endsWith('.xlsx')) return getStaticUrl('/excel.png');
+    if (lower.endsWith('.ppt') || lower.endsWith('.pptx')) return getStaticUrl('/ppt.png');
+    return getStaticUrl('/pdf.png');
   };
 
   const formatSize = (bytes) => {
@@ -184,9 +185,9 @@ export default function MediaPreviewOverlay({
               {preview.type === 'image' ? (
                 <img src={preview.previewUrl} alt="" />
               ) : preview.type === 'video' ? (
-                <img src="/video.png" alt="video" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 4 }} />
+                <img src={getStaticUrl('/video.png')} alt="video" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 4 }} />
               ) /* : preview.type === 'audio' ? (
-                <span style={{ fontSize: 10, color: '#666', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>AUDIO</span>
+                <span style={{ fontSize: 10, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>AUDIO</span>
               ) */ : (
                 <img src={getDocIcon(preview.name)} alt="document" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
               )}
@@ -235,7 +236,7 @@ export default function MediaPreviewOverlay({
             onClick={handleSend}
             disabled={sending || (!input.trim() && mediaPreview.length === 0)}
           >
-            {sending ? <CircularProgress size={18} sx={{ color: '#fff' }} /> : <Send size={18} />}
+            {sending ? <CircularProgress size={18} sx={{ color: 'var(--button-color)' }} /> : <Send size={18} />}
           </button>
         </div>
       </div>

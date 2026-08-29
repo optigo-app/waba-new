@@ -1,15 +1,62 @@
 'use client';
 
 import { callCommonApi } from '../CommonApi';
-import { MESSAGEAPIURL, MESSAGEAPIURLBULK, MEDIARETRIEVED, READAPI, getHeaders } from '../Config';
+import { MESSAGEAPIURL, MESSAGEAPIURLBULK, MEDIARETRIEVED, READAPI, TEMPLATE_MD_UPLOAD, getHeaders, getHeaders1 } from '../Config';
 import { getUserData } from '../../utils/storage';
+import { useChatStore } from '../../store/chatStore';
+
+/* Read the selected channel ID from the store so every API auto-includes AccountId */
+const getAccountId = () => useChatStore.getState().selectedChannelId || '';
+
+/* Read the selected channel's WhatsApp phone number from the store (multi-channel support) */
+const getChannelPhoneNo = () => {
+  const ch = useChatStore.getState().selectedChannel;
+  return ch?.WabaPhoneNo || ch?.MobileNumber || '';
+};
+
+export const fetchChannels = async (userId, signal, page = 1, pageSize = 100, search = '') => {
+  try {
+    const payload = { Page: page, PageSize: pageSize, SearchTerm: search };
+    const response = await callCommonApi({
+      mode: 'wa_list_channel',
+      f: 'Chat ( Channel List )',
+      p: JSON.stringify(payload),
+      userId,
+      signal,
+    });
+    if (response?.Data?.rd) {
+      const resultsArray = Array.isArray(response.Data.rd) ? response.Data.rd : [];
+      const total = response?.Data?.total || 0;
+      const currentPage = page;
+      const hasMore = total > 0
+        ? currentPage < Math.ceil(total / pageSize)
+        : resultsArray.length === pageSize;
+      return {
+        data: resultsArray,
+        total: total || resultsArray.length,
+        currentPage,
+        hasMore,
+      };
+    }
+    return { data: [], total: 0, currentPage: page, hasMore: false };
+  } catch (error) {
+    if (error.message === 'AbortError' || error.name === 'AbortError') throw error;
+    console.error('Error fetching channels:', error);
+    return { data: [], total: 0, currentPage: page, hasMore: false };
+  }
+};
 
 export const fetchConversationLists = async (page = 1, pageSize = 20, userId, search = '') => {
   try {
+    const payload = { Page: page, PageSize: pageSize, SearchTerm: search };
+    const accountId = getAccountId();
+    if (accountId) {
+      payload.AccountId = accountId;
+    }
     const response = await callCommonApi({
       mode: 'wa_list_conv',
       f: 'Chat ( List Conversation )',
-      p: `{"Page":${page},"PageSize":${pageSize},"SearchTerm": "${search}"}`,
+      p: JSON.stringify(payload),
       userId,
     });
     if (response?.Data?.rd || response?.Data?.rd[0]?.stat == 1) {
@@ -32,10 +79,13 @@ export const fetchConversationLists = async (page = 1, pageSize = 20, userId, se
 
 export const fetchConversationView = async (conversationId, page = 1, pageSize = 10, userId, signal) => {
   try {
+    const payload = { ConversationId: conversationId, Page: page, PageSize: pageSize };
+    const accountId = getAccountId();
+    if (accountId) payload.AccountId = accountId;
     const response = await callCommonApi({
       mode: 'wa_list_chat',
       f: 'Chat ( list )',
-      p: `{"ConversationId": ${conversationId}, "Page": ${page}, "PageSize": ${pageSize} }`,
+      p: JSON.stringify(payload),
       userId,
       signal,
     });
@@ -65,7 +115,8 @@ export const sendChatText = async ({ phoneNo, message, userId, customerId }) => 
   };
 
   try {
-    const headers = getHeaders();
+    const _channelPhone = getChannelPhoneNo();
+    const headers = getHeaders(_channelPhone ? { overrides: { whatsappNumber: _channelPhone, wabaphoneno: _channelPhone } } : {});
     const response = await fetch(MESSAGEAPIURL(), {
       method: 'POST',
       headers: {
@@ -89,19 +140,11 @@ export const sendChatText = async ({ phoneNo, message, userId, customerId }) => 
 
 export const uploadChatMedia = async (file, whatsappNumber, whatsappKey, onProgress) => {
   try {
-    const token = typeof window !== 'undefined' ? JSON.parse(sessionStorage.getItem('token') || '{}') : {};
     const formData = new FormData();
-    formData.append('messaging_product', 'whatsapp');
     formData.append('file', file);
-    if (file?.type) formData.append('type', file.type);
 
-    const baseURL = token?.isMeta == 1
-      ? `https://graph.facebook.com/v19.0/${whatsappNumber}/media`
-      : `https://crmapp.mpillarapi.com/api/meta/v19.0/${whatsappNumber}/media`;
-
-    const headers = {
-      Authorization: `Bearer ${whatsappKey}`,
-    };
+    const channelPhone = getChannelPhoneNo() || whatsappNumber || '';
+    const headers = getHeaders1(channelPhone ? { wabaphoneno: channelPhone } : {});
 
     // Simulated progress since native fetch doesn't expose upload progress
     let progressInterval = null;
@@ -114,7 +157,7 @@ export const uploadChatMedia = async (file, whatsappNumber, whatsappKey, onProgr
       }, 400);
     }
 
-    const response = await fetch(baseURL, {
+    const response = await fetch(TEMPLATE_MD_UPLOAD(), {
       method: 'POST',
       headers,
       body: formData,
@@ -130,7 +173,19 @@ export const uploadChatMedia = async (file, whatsappNumber, whatsappKey, onProgr
       throw new Error(errorData?.error?.message || `Upload failed: ${response.statusText}`);
     }
 
-    return await response.json();
+    const json = await response.json();
+
+    // Normalize response: isMeta=1 → { id: "..." }, isMeta=0 → { handle: { h: "..." }, provider: 1 }
+    if (json?.data?.id) {
+      return { id: json.data.id };
+    }
+    if (json?.data?.handle?.h) {
+      return { id: json.data.handle.h, provider: json.data.provider };
+    }
+    if (json?.id) {
+      return { id: json.id };
+    }
+    return json;
   } catch (error) {
     console.error('Upload Error:', error);
     throw error;
@@ -139,7 +194,8 @@ export const uploadChatMedia = async (file, whatsappNumber, whatsappKey, onProgr
 
 export const fetchChatMediaBlob = async (mediaId) => {
   try {
-    const headers = getHeaders();
+    const _channelPhone = getChannelPhoneNo();
+    const headers = getHeaders(_channelPhone ? { overrides: { whatsappNumber: _channelPhone } } : {});
     const response = await fetch(MEDIARETRIEVED(), {
       method: 'POST',
       headers: {
@@ -199,7 +255,8 @@ export const sendChatMedia = async ({ phoneNo, mediaUrl, mediaId, fileUrl, type,
   };
 
   try {
-    const headers = getHeaders();
+    const _channelPhone = getChannelPhoneNo();
+    const headers = getHeaders(_channelPhone ? { overrides: { whatsappNumber: _channelPhone, wabaphoneno: _channelPhone } } : {});
     const response = await fetch(MESSAGEAPIURL(), {
       method: 'POST',
       headers: {
@@ -238,10 +295,13 @@ export const saveMediaUrl = async ({ fileUrl, messageId, userId }) => {
 
 export const fetchTags = async () => {
   const userData = getUserData() || {};
+  const accountId = getAccountId();
+  const payload = {};
+  if (accountId) payload.AccountId = accountId;
   const response = await callCommonApi({
     mode: 'tagslist',
     f: 'Chat module (tags list)',
-    p: JSON.stringify({}),
+    p: Object.keys(payload).length ? JSON.stringify(payload) : '',
     userId: String(userData?.userId || ''),
   });
   if (response?.Data?.rd) {
@@ -252,10 +312,13 @@ export const fetchTags = async () => {
 
 export const fetchAllTags = async (userId, signal) => {
   try {
+    const payload = {};
+    const accountId = getAccountId();
+    if (accountId) payload.AccountId = accountId;
     const response = await callCommonApi({
       mode: 'wa_list_tags',
       f: 'WhatsApp Chat ( List Tags )',
-      p: '',
+      p: Object.keys(payload).length ? JSON.stringify(payload) : '',
       userId,
       signal,
     });
@@ -272,10 +335,13 @@ export const fetchAllTags = async (userId, signal) => {
 
 export const fetchCustomerTags = async (customerId, userId, signal) => {
   try {
+    const accountId = getAccountId();
+    const payload = { CustomerId: Number(customerId) };
+    if (accountId) payload.AccountId = accountId;
     const response = await callCommonApi({
       mode: 'wa_list_tags',
       f: 'WhatsApp Chat ( List Tags )',
-      p: JSON.stringify({ CustomerId: Number(customerId) }),
+      p: JSON.stringify(payload),
       userId,
       signal,
     });
@@ -292,10 +358,13 @@ export const fetchCustomerTags = async (customerId, userId, signal) => {
 
 export const assignTag = async (conversationId, tagId) => {
   const userData = getUserData() || {};
+  const accountId = getAccountId();
+  const payload = {};
+  if (accountId) payload.AccountId = accountId;
   return callCommonApi({
     mode: 'assigntag',
     f: 'Chat module (assign tag)',
-    p: JSON.stringify({}),
+    p: Object.keys(payload).length ? JSON.stringify(payload) : '',
     userId: String(userData?.userId || ''),
     extraCon: { conversationId: String(conversationId), tagId: String(tagId) },
   });
@@ -303,10 +372,13 @@ export const assignTag = async (conversationId, tagId) => {
 
 export const addTagsApi = async (customerId, tagName, userId) => {
   try {
+    const accountId = getAccountId();
+    const payload = { CustomerId: Number(customerId), TagName: tagName };
+    if (accountId) payload.AccountId = accountId;
     const response = await callCommonApi({
       mode: 'wa_add_tags',
       f: 'WhatsApp Chat (Add Tags)',
-      p: JSON.stringify({ CustomerId: Number(customerId), TagName: tagName }),
+      p: JSON.stringify(payload),
       userId,
     });
     if (response?.Data) {
@@ -321,10 +393,13 @@ export const addTagsApi = async (customerId, tagName, userId) => {
 
 export const pinConversationApi = async (conversationId, userId, email) => {
   try {
+    const payload = { ConversationId: conversationId, UserId: userId, UserBindConvField: 'IsPin', UserBindConvValue: 1 };
+    const accountId = getAccountId();
+    if (accountId) payload.AccountId = accountId;
     return await callCommonApi({
       mode: 'wa_bind_user_conv',
       f: 'Conversation pin ( Pin )',
-      p: `{"ConversationId": ${conversationId},"UserId": ${userId}, "UserBindConvField": "IsPin", "UserBindConvValue": 1}`,
+      p: JSON.stringify(payload),
       userId: email,
     });
   } catch (error) {
@@ -335,10 +410,13 @@ export const pinConversationApi = async (conversationId, userId, email) => {
 
 export const unPinConversationApi = async (conversationId, userId, email) => {
   try {
+    const payload = { ConversationId: conversationId, UserId: userId, UserBindConvField: 'IsPin', UserBindConvValue: 0 };
+    const accountId = getAccountId();
+    if (accountId) payload.AccountId = accountId;
     return await callCommonApi({
       mode: 'wa_bind_user_conv',
       f: 'Conversation pin ( Pin )',
-      p: `{"ConversationId": ${conversationId},"UserId": ${userId}, "UserBindConvField": "IsPin", "UserBindConvValue": 0}`,
+      p: JSON.stringify(payload),
       userId: email,
     });
   } catch (error) {
@@ -349,10 +427,13 @@ export const unPinConversationApi = async (conversationId, userId, email) => {
 
 export const favoriteApi = async (conversationId, userId, email) => {
   try {
+    const payload = { ConversationId: conversationId, UserId: userId, UserBindConvField: 'IsStar', UserBindConvValue: 1 };
+    const accountId = getAccountId();
+    if (accountId) payload.AccountId = accountId;
     return await callCommonApi({
       mode: 'wa_bind_user_conv',
       f: 'Conversation Star ( star )',
-      p: `{"ConversationId": ${conversationId},"UserId": ${userId}, "UserBindConvField": "IsStar", "UserBindConvValue": 1}`,
+      p: JSON.stringify(payload),
       userId: email,
     });
   } catch (error) {
@@ -363,10 +444,13 @@ export const favoriteApi = async (conversationId, userId, email) => {
 
 export const unFavoriteApi = async (conversationId, userId, email) => {
   try {
+    const payload = { ConversationId: conversationId, UserId: userId, UserBindConvField: 'IsStar', UserBindConvValue: 0 };
+    const accountId = getAccountId();
+    if (accountId) payload.AccountId = accountId;
     return await callCommonApi({
       mode: 'wa_bind_user_conv',
       f: 'Conversation Star ( star )',
-      p: `{"ConversationId": ${conversationId},"UserId": ${userId}, "UserBindConvField": "IsStar", "UserBindConvValue": 0}`,
+      p: JSON.stringify(payload),
       userId: email,
     });
   } catch (error) {
@@ -377,10 +461,13 @@ export const unFavoriteApi = async (conversationId, userId, email) => {
 
 export const archieveApi = async (conversationId, userId, email) => {
   try {
+    const payload = { ConversationId: conversationId, UserId: userId, UserBindConvField: 'IsArchived', UserBindConvValue: 1 };
+    const accountId = getAccountId();
+    if (accountId) payload.AccountId = accountId;
     return await callCommonApi({
       mode: 'wa_bind_user_conv',
       f: 'Conversation Archived ( Archived )',
-      p: `{"ConversationId": ${conversationId},"UserId": ${userId}, "UserBindConvField": "IsArchived", "UserBindConvValue": 1}`,
+      p: JSON.stringify(payload),
       userId: email,
     });
   } catch (error) {
@@ -391,10 +478,13 @@ export const archieveApi = async (conversationId, userId, email) => {
 
 export const unArchieveApi = async (conversationId, userId, email) => {
   try {
+    const payload = { ConversationId: conversationId, UserId: userId, UserBindConvField: 'IsArchived', UserBindConvValue: 0 };
+    const accountId = getAccountId();
+    if (accountId) payload.AccountId = accountId;
     return await callCommonApi({
       mode: 'wa_bind_user_conv',
       f: 'Conversation Archived ( Archived )',
-      p: `{"ConversationId": ${conversationId},"UserId": ${userId}, "UserBindConvField": "IsArchived", "UserBindConvValue": 0}`,
+      p: JSON.stringify(payload),
       userId: email,
     });
   } catch (error) {
@@ -405,10 +495,13 @@ export const unArchieveApi = async (conversationId, userId, email) => {
 
 export const fetchAgentLists = async (userId, signal) => {
   try {
+    const payload = {};
+    const accountId = getAccountId();
+    if (accountId) payload.AccountId = accountId;
     const response = await callCommonApi({
       mode: 'wa_chat_agent_list',
       f: 'Whatsapp Agent List ( List )',
-      p: '',
+      p: Object.keys(payload).length ? JSON.stringify(payload) : '',
       userId,
       signal,
     });
@@ -425,10 +518,13 @@ export const fetchAgentLists = async (userId, signal) => {
 
 export const addAssignUser = async (conversationId, userId, email) => {
   try {
+    const accountId = getAccountId();
+    const payload = { ConversationId: conversationId, UserId: userId, IsAssign: 1, AssignBy: 1 };
+    if (accountId) payload.AccountId = Number(accountId);
     const response = await callCommonApi({
       mode: 'wa_assign_conv',
       f: 'Assign Conversation to Agent ( Assign )',
-      p: `{"ConversationId": ${conversationId},"UserId": ${userId}, "IsAssign": 1, "AssignBy": 1}`,
+      p: JSON.stringify(payload),
       userId: email,
     });
     if (response?.Data) {
@@ -443,10 +539,13 @@ export const addAssignUser = async (conversationId, userId, email) => {
 
 export const removeAssignUser = async (conversationId, userId, email) => {
   try {
+    const accountId = getAccountId();
+    const payload = { ConversationId: conversationId, UserId: userId, IsAssign: 0, AssignBy: 1 };
+    if (accountId) payload.AccountId = Number(accountId);
     const response = await callCommonApi({
       mode: 'wa_assign_conv',
       f: 'Assign Conversation to Agent ( Assign )',
-      p: `{"ConversationId": ${conversationId},"UserId": ${userId}, "IsAssign": 0, "AssignBy": 1}`,
+      p: JSON.stringify(payload),
       userId: email,
     });
     if (response) {
@@ -471,7 +570,8 @@ export const sendReplyMessage = async ({ phoneNo, message, userId, customerId, c
   };
 
   try {
-    const headers = getHeaders();
+    const _channelPhone = getChannelPhoneNo();
+    const headers = getHeaders(_channelPhone ? { overrides: { whatsappNumber: _channelPhone, wabaphoneno: _channelPhone } } : {});
     const response = await fetch(MESSAGEAPIURL(), {
       method: 'POST',
       headers: {
@@ -510,7 +610,8 @@ export const sendForwardMessage = async ({ userId, contacts, type = 'text', cont
   };
 
   try {
-    const headers = getHeaders();
+    const _channelPhone = getChannelPhoneNo();
+    const headers = getHeaders(_channelPhone ? { overrides: { whatsappNumber: _channelPhone, wabaphoneno: _channelPhone } } : {});
     const response = await fetch(MESSAGEAPIURLBULK(), {
       method: 'POST',
       headers: {
@@ -634,10 +735,13 @@ export const dataSync = async (userId) => {
 
 export const deleteAssignedTags = async (customerId, tagId, userId) => {
   try {
+    const accountId = getAccountId();
+    const payload = { CustomerId: Number(customerId), TagId: Number(tagId) };
+    if (accountId) payload.AccountId = accountId;
     const response = await callCommonApi({
       mode: 'wa_delete_user_tags',
       f: 'WhatsApp Chat ( Delete Tags )',
-      p: JSON.stringify({ CustomerId: Number(customerId), TagId: Number(tagId) }),
+      p: JSON.stringify(payload),
       userId,
     });
     if (response?.Data) {
@@ -650,20 +754,25 @@ export const deleteAssignedTags = async (customerId, tagId, userId) => {
   }
 };
 
-export const readMessage = async (conversationId, userId, messageId = '') => {
+export const readMessage = async (conversationId, userId, messageId = '', isTyping = false) => {
   try {
-    const headers = getHeaders();
+    const channel = useChatStore.getState().selectedChannel;
+    const wabaPhoneNo = channel?.WabaPhoneNo || channel?.MobileNumber || '';
+    const body = {
+      ConversationId: Number(conversationId),
+      IsTyping: Boolean(isTyping),
+      UserId: String(userId),
+    };
+    if (messageId) {
+      body.MessageId = String(messageId);
+    }
     const response = await fetch(READAPI(), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...headers,
+        ...getHeaders1(wabaPhoneNo ? { wabaphoneno: wabaPhoneNo } : {}),
       },
-      body: JSON.stringify({
-        ConversationId: Number(conversationId),
-        MessageId: messageId || '',
-        UserId: String(userId),
-      }),
+      body: JSON.stringify(body),
     });
     const data = await response.json();
     return data;
@@ -686,7 +795,8 @@ export const sendMessageReaction = async ({ userId, customerId, phoneNo, message
   };
 
   try {
-    const headers = getHeaders();
+    const _channelPhone = getChannelPhoneNo();
+    const headers = getHeaders(_channelPhone ? { overrides: { whatsappNumber: _channelPhone, wabaphoneno: _channelPhone } } : {});
     const response = await fetch(MESSAGEAPIURL(), {
       method: 'POST',
       headers: {
@@ -710,10 +820,13 @@ export const sendMessageReaction = async ({ userId, customerId, phoneNo, message
 
 export const fetchMediaLists = async (page = 1, pageSize = 6, conversationId, userId) => {
   try {
+    const accountId = getAccountId();
+    const payload = { ConversationId: Number(conversationId), Page: page, PageSize: pageSize };
+    if (accountId) payload.AccountId = accountId;
     const response = await callCommonApi({
       mode: 'wa_media_list_chat',
       f: 'Chat ( Media list )',
-      p: JSON.stringify({ ConversationId: Number(conversationId), Page: page, PageSize: pageSize }),
+      p: JSON.stringify(payload),
       userId,
     });
     if (response?.Data) {

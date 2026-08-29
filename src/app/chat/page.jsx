@@ -8,7 +8,7 @@ const ChatPage = dynamic(() => import('../components/Chat/ChatPage'), {
     <div style={{
       position: 'fixed',
       inset: 0,
-      background: '#fff',
+      background: 'var(--bg-paper)',
     }} />
   ),
 });

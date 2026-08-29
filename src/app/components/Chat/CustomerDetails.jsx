@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Drawer, Box, Avatar, IconButton, useMediaQuery, useTheme } from '@mui/material';
-import { X, Image, FileText, Link } from 'lucide-react';
+import { X, Image, FileText, Link, Flag } from 'lucide-react';
 import {
   getWhatsAppAvatarConfig,
   getCustomerDisplayName,
@@ -14,6 +14,7 @@ import { useAuthStore } from '../../store/authStore';
 import MediaSection from './MediaSection';
 import DocumentsSection from './DocumentsSection';
 import LinksSection from './LinksSection';
+import AddCustomerButton from './AddCustomerButton';
 
 export default function CustomerDetails({ customer, open, onClose, variant = 'drawer' }) {
   const [activeTab, setActiveTab] = useState('media');
@@ -305,6 +306,7 @@ export default function CustomerDetails({ customer, open, onClose, variant = 'dr
   ];
 
   const content = (
+    <>
     <div className="customer-details-drawer">
         {/* Header */}
         <div className="cd-header">
@@ -317,14 +319,26 @@ export default function CustomerDetails({ customer, open, onClose, variant = 'dr
         {/* Profile */}
         <div className="cd-profile">
           <div className="cd-avatar-wrap">
-            <Avatar {...cfg} alt={displayName} className="cd-avatar">
+            <Avatar
+              {...cfg}
+              alt={displayName}
+              className={`cd-avatar ${!hasCustomerName(customer) ? 'lead-avatar' : ''}`}
+            >
               {!hasCustomerName(customer) ? cfg?.children : null}
             </Avatar>
           </div>
-          <p className="cd-name">{displayName}</p>
+          <p className="cd-name">
+            {displayName}
+            {!hasCustomerName(customer) && (
+              <span className="lead-indicator-icon" title="Lead">
+                <Flag size={14} fill="#f59e0b" />
+              </span>
+            )}
+          </p>
           {customer?.CustomerPhone && (
             <p className="cd-phone">{customer.CustomerPhone}</p>
           )}
+          <AddCustomerButton customer={customer} variant="label" sx={{ mt: 1 }} />
         </div>
 
         {/* Tabs */}
@@ -382,6 +396,7 @@ export default function CustomerDetails({ customer, open, onClose, variant = 'dr
           )}
         </div>
       </div>
+    </>
   );
 
   if (variant === 'panel') {
@@ -401,7 +416,7 @@ export default function CustomerDetails({ customer, open, onClose, variant = 'dr
         paper: {
           sx: {
             width: isSmallScreen ? '100%' : 400,
-            bgcolor: '#f8f9fa',
+            bgcolor: 'var(--bg-default)',
           },
         },
       }}

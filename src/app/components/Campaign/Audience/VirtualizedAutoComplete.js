@@ -139,11 +139,18 @@ export default function VirtualizedAutocomplete({
                     backgroundColor: '#fcfcfd',
                 },
             }}
-            PaperProps={{
-                sx: {
-                    borderRadius: 2,
-                    boxShadow: 'rgba(99, 99, 99, 0.2) 0px 2px 8px 0px',
-                    mt: 0.5,
+            slotProps={{
+                paper: {
+                    sx: {
+                        borderRadius: 2,
+                        boxShadow: 'rgba(99, 99, 99, 0.2) 0px 2px 8px 0px',
+                        mt: 0.5,
+                    },
+                },
+                listbox: {
+                    component: ListboxComponent,
+                    internalListRef,
+                    onItemsBuilt: handleItemsBuilt,
                 },
             }}
             disableListWrap
@@ -160,13 +167,6 @@ export default function VirtualizedAutocomplete({
             renderOption={(props, option, state) => [props, option, state.index]}
             onHighlightChange={handleHighlightChange}
             slots={{ popper: StyledPopper }}
-            slotProps={{
-                listbox: {
-                    component: ListboxComponent,
-                    internalListRef,
-                    onItemsBuilt: handleItemsBuilt,
-                },
-            }}
             {...props}
         />
     );

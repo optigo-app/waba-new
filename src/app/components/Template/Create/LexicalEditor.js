@@ -26,7 +26,7 @@ import { VariableNode, $createVariableNode, $isVariableNode } from './VariableNo
 import styles from './LexicalEditor.module.scss';
 
 const iconButtonSx = {
-    color: 'var(--secondary-color)',
+    color: 'var(--text-secondary)',
     padding: '6px',
     borderRadius: '8px',
     transition: 'all 0.2s ease-in-out',
@@ -237,7 +237,7 @@ function EditorToolbar({
 
     return (
         <Box className={styles.bodyFooterRow}>
-            <span className={styles.charCounter} style={{ color: isOverLimit ? '#ef4444' : 'var(--secondary-color)', fontSize: '0.78rem', fontWeight: isOverLimit ? 600 : 400 }}>
+            <span className={styles.charCounter} style={{ color: isOverLimit ? 'var(--error-main)' : 'var(--text-secondary)', fontSize: '0.78rem', fontWeight: isOverLimit ? 600 : 400 }}>
                 Characters: {displayCount}/{maxLength}
                 {isOverLimit && ' — exceeds limit'}
             </span>

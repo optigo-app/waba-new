@@ -173,11 +173,11 @@ export default function SocketProvider({ children }) {
       document.removeEventListener('click', unlock);
       document.removeEventListener('keydown', unlock);
     };
-    document.addEventListener('click', unlock, { once: true });
-    document.addEventListener('keydown', unlock, { once: true });
+    document.addEventListener('click', unlock, { once: true, capture: true });
+    document.addEventListener('keydown', unlock, { once: true, capture: true });
     return () => {
-      document.removeEventListener('click', unlock);
-      document.removeEventListener('keydown', unlock);
+      document.removeEventListener('click', unlock, { capture: true });
+      document.removeEventListener('keydown', unlock, { capture: true });
     };
   }, []);
 
@@ -207,22 +207,15 @@ export default function SocketProvider({ children }) {
     };
 
     const handleNotify = (data, type) => {
-      console.log('[SocketProvider] handleNotify called:', { type, data });
       const msgId = data?.Id ?? data?.id ?? data?.autoid ?? data?.MessageId;
       if (msgId) {
         const key = `${type}-${msgId}`;
         // Per-tab dedup
         const last = recentNotifications.get(key);
-        if (last && Date.now() - last < 2000) {
-          console.log('[SocketProvider] Duplicate notification skipped:', key);
-          return;
-        }
+        if (last && Date.now() - last < 2000) return;
         // Cross-tab dedup: another tab already claimed this message
         cleanClaims();
-        if (claimedByOtherTab.has(key)) {
-          console.log('[SocketProvider] Skipped — claimed by another tab:', key);
-          return;
-        }
+        if (claimedByOtherTab.has(key)) return;
         // Claim it for other tabs
         recentNotifications.set(key, Date.now());
         try { bc?.postMessage({ action: 'claim', msgId: key }); } catch (_) {}

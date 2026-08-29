@@ -21,7 +21,7 @@ const TemplateHeaderSection = ({
     onHeaderMediaRemove,
 }) => {
     return (
-        <Paper elevation={0} className={styles.sectionCard} sx={{ p: 3, mb: 2, border: '1px solid #e2e8f0', borderRadius: '12px' }}>
+        <Paper elevation={0} className={styles.sectionCard} sx={{ p: 3, mb: 2, border: '1px solid var(--border-color)', borderRadius: '12px' }}>
             <h3 className={styles.sectionTitle}>Header</h3>
             <p className={styles.sectionSubtitle}>Add a title or choose which type of media you'll use for this header.</p>
 
@@ -44,13 +44,13 @@ const TemplateHeaderSection = ({
                                 padding: '0.45rem 1.1rem',
                                 fontSize: '0.82rem',
                                 fontWeight: 600,
-                                backgroundColor: isSelected ? 'var(--primary-light-bg)' : '#ffffff',
-                                color: isSelected ? 'var(--primary-main)' : 'var(--titleColor)',
+                                backgroundColor: isSelected ? 'var(--primary-light-bg)' : 'var(--bg-paper)',
+                                color: isSelected ? 'var(--primary-main)' : 'var(--text-primary)',
                                 border: '1px solid',
                                 borderColor: isSelected ? 'var(--primary-main)' : 'var(--sidebar-borderColor)',
                                 '&:hover': {
                                     borderColor: 'var(--primary-main)',
-                                    backgroundColor: isSelected ? 'var(--primary-light-bg)' : 'rgba(29, 170, 97, 0.04)',
+                                    backgroundColor: isSelected ? 'var(--primary-light-bg)' : 'var(--primary-light-bg)',
                                     color: 'var(--primary-main)',
                                 },
                                 minWidth: 'auto',
@@ -87,20 +87,20 @@ const TemplateHeaderSection = ({
                             sx={{
                                 mt: 1,
                                 '& .MuiOutlinedInput-input': {
-                                    color: '#444050',
+                                    color: 'var(--text-primary)',
                                     fontWeight: 500,
                                 },
                                 '& .MuiOutlinedInput-input::placeholder': {
-                                    color: '#9e9ba8',
+                                    color: 'var(--text-placeholder)',
                                     opacity: '1 !important',
                                     fontWeight: 400,
                                 },
                                 '& .MuiInputLabel-root': {
-                                    color: '#7D7f85',
+                                    color: 'var(--text-secondary)',
                                     fontWeight: 500,
                                 },
                                 '& .Mui-focused .MuiInputLabel-root': {
-                                    color: '#1daa61',
+                                    color: 'var(--primary-main)',
                                 },
                             }}
                         />

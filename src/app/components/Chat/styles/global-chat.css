@@ -70,6 +70,35 @@
   --chat-dark-light: #fff;
 }
 
+html[data-theme='dark'] {
+  --chat-sidebar-bg: #1e293b;
+  --chat-sidebar-border: rgba(255, 255, 255, 0.08);
+  --chat-sidebar-shadow: rgba(0, 0, 0, 0.3) 0px 4px 10px;
+  --chat-title-color: #e2e8f0;
+  --chat-secondary-color: #94a3b8;
+  --chat-text2nd-color: #64748b;
+  --chat-placeholder-color: #64748b;
+  --chat-text-white: #0f172a;
+  --chat-text-light: #1e293b;
+  --chat-bg-light: #273449;
+  --chat-box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.4);
+  --chat-paper-shadow: 0px 5px 5px -3px rgba(0, 0, 0, 0.4), 0px 8px 10px 1px rgba(0, 0, 0, 0.3), 0px 3px 14px 2px rgba(0, 0, 0, 0.3);
+
+  /* Primary highlight tints — slightly stronger alpha for visibility on dark surfaces */
+  --chat-primary-light: rgba(37, 211, 102, 0.2);
+  --chat-primary-light-bg: rgba(29, 170, 97, 0.2);
+
+  /* Semantic tag backgrounds — stronger alpha for visibility on dark surfaces */
+  --chat-success-light-bg: rgba(40, 199, 111, 0.2);
+  --chat-error-light-bg: rgba(211, 47, 47, 0.2);
+  --chat-warning-light-bg: rgba(245, 124, 0, 0.2);
+  --chat-info-light-bg: rgba(0, 207, 232, 0.2);
+
+  --chat-support-bg: #273449;
+  --chat-support-light: #273449;
+  --chat-new-light: #a3a0e0;
+}
+
 /* Utility classes from waba-chat global.scss */
 .chat-primary-btn {
   font-family: var(--chat-font) !important;
@@ -86,9 +115,9 @@
 
 .chat-secondary-btn {
   font-family: var(--chat-font) !important;
-  background: #ebebed !important;
+  background: var(--bg-light) !important;
   color: var(--chat-secondary-color) !important;
-  border-color: #ebebed !important;
+  border-color: var(--bg-light) !important;
   text-transform: capitalize !important;
   border-radius: 16px !important;
 }

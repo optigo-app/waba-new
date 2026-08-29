@@ -37,7 +37,7 @@ export const fetchWabaProfile = async ({ userId, accountId, companyCode, signal 
                 'Content-Type': 'application/json',
                 sp: headers.sp || '16',
                 sv: headers.sv || '0',
-                version: headers.Version || 'v2',
+                version: headers.Version || 'v4',
                 yearcode: headers.Yearcode || '',
             },
             body: JSON.stringify({

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { setCampaignDraft } from '../../../utils/storage';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
     Box,
     Grid,
@@ -47,7 +47,7 @@ import {
 import { fetchQuickReport } from '../../../api/QuickReport';
 import { fetchTemplateMessages } from '../../../api/TemplateMessages';
 import { fetchCampaignDetails } from '../../../api/FetchCampaignDetails';
-import { extractAudienceFromResponse } from '../utils/audienceMapper';
+import { extractAudienceFromResponse, mapAudienceData } from '../utils/audienceMapper';
 import { useAuthToken } from '../../../hooks/useAuthToken';
 import ConfirmationModal from '../../ConfirmationModal/ConfirmationModal';
 import toast from 'react-hot-toast';
@@ -55,10 +55,17 @@ import styles from './CampaignReport.module.scss';
 import { formatDate, getMessageStatus, normalizePhoneNumber } from '../../../utils/globalFunc';
 import * as XLSX from 'xlsx';
 
+const REPORT_STEPS = [
+    { id: 'overview', label: 'Campaign Overview', icon: LayoutDashboard, step: 1 },
+    { id: 'template', label: 'Template', icon: FileText, step: 2 },
+];
+
 const CampaignReport = () => {
     const params = useParams();
     const id = params?.id;
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const channelId = searchParams?.get('channelId') || '';
     const { userToken } = useAuthToken();
     const userId = userToken?.userId || userToken?.userid || userToken?.appuserid || '';
     const [loading, setLoading] = useState(true);
@@ -247,9 +254,10 @@ const CampaignReport = () => {
                 }
                 
                 return (
-                    <Typography 
-                        variant="body2" 
-                        sx={{ 
+                    <Typography
+                        variant="body2"
+                        sx={{
+                            width: '100%',
                             wordBreak: 'break-word',
                             whiteSpace: 'pre-wrap',
                             lineHeight: 1.4
@@ -279,9 +287,10 @@ const CampaignReport = () => {
             width: 250,
             minWidth: 150,
             renderCell: (params) => (
-                <Typography 
-                    variant="body2" 
-                    sx={{ 
+                <Typography
+                    variant="body2"
+                    sx={{
+                        width: '100%',
                         wordBreak: 'break-word',
                         whiteSpace: 'pre-wrap',
                         lineHeight: 1.4
@@ -313,7 +322,7 @@ const CampaignReport = () => {
     const loadReport = async () => {
         setLoading(true);
         try {
-            const quickReportResult = await fetchQuickReport(userId, id);
+            const quickReportResult = await fetchQuickReport(userId, id, channelId);
             if (quickReportResult.success && quickReportResult.data) {
                 setQuickReportData(...quickReportResult.data?.rd);
             } else {
@@ -346,8 +355,11 @@ const CampaignReport = () => {
             const templateName = templateData?.TemplateName || 'Template';
             const sourceCampaignName = quickReportData?.CampaignName || detailsResult.data.rd[0]?.CampaignName || detailsResult.data.rd[0]?.Name || `Campaign ${id}`;
 
-            // Map audience from rd3 (retarget) or rd2 (edit) — both handled by extractAudienceFromResponse
-            const mappedAudience = extractAudienceFromResponse(detailsResult.data);
+            // Audience for retarget comes from templateMessages (broadcast_camp_temp),
+            // falling back to broadcast_camp_details audience if template messages are empty
+            const mappedAudience = templateMessages.length > 0
+                ? mapAudienceData(templateMessages)
+                : extractAudienceFromResponse(detailsResult.data);
             
             const campaignData = {
                 ...detailsResult.data.rd[0],
@@ -405,7 +417,7 @@ const CampaignReport = () => {
         if (id && userId) {
             loadReport();
         }
-    }, [id, userId]);
+    }, [id, userId, channelId]);
 
     useEffect(() => {
         if (activeTab === 'template' && quickReportData && userId) {
@@ -605,14 +617,19 @@ const CampaignReport = () => {
         );
     }
 
+    // Calculate percentages in frontend (backend no longer sends percentage fields)
+    // Use Overall as the denominator — it represents the actual total message count
+    const totalMessages = quickReportData?.Overall || 0;
+    const calcPct = (count) => totalMessages !== 0 ? Number(((count ?? 0) * 100 / totalMessages).toFixed(2)) : 0;
+
     // Use quick report data
     const metrics = [
-        { label: 'All', value: quickReportData?.Audience || 0, count: quickReportData?.Audience || 0, icon: LayoutDashboard, color: '#7367f0', bg: 'rgba(115, 103, 240, 0.12)' },
-        { label: 'Sent', value: quickReportData?.SentPercentage ? `${quickReportData?.SentPercentage}%` : '0%', count: quickReportData?.SentCount || 0, icon: Send, color: '#00cfe8', bg: 'rgba(0, 207, 232, 0.12)' },
-        { label: 'Delivered', value: quickReportData?.DeliveredPercentage ? `${quickReportData?.DeliveredPercentage}%` : '0%', count: quickReportData?.DeliveredCount || 0, icon: MessageSquare, color: '#28c76f', bg: 'rgba(40, 199, 111, 0.12)' },
-        { label: 'Read', value: quickReportData?.ReadPercentage ? `${quickReportData?.ReadPercentage}%` : '0%', count: quickReportData?.ReadCount || 0, icon: Eye, color: '#1d9051', bg: 'rgba(29, 144, 81, 0.12)' },
-        { label: 'Replied', value: quickReportData?.RepliedPercentage ? `${quickReportData?.RepliedPercentage}%` : '0%', count: quickReportData?.RepliedCount || 0, icon: MessageCircle, color: '#ff9f43', bg: 'rgba(255, 159, 67, 0.12)' },
-        { label: 'Failed', value: quickReportData?.FailedPercentage ? `${quickReportData?.FailedPercentage}%` : '0%', count: quickReportData?.FailedCount || 0, icon: AlertCircle, color: '#ea5455', bg: 'rgba(234, 84, 85, 0.12)' },
+        { label: 'All', value: `${totalMessages !== 0 ? 100 : 0}%`, count: totalMessages, icon: LayoutDashboard, color: '#7367f0', bg: 'rgba(115, 103, 240, 0.12)' },
+        { label: 'Sent', value: `${calcPct(quickReportData?.SentCount)}%`, count: quickReportData?.SentCount || 0, icon: Send, color: '#00cfe8', bg: 'rgba(0, 207, 232, 0.12)' },
+        { label: 'Delivered', value: `${calcPct(quickReportData?.DeliveredCount)}%`, count: quickReportData?.DeliveredCount || 0, icon: MessageSquare, color: '#28c76f', bg: 'rgba(40, 199, 111, 0.12)' },
+        { label: 'Read', value: `${calcPct(quickReportData?.ReadCount)}%`, count: quickReportData?.ReadCount || 0, icon: Eye, color: '#1d9051', bg: 'rgba(29, 144, 81, 0.12)' },
+        { label: 'Replied', value: `${calcPct(quickReportData?.RepliedCount)}%`, count: quickReportData?.RepliedCount || 0, icon: MessageCircle, color: '#ff9f43', bg: 'rgba(255, 159, 67, 0.12)' },
+        { label: 'Failed', value: `${calcPct(quickReportData?.FailedCount)}%`, count: quickReportData?.FailedCount || 0, icon: AlertCircle, color: '#ea5455', bg: 'rgba(234, 84, 85, 0.12)' },
     ];
 
     const configDetails = [
@@ -651,60 +668,37 @@ const CampaignReport = () => {
                 </div>
 
                 <div className={styles.headerActions}>
-                    {/* Desktop: inline buttons */}
-                    <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: '10px' }}>
-                        <Button
-                            variant="outlined"
-                            className='varientOutlinedBtn'
-                            startIcon={<RefreshCw size={18} />}
-                            onClick={loadReport}
-                        >
-                            Refresh Report
-                        </Button>
-                        {activeTab !== 'template' && (
-                            <Button
-                                variant="outlined"
-                                className='secondaryBtnClassname'
-                                startIcon={<Download size={18} />}
-                                onClick={handleExport}
-                            >
-                                Export
-                            </Button>
-                        )}
-                    </Box>
+                    {/* Step pills */}
+                    <div className={styles.stepProgress}>
+                        {REPORT_STEPS.map((s, i) => {
+                            const active = activeTab === s.id;
+                            const done = activeTab === 'template' && s.id === 'overview';
+                            return (
+                                <React.Fragment key={s.id}>
+                                    <button
+                                        className={`${styles.stepPill} ${active ? styles.stepPillActive : ''} ${done ? styles.stepPillDone : ''}`}
+                                        onClick={() => setActiveTab(s.id)}
+                                    >
+                                        <span className={styles.stepPillNum}>{done ? '✓' : s.step}</span>
+                                        <span className={styles.stepPillLabel}>{s.label}</span>
+                                    </button>
+                                    {i < REPORT_STEPS.length - 1 && (
+                                        <div className={`${styles.stepConnector} ${done ? styles.stepConnectorDone : ''}`} />
+                                    )}
+                                </React.Fragment>
+                            );
+                        })}
+                    </div>
 
-                    {/* Mobile: direct icon buttons */}
-                    <Box sx={{ display: { xs: 'flex', sm: 'none' }, alignItems: 'center', gap: '8px' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <Tooltip title="Refresh Report" arrow>
-                            <MuiIconButton
-                                onClick={loadReport}
-                                sx={{
-                                    border: '1px solid #e2e8f0',
-                                    borderRadius: '10px',
-                                    background: '#fff',
-                                    color: '#64748b',
-                                    p: 1,
-                                    flexShrink: 0,
-                                    '&:hover': { borderColor: '#1daa61', color: '#1daa61' },
-                                }}
-                            >
+                            <MuiIconButton onClick={loadReport} className={styles.iconBtn}>
                                 <RefreshCw size={18} />
                             </MuiIconButton>
                         </Tooltip>
                         {activeTab !== 'template' && (
                             <Tooltip title="Export" arrow>
-                                <MuiIconButton
-                                    onClick={handleExport}
-                                    sx={{
-                                        border: '1px solid #e2e8f0',
-                                        borderRadius: '10px',
-                                        background: '#fff',
-                                        color: '#64748b',
-                                        p: 1,
-                                        flexShrink: 0,
-                                        '&:hover': { borderColor: '#1daa61', color: '#1daa61' },
-                                    }}
-                                >
+                                <MuiIconButton onClick={handleExport} className={styles.iconBtn}>
                                     <Download size={18} />
                                 </MuiIconButton>
                             </Tooltip>
@@ -719,22 +713,16 @@ const CampaignReport = () => {
                 <div className={styles.leftSidebar}>
                     <div className={styles.stepperCard}>
                         <div className={styles.stepperMenu}>
-                            <div
-                                className={`${styles.menuItem} ${activeTab === 'overview' ? styles.active : ''}`}
-                                onClick={() => setActiveTab('overview')}
-                            >
-                                <div className={styles.menuStepBadge}>1</div>
-                                <LayoutDashboard size={16} className={styles.menuIcon} />
-                                <span className={styles.menuLabel}>Campaign Overview</span>
-                            </div>
-                            <div
-                                className={`${styles.menuItem} ${activeTab === 'template' ? styles.active : ''}`}
-                                onClick={() => setActiveTab('template')}
-                            >
-                                <div className={styles.menuStepBadge}>2</div>
-                                <FileText size={16} className={styles.menuIcon} />
-                                <span className={styles.menuLabel}>(#1) Template</span>
-                            </div>
+                            {REPORT_STEPS.map((item) => (
+                                <Tooltip key={item.id} title={item.label} placement="right" arrow>
+                                    <div
+                                        className={`${styles.menuItem} ${activeTab === item.id ? styles.active : ''} ${activeTab === 'template' && item.id === 'overview' ? styles.done : ''}`}
+                                        onClick={() => setActiveTab(item.id)}
+                                    >
+                                        <item.icon size={20} className={styles.menuIcon} />
+                                    </div>
+                                </Tooltip>
+                            ))}
                         </div>
                     </div>
                 </div>
@@ -803,14 +791,15 @@ const CampaignReport = () => {
                                 {/* Segmented Progress Stats */}
                                 <Box className={styles.segmentedStats}>
                                     {(() => {
-                                        const overall = templateStats?.Overall || 0;
+                                        const total = templateStats?.Overall || 0;
+                                        const overall = total;
                                         const sent = templateStats?.Sent || 0;
                                         const delivered = templateStats?.Delivered || 0;
                                         const read = templateStats?.ReadCount || 0;
                                         const failed = templateStats?.Failed || 0;
-                                        const replied = templateStats?.Replied || 0; 
+                                        const replied = templateStats?.Replied || 0;
 
-                                        const calculatePercentage = (value) => overall > 0 ? ((value / overall) * 100).toFixed(1) : '0';
+                                        const calculatePercentage = (value) => total > 0 ? Number(((value ?? 0) * 100 / total).toFixed(2)) : 0;
 
                                         return [
                                             { label: 'Overall', value: '100%', count: overall },
@@ -859,33 +848,35 @@ const CampaignReport = () => {
                                                         fontSize: '0.9rem',
                                                     },
                                                 }}
-                                                InputProps={{
-                                                    startAdornment: (
-                                                        <InputAdornment position="start">
-                                                            <SearchIcon size={16} />
-                                                        </InputAdornment>
-                                                    ),
-                                                    endAdornment: templateSearchText && (
-                                                        <MuiIconButton size="small" onClick={() => setTemplateSearchText('')}>
-                                                            <CloseIcon size={16} />
-                                                        </MuiIconButton>
-                                                    ),
+                                                slotProps={{
+                                                    input: {
+                                                        startAdornment: (
+                                                            <InputAdornment position="start">
+                                                                <SearchIcon size={16} />
+                                                            </InputAdornment>
+                                                        ),
+                                                        endAdornment: templateSearchText && (
+                                                            <MuiIconButton size="small" onClick={() => setTemplateSearchText('')}>
+                                                                <CloseIcon size={16} />
+                                                            </MuiIconButton>
+                                                        ),
+                                                    },
                                                 }}
                                             />
 
-                                            {/* Desktop: inline buttons */}
-                                            <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+                                            {/* Desktop: icon + text buttons */}
+                                            <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                                                 <Button
                                                     variant="contained"
-                                                    className='buttonClassname'
+                                                    className={styles.retargetBtn}
                                                     startIcon={<Target size={16} />}
                                                     onClick={handleRetarget}
                                                 >
                                                     Retarget
                                                 </Button>
                                                 <Button
-                                                    variant="contained"
-                                                    className='secondaryBtnClassname'
+                                                    variant="outlined"
+                                                    className={styles.exportBtn}
                                                     startIcon={<Download size={16} />}
                                                     onClick={handleExport}
                                                 >
@@ -968,6 +959,7 @@ const CampaignReport = () => {
                                             setSelectedTemplateRowSelectionModel(normalizeSelectionModel(newSelection))
                                         }
                                         rowHeight={48}
+                                        getRowHeight={() => (statFilter === 'Failed' || statFilter === 'Replied' ? 'auto' : 48)}
                                         initialState={{
                                             pagination: {
                                                 paginationModel: { pageSize: 10, page: 0 },
@@ -1007,6 +999,15 @@ const CampaignReport = () => {
                                                 whiteSpace: 'nowrap',
                                                 overflow: 'hidden',
                                                 textOverflow: 'ellipsis',
+                                            },
+                                            '& .MuiDataGrid-cell[data-field="FailedReson"], & .MuiDataGrid-cell[data-field="ReplyMessage"]': {
+                                                whiteSpace: 'pre-wrap',
+                                                wordBreak: 'break-word',
+                                                overflow: 'visible',
+                                                textOverflow: 'clip',
+                                                alignItems: 'flex-start',
+                                                padding: '8px 12px',
+                                                lineHeight: 1.4,
                                             },
                                             '& .MuiDataGrid-footerContainer': {
                                                 borderTop: '1px solid #f0f0f2',

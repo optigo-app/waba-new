@@ -9,11 +9,13 @@ import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import { fetchExcelList } from '../../../../api/ExcelLists';
 import { fetchCampaignDetails } from '../../../../api/FetchCampaignDetails';
+import { fetchCampaignCustomerList } from '../../../../api/FetchCampaignCustomerList';
+import { fetchTemplateMessages } from '../../../../api/TemplateMessages';
 import { useAuthToken } from '../../../../hooks/useAuthToken';
 import ConfirmationModal from '../../../ConfirmationModal/ConfirmationModal';
 import { normalizeMobileNumber, getStaticUrl } from '../../../../utils/globalFunc';
 import { getCampaignStepper, getAudienceDraft, setAudienceDraft } from '../../../../utils/storage';
-import { extractAudienceFromResponse } from '../../utils/audienceMapper';
+import { extractAudienceFromResponse, mapAudienceData } from '../../utils/audienceMapper';
 
 const sampleExcelFile = () => getStaticUrl('/sampleAud.xlsx');
 
@@ -71,15 +73,20 @@ const Audience = ({ onNext, onBack, onAudienceChange, onDataSourceChange, onFilt
                 onAudienceChange(audienceGridData);
                 hasLoadedCustomersRef.current = true;
             } else if (retargetSourceCampaignId) {
-                // Fallback: fetch from API if audienceGridData is empty
+                // Fallback: fetch from broadcast_camp_temp if audienceGridData is empty
                 const fetchRetargetAudience = async () => {
                     setRetargetLoading(true);
                     try {
                         toast.loading('Loading audience data...', { id: 'retarget-audience' });
-                        const detailsResult = await fetchCampaignDetails(userToken?.userId || userToken?.userid || userToken?.appuserid, retargetSourceCampaignId, retargetChatMsgStatus, retemplateData?.TemplateId);
+                        const result = await fetchTemplateMessages(
+                            userToken?.userId || userToken?.userid || userToken?.appuserid,
+                            retargetSourceCampaignId,
+                            retemplateData?.TemplateId,
+                            retargetChatMsgStatus
+                        );
 
-                        if (detailsResult.success) {
-                            const mappedAudience = extractAudienceFromResponse(detailsResult.data);
+                        if (result.success) {
+                            const mappedAudience = mapAudienceData(result.messages);
 
                             if (mappedAudience.length > 0) {
                                 const source = mappedAudience[0]?.Source || 'optigo';
@@ -155,9 +162,58 @@ const Audience = ({ onNext, onBack, onAudienceChange, onDataSourceChange, onFilt
                 }
 
                 hasLoadedCustomersRef.current = true;
+            } else if (isEditClone && campaignId) {
+                // Fallback: fetch from broadcast_customer_list if audienceGridData is empty
+                const fetchEditCloneAudience = async () => {
+                    setRetargetLoading(true);
+                    try {
+                        toast.loading('Loading audience data...', { id: 'editclone-audience' });
+                        const result = await fetchCampaignCustomerList(
+                            userToken?.userId || userToken?.userid || userToken?.appuserid,
+                            campaignId
+                        );
+
+                        if (result.success) {
+                            const mappedAudience = extractAudienceFromResponse(result.data);
+
+                            if (mappedAudience.length > 0) {
+                                const source = mappedAudience[0]?.Source || 'optigo';
+                                setSource(source === 'optigo' ? 'crm' : 'excel');
+                                onDataSourceChange(source === 'optigo' ? 'crm' : 'excel');
+
+                                setFilteredDataFromDialog(mappedAudience);
+                                const selectedIds = mappedAudience.map(row => row.CustomerId || row.id);
+                                setRowSelectionModel(selectedIds);
+
+                                const rowMap = {};
+                                mappedAudience.forEach(row => {
+                                    const rowId = row.CustomerId || row.id;
+                                    if (rowId) {
+                                        rowMap[rowId] = row;
+                                    }
+                                });
+                                setSelectedRowMap(rowMap);
+
+                                onAudienceChange(mappedAudience);
+                            } else {
+                                toast.error('No audience found for this campaign');
+                            }
+                        } else {
+                            toast.error('Failed to load audience data');
+                        }
+                    } catch (error) {
+                        console.error('Error fetching edit/clone audience:', error);
+                        toast.error('Error loading audience data');
+                    } finally {
+                        toast.dismiss('editclone-audience');
+                        hasLoadedCustomersRef.current = true;
+                        setRetargetLoading(false);
+                    }
+                };
+                fetchEditCloneAudience();
             }
         }
-    }, [isEditClone, isRetargetFlow, audienceData, audienceGridData, customerFilters, onDataSourceChange]);
+    }, [isEditClone, isRetargetFlow, audienceData, audienceGridData, customerFilters, campaignId, userToken?.userId, userToken?.userid, userToken?.appuserid, onDataSourceChange, onAudienceChange]);
 
     const debounceSearch = (value) => {
         if (searchTimeoutRef.current) {

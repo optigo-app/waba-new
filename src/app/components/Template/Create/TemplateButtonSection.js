@@ -12,20 +12,20 @@ const phoneInputStyles = {
         height: '40px',
         fontSize: '0.875rem',
         borderRadius: '10px',
-        border: '1px solid #e2e8f0',
-        backgroundColor: '#fff',
-        color: '#444050',
+        border: '1px solid var(--border-color)',
+        backgroundColor: 'var(--bg-paper)',
+        color: 'var(--text-primary)',
         fontFamily: 'Inter, sans-serif',
         fontWeight: '500'
     },
     button: {
-        border: '1px solid #e2e8f0',
+        border: '1px solid var(--border-color)',
         borderRadius: '10px 0 0 10px',
-        backgroundColor: '#f8fafc'
+        backgroundColor: 'var(--bg-subtle)'
     },
     dropdown: {
         borderRadius: '10px',
-        border: '1px solid #e2e8f0',
+        border: '1px solid var(--border-color)',
         zIndex: 1,
         fontFamily: 'Inter, sans-serif'
     },
@@ -33,7 +33,7 @@ const phoneInputStyles = {
         margin: '8px',
         padding: '8px 12px',
         borderRadius: '8px',
-        border: '1px solid #e2e8f0',
+        border: '1px solid var(--border-color)',
         fontSize: '0.875rem'
     },
     container: {
@@ -150,19 +150,21 @@ const TemplateButtonSection = ({
                     onClose={handleCloseMenu}
                     anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
                     transformOrigin={{ vertical: 'top', horizontal: 'left' }}
-                    PaperProps={{
-                        sx: {
-                            mt: 1,
-                            minWidth: 280,
-                            borderRadius: '10px',
-                            border: '1px solid #e2e8f0',
-                            boxShadow: '0 12px 24px rgba(15, 23, 42, 0.12)'
+                    slotProps={{
+                        paper: {
+                            sx: {
+                                mt: 1,
+                                minWidth: 280,
+                                borderRadius: '10px',
+                                border: '1px solid var(--border-color)',
+                                boxShadow: '0 12px 24px rgba(15, 23, 42, 0.12)'
+                            }
                         }
                     }}
                 >
                     {menuOptions.map((section, sectionIdx) => (
                         <Box key={section.section}>
-                            <ListSubheader sx={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--titleColor)', lineHeight: 1.8 }}>
+                            <ListSubheader sx={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.8 }}>
                                 {section.section}
                             </ListSubheader>
                             {section.items.map((item) => {
@@ -195,13 +197,13 @@ const TemplateButtonSection = ({
                 {quickReplyButtons.length > 0 && (
                     <Box
                         sx={{
-                            border: '1px solid #e2e8f0',
+                            border: '1px solid var(--border-color)',
                             borderRadius: '12px',
                             padding: '12px',
-                            background: '#ffffff'
+                            background: 'var(--bg-paper)'
                         }}
                     >
-                        <Typography sx={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--titleColor)', mb: 1 }}>
+                        <Typography sx={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', mb: 1 }}>
                             Quick Reply
                         </Typography>
 
@@ -221,8 +223,8 @@ const TemplateButtonSection = ({
                                         <Box
                                             sx={{
                                                 flex: 1,
-                                                background: '#f8fafc',
-                                                border: '1px solid #e2e8f0',
+                                                background: 'var(--bg-subtle)',
+                                                border: '1px solid var(--border-color)',
                                                 borderRadius: '10px',
                                                 padding: '10px 12px',
                                                 position: 'relative'
@@ -235,9 +237,9 @@ const TemplateButtonSection = ({
                                                     position: 'absolute',
                                                     right: 8,
                                                     top: 6,
-                                                    color: 'var(--color-text-secondary)',
+                                                    color: 'var(--text-secondary)',
                                                     '&:hover': {
-                                                        backgroundColor: 'rgba(249, 115, 22, 0.12)'
+                                                        backgroundColor: 'var(--warning-light-bg)'
                                                     }
                                                 }}
                                                 title="Delete"
@@ -245,7 +247,7 @@ const TemplateButtonSection = ({
                                                 <X size={16} />
                                             </IconButton>
 
-                                            <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--titleColor)', mb: 0.7 }}>
+                                            <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)', mb: 0.7 }}>
                                                 Button Text
                                             </Typography>
 
@@ -273,13 +275,13 @@ const TemplateButtonSection = ({
                 {otherButtons.length > 0 && (
                     <Box
                         sx={{
-                            border: '1px solid #e2e8f0',
+                            border: '1px solid var(--border-color)',
                             borderRadius: '12px',
                             padding: '12px',
-                            background: '#ffffff'
+                            background: 'var(--bg-paper)'
                         }}
                     >
-                        <Typography sx={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--titleColor)', mb: 1, display: 'flex', alignItems: 'center', gap: 0.7 }}>
+                        <Typography sx={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', mb: 1, display: 'flex', alignItems: 'center', gap: 0.7 }}>
                             <MousePointerClick size={14} />
                             Call-to-action Buttons
                         </Typography>
@@ -296,9 +298,9 @@ const TemplateButtonSection = ({
                                                 position: 'absolute',
                                                 right: 8,
                                                 top: 6,
-                                                color: 'var(--color-text-secondary)',
+                                                color: 'var(--text-secondary)',
                                                 '&:hover': {
-                                                    backgroundColor: 'rgba(249, 115, 22, 0.12)'
+                                                    backgroundColor: 'var(--warning-light-bg)'
                                                 }
                                             }}
                                             title="Delete"
@@ -308,7 +310,7 @@ const TemplateButtonSection = ({
 
                                         <Box className={styles.buttonConfigRow}>
                                             <Box>
-                                                <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--titleColor)', mb: 0.7 }}>
+                                                <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)', mb: 0.7 }}>
                                                     Button Text
                                                 </Typography>
                                                 <TextField
@@ -329,7 +331,7 @@ const TemplateButtonSection = ({
 
                                             {btn.type === 'PHONE_NUMBER' && (
                                                 <Box sx={{ minWidth: '70%', flex: isCarouselContext ? 1 : 'unset' }}>
-                                                    <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--titleColor)', mb: 0.7 }}>
+                                                    <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)', mb: 0.7 }}>
                                                         Phone Number
                                                     </Typography>
                                                     <PhoneInput
@@ -349,7 +351,7 @@ const TemplateButtonSection = ({
 
                                             {btn.type === 'URL' && (
                                                 <Box sx={{ minWidth: 380, width: '70%' }}>
-                                                    <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--titleColor)', mb: 0.7 }}>
+                                                    <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)', mb: 0.7 }}>
                                                         Website URL
                                                     </Typography>
                                                     <TextField

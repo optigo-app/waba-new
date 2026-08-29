@@ -19,6 +19,7 @@ export const WalletProvider = ({ children }) => {
     const appUserId = auth?.id ?? auth?.userId ?? null;
 
     const billingData = useWalletStore((s) => s.billingData);
+    const channels = useWalletStore((s) => s.channels);
     const isLoading = useWalletStore((s) => s.isLoading);
     const error = useWalletStore((s) => s.error);
     const lastAppUserId = useWalletStore((s) => s.lastAppUserId);
@@ -57,6 +58,7 @@ export const WalletProvider = ({ children }) => {
 
     const value = {
         billingData,
+        channels,
         walletInfo,
         isLoading,
         error,

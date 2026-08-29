@@ -17,15 +17,17 @@ export default function AddCustomerDialog({ open, onClose, selectedMember, onSuc
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    if (!open) return;
     const timer = setTimeout(() => {
       setDebouncedFirstName(firstName);
       setDebouncedLastName(lastName);
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [firstName, lastName]);
+  }, [firstName, lastName, open]);
 
   const handleClose = useCallback(() => {
+    // Batch all resets into a single render cycle
     setFirstName('');
     setLastName('');
     setDebouncedFirstName('');

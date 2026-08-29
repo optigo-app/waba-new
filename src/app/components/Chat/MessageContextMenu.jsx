@@ -46,10 +46,10 @@ export default function MessageContextMenu({
           sx: {
             width: 200,
             borderRadius: 2.5,
-            bgcolor: 'rgba(255, 255, 255, 0.96)',
+            bgcolor: 'var(--bg-paper)',
             backdropFilter: 'blur(10px)',
-            border: '1px solid rgba(0,0,0,0.08)',
-            boxShadow: '0 16px 40px rgba(0,0,0,0.12)',
+            border: '1px solid var(--border-color)',
+            boxShadow: 'var(--box-shadow)',
             overflow: 'hidden',
             '& .MuiList-root': { py: 0.75 },
           },

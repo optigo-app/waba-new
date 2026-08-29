@@ -11,9 +11,10 @@ import { TEMPLATE_MD_UPLOAD, getHeaders1 } from "./Config";
 export const uploadMetaMedia = async (file, onProgress) => {
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("isMedia", "1");
 
     try {
-        const response = await fetch(TEMPLATE_MD_UPLOAD, {
+        const response = await fetch(TEMPLATE_MD_UPLOAD(), {
             method: 'POST',
             headers: {
                 ...getHeaders1(),

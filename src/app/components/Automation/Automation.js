@@ -1,22 +1,25 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Box, Card, CardContent, Typography, Button, IconButton, InputAdornment, TextField, Modal, Chip } from '@mui/material';
+import { Box, Card, CardContent, Typography, Button, IconButton, Modal, Chip, ToggleButtonGroup, ToggleButton, Tooltip } from '@mui/material';
+import { DataGrid } from '@mui/x-data-grid';
 import {
     Zap,
     Plus,
-    Smartphone,
     Trash2,
     PenSquare,
     Workflow,
-    Search,
     Sparkles,
     Upload,
     Hash,
     Eye,
+    LayoutGrid,
+    Table,
 } from 'lucide-react';
 import styles from './Automation.module.scss';
 import { useFlowStore } from '../../store/flowStore';
+import { useWallet } from '../../contexts/WalletContext';
+import FilterBar from '../Common/FilterBar/FilterBar';
 import FlowBuilder from './FlowBuilder/FlowBuilder';
 import AutomationSkelton from './AutomationSkelton';
 
@@ -39,8 +42,13 @@ const Automation = () => {
     const hasDraft = useFlowStore((state) => state.hasDraft);
     const restoreDraft = useFlowStore((state) => state.restoreDraft);
     const discardDraft = useFlowStore((state) => state.discardDraft);
+    const { channels: walletChannels } = useWallet();
 
-    const [searchTerm, setSearchTerm] = useState('');
+    const [search, setSearch] = useState('');
+    const [sortBy, setSortBy] = useState('newest');
+    const [filterStatus, setFilterStatus] = useState('ALL');
+    const [selectedChannel, setSelectedChannel] = useState('');
+    const [viewMode, setViewMode] = useState('table');
     const [importError, setImportError] = useState('');
     const [showDraftPrompt, setShowDraftPrompt] = useState(false);
     const fileInputRef = useRef(null);
@@ -62,16 +70,49 @@ const Automation = () => {
         setShowDraftPrompt(false);
     };
 
+    const channelOptions = useMemo(() => {
+        if (!walletChannels || walletChannels.length === 0) return [];
+        return walletChannels.map((ch) => ({
+            value: ch.mobileNumber || '',
+            label: ch.whatsappName || ch.companyCode || ch.mobileNumber || `Channel ${ch.Id}`,
+            MobileNumber: ch.mobileNumber,
+        }));
+    }, [walletChannels]);
+
     const filteredFlows = useMemo(() => {
-        if (!searchTerm.trim()) return flowsList;
-        const q = searchTerm.trim().toLowerCase();
-        return flowsList.filter(
-            (flow) =>
-                flow.name.toLowerCase().includes(q) ||
-                flow.description.toLowerCase().includes(q) ||
-                flow.triggerKeyword.toLowerCase().includes(q)
-        );
-    }, [flowsList, searchTerm]);
+        let list = [...flowsList];
+
+        if (search.trim()) {
+            const q = search.trim().toLowerCase();
+            list = list.filter(
+                (flow) =>
+                    flow.name.toLowerCase().includes(q) ||
+                    (flow.description && flow.description.toLowerCase().includes(q)) ||
+                    flow.triggerKeyword.toLowerCase().includes(q)
+            );
+        }
+
+        if (filterStatus !== 'ALL') {
+            list = list.filter((flow) =>
+                filterStatus === 'ACTIVE' ? flow.isActive : !flow.isActive
+            );
+        }
+
+        switch (sortBy) {
+            case 'oldest':
+                list.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+                break;
+            case 'name':
+                list.sort((a, b) => a.name.localeCompare(b.name));
+                break;
+            case 'newest':
+            default:
+                list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                break;
+        }
+
+        return list;
+    }, [flowsList, search, filterStatus, sortBy]);
 
     const handleAddAutomation = () => {
         createNewFlow();
@@ -124,6 +165,57 @@ const Automation = () => {
         deleteFlow(flowId);
     };
 
+    const flowColumns = [
+        { field: 'name', headerName: 'Flow Name', flex: 2, minWidth: 220 },
+        { field: 'triggerKeyword', headerName: 'Keyword', width: 250 },
+        {
+            field: 'isActive',
+            headerName: 'Status',
+            width: 120,
+            renderCell: ({ row }) => (
+                <Chip
+                    size="small"
+                    label={row.isActive ? 'Active' : 'Draft'}
+                    sx={{
+                        height: 22,
+                        borderRadius: '11px',
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        backgroundColor: row.isActive ? 'var(--primary-light-bg)' : 'var(--bg-light)',
+                        color: row.isActive ? 'var(--primary-main)' : 'var(--text-tertiary)',
+                    }}
+                />
+            ),
+        },
+        { field: 'nodeCount', headerName: 'Nodes', width: 90, type: 'number' },
+        {
+            field: 'updatedAt',
+            headerName: 'Last Updated',
+            width: 140,
+            renderCell: ({ row }) => formatFlowDate(row.updatedAt),
+        },
+        {
+            field: 'actions',
+            headerName: 'Actions',
+            width: 150,
+            sortable: false,
+            filterable: false,
+            renderCell: ({ row }) => (
+                <Box sx={{ display: 'flex', alignItems: 'center', height: '100%', gap: 0.5 }}>
+                    <IconButton size="small" onClick={() => handleEditFlow(row.id)} sx={{ color: 'var(--text-tertiary)' }}>
+                        <Eye size={18} />
+                    </IconButton>
+                    <IconButton size="small" onClick={() => handleEditFlow(row.id)} sx={{ color: 'var(--info-main)' }}>
+                        <PenSquare size={18} />
+                    </IconButton>
+                    <IconButton size="small" onClick={(e) => handleDeleteFlow(row.id, e)} sx={{ color: 'var(--error-main)' }}>
+                        <Trash2 size={18} />
+                    </IconButton>
+                </Box>
+            ),
+        },
+    ];
+
     if (view === 'builder') {
         return <FlowBuilder />;
     }
@@ -138,10 +230,24 @@ const Automation = () => {
                     </div>
                     <div>
                         <h2 className={styles.pageTitle}>Auto Reply</h2>
-                        <p className={styles.pageSubtitle}>Create and manage automated workflows for your conversations</p>
+                        <p className={styles.pageSubtitle}>{flowsList.length} automation{flowsList.length !== 1 ? 's' : ''} total</p>
                     </div>
                 </div>
                 <div className={styles.topActions}>
+                    <ToggleButtonGroup
+                        value={viewMode}
+                        exclusive
+                        onChange={(e, newMode) => newMode && setViewMode(newMode)}
+                        className="toggle-button-group"
+                        size="small"
+                    >
+                        <Tooltip title="Grid View" arrow>
+                            <ToggleButton value="grid"><LayoutGrid size={16} /></ToggleButton>
+                        </Tooltip>
+                        <Tooltip title="Table View" arrow>
+                            <ToggleButton value="table"><Table size={16} /></ToggleButton>
+                        </Tooltip>
+                    </ToggleButtonGroup>
                     {process.env.NEXT_PUBLIC_ENABLE_AI_FLOW === 'true' && (
                         <button
                             className="aiGenerateBtn"
@@ -221,55 +327,40 @@ const Automation = () => {
                 </div>
             </Modal>
 
+            {/* Filter bar — only when flows exist */}
+            {flowsList.length > 0 && (
+                <FilterBar
+                    search={search}
+                    onSearchChange={setSearch}
+                    searchPlaceholder="Search automations..."
+                    sortBy={sortBy}
+                    onSortChange={setSortBy}
+                    filterChips={[
+                        { value: 'ALL', label: 'All' },
+                        { value: 'ACTIVE', label: 'Active' },
+                        { value: 'DRAFT', label: 'Draft' },
+                    ]}
+                    activeFilter={filterStatus}
+                    onFilterChange={setFilterStatus}
+                    channelOptions={channelOptions}
+                    selectedChannel={selectedChannel}
+                    onChannelChange={setSelectedChannel}
+                />
+            )}
+
             {/* Content */}
             <div className={styles.contentArea}>
-                {/* Compact Info Banner */}
-                <Box className={styles.infoBanner}>
-                    <Box className={styles.infoBanner__deco}>
-                        <Smartphone size={180} />
-                    </Box>
-                    <Box className={styles.infoBanner__content}>
-                        <Typography component="h2" className={styles.infoBanner__title}>
-                            WhatsApp Chatbot Flows
-                        </Typography>
-                        <Typography component="p" className={styles.infoBanner__desc}>
-                            Build visual chatbot trees with keyword triggers, variables, API calls & more.
-                        </Typography>
-                    </Box>
-                </Box>
-
-                {/* Search bar — only when flows exist */}
-                {flowsList.length > 0 && (
-                    <Box className={styles.searchBarRow}>
-                        <TextField
-                            size="small"
-                            placeholder="Search automations..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className={styles.searchInput}
-                            slotProps={{
-                                input: {
-                                    startAdornment: (
-                                        <InputAdornment position="start">
-                                            <Search size={16} />
-                                        </InputAdornment>
-                                    ),
-                                },
-                            }}
-                        />
-                    </Box>
-                )}
-
                 {/* Flow List */}
-                {isLoadingFlows ? (
+                {isLoadingFlows && viewMode === 'grid' ? (
                     <AutomationSkelton count={8} />
                 ) : (
                 <>
-                <Box className={styles.automationGrid}>
+                {viewMode === 'grid' ? (
+                    <Box className={styles.automationGrid}>
                     {filteredFlows.map((flow) => {
                         const statusConfig = flow.isActive
-                            ? { label: 'Active', color: '#1daa61', bg: 'rgba(29, 170, 97, 0.10)' }
-                            : { label: 'Draft', color: '#6D6B77', bg: 'rgba(109, 107, 119, 0.10)' };
+                            ? { label: 'Active', color: 'var(--primary-main)', bg: 'var(--primary-light-bg)' }
+                            : { label: 'Draft', color: 'var(--text-tertiary)', bg: 'rgba(109, 107, 119, 0.10)' };
 
                         return (
                             <Card
@@ -323,8 +414,8 @@ const Automation = () => {
                                                 fontFamily: 'Poppins, sans-serif',
                                                 height: 20,
                                                 borderRadius: '4px',
-                                                backgroundColor: 'rgba(29, 170, 97, 0.10)',
-                                                color: '#1daa61',
+                                                backgroundColor: 'var(--primary-light-bg)',
+                                                color: 'var(--primary-main)',
                                                 '& .MuiChip-icon': { ml: '5px', mr: '-2px', color: 'inherit' },
                                             }}
                                         />
@@ -347,7 +438,7 @@ const Automation = () => {
 
                                     {/* Description / Body Preview */}
                                     {flow.description && (
-                                        <Box sx={{ background: '#f8f9fb', borderRadius: '10px', p: '10px 12px', mb: 1.5 }}>
+                                        <Box sx={{ background: 'var(--bg-subtle)', borderRadius: '10px', p: '10px 12px', mb: 1.5 }}>
                                             <Typography
                                                 sx={{
                                                     color: '#3d3b47',
@@ -396,7 +487,7 @@ const Automation = () => {
                                                 e.stopPropagation();
                                                 handleEditFlow(flow.id);
                                             }}
-                                            sx={{ color: '#6D6B77' }}
+                                            sx={{ color: 'var(--text-tertiary)' }}
                                         >
                                             <Eye size={16} />
                                         </IconButton>
@@ -413,7 +504,7 @@ const Automation = () => {
                                         <IconButton
                                             size="small"
                                             onClick={(e) => handleDeleteFlow(flow.id, e)}
-                                            sx={{ color: '#d32f2f' }}
+                                            sx={{ color: 'var(--error-main)' }}
                                         >
                                             <Trash2 size={16} />
                                         </IconButton>
@@ -422,7 +513,28 @@ const Automation = () => {
                             </Card>
                         );
                     })}
-                </Box>
+                    </Box>
+                ) : viewMode === 'table' ? (
+                    <Box className={styles.automationTable}>
+                        <DataGrid
+                            autoHeight
+                            rows={filteredFlows}
+                            columns={flowColumns}
+                            loading={isLoadingFlows}
+                            getRowId={(row) => row.id}
+                            onRowClick={(params) => handleEditFlow(params.id)}
+                            disableRowSelectionOnClick
+                            pageSizeOptions={[10, 25, 50]}
+                            initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
+                            sx={{
+                                border: 'none',
+                                '& .MuiDataGrid-main': { borderRadius: '12px' },
+                                '& .MuiDataGrid-cell': { fontFamily: 'Poppins, sans-serif' },
+                                '& .MuiDataGrid-columnHeaderTitle': { fontFamily: 'Poppins, sans-serif', fontWeight: 600 },
+                            }}
+                        />
+                    </Box>
+                ) : null}
 
                 {filteredFlows.length === 0 && (
                     <Box className={styles.emptyState}>
@@ -430,14 +542,14 @@ const Automation = () => {
                             <Zap size={40} className={styles.emptyStateIcon} />
                         </div>
                         <Typography component="h3" className={styles.emptyStateTitle}>
-                            {searchTerm ? 'No automations found' : 'No automations yet'}
+                            {search ? 'No automations found' : 'No automations yet'}
                         </Typography>
                         <Typography component="p" className={styles.emptyStateDesc}>
-                            {searchTerm
+                            {search
                                 ? 'Try adjusting your search term.'
                                 : 'Create your first WhatsApp chatbot flow to get started.'}
                         </Typography>
-                        {!searchTerm && (
+                        {!search && (
                             <Button
                                 variant="contained"
                                 className="buttonClassname"

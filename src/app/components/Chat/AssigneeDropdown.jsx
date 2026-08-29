@@ -212,7 +212,7 @@ export default function AssigneeDropdown({
                   {assigned ? (
                     <Check size={16} style={{ color: theme.palette.primary.main }} />
                   ) : (
-                    <Plus size={16} style={{ color: '#9ca3af' }} />
+                    <Plus size={16} style={{ color: 'var(--text-tertiary)' }} />
                   )}
                 </ListItem>
               );

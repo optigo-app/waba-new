@@ -8,9 +8,9 @@ const ChannelCardSkeleton = ({ count = 1 }) => {
                 <Paper
                     key={index}
                     sx={{
-                        background: '#fff',
+                        background: 'var(--bg-paper)',
                         borderRadius: '12px',
-                        border: '1px solid #e4e8ee',
+                        border: '1px solid var(--border-color)',
                         padding: '1.5rem',
                         boxShadow: 'none',
                         display: 'flex',
@@ -28,7 +28,7 @@ const ChannelCardSkeleton = ({ count = 1 }) => {
                             left: '-150%',
                             width: '120%',
                             height: '100%',
-                            background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent)',
+                            background: 'linear-gradient(90deg, transparent, var(--skeleton-shimmer), transparent)',
                             animation: 'shimmer 1.8s infinite',
                             zIndex: 1,
                             '@keyframes shimmer': {
@@ -47,7 +47,7 @@ const ChannelCardSkeleton = ({ count = 1 }) => {
                                 width={52}
                                 height={52}
                                 animation="wave"
-                                sx={{ borderRadius: '14px', bgcolor: 'rgba(0, 0, 0, 0.03)' }}
+                                sx={{ borderRadius: '14px', bgcolor: 'var(--skeleton-bg)' }}
                             />
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                                 <Skeleton
@@ -55,21 +55,21 @@ const ChannelCardSkeleton = ({ count = 1 }) => {
                                     width={120}
                                     height={20}
                                     animation="wave"
-                                    sx={{ bgcolor: 'rgba(0, 0, 0, 0.03)' }}
+                                    sx={{ bgcolor: 'var(--skeleton-bg)' }}
                                 />
                                 <Skeleton
                                     variant="text"
                                     width={140}
                                     height={14}
                                     animation="wave"
-                                    sx={{ bgcolor: 'rgba(0, 0, 0, 0.03)' }}
+                                    sx={{ bgcolor: 'var(--skeleton-bg)' }}
                                 />
                                 <Skeleton
                                     variant="text"
                                     width={100}
                                     height={14}
                                     animation="wave"
-                                    sx={{ bgcolor: 'rgba(0, 0, 0, 0.03)' }}
+                                    sx={{ bgcolor: 'var(--skeleton-bg)' }}
                                 />
                             </Box>
                         </Box>
@@ -79,21 +79,21 @@ const ChannelCardSkeleton = ({ count = 1 }) => {
                                 width={110}
                                 height={12}
                                 animation="wave"
-                                sx={{ bgcolor: 'rgba(0, 0, 0, 0.03)' }}
+                                sx={{ bgcolor: 'var(--skeleton-bg)' }}
                             />
                             <Skeleton
                                 variant="text"
                                 width={80}
                                 height={24}
                                 animation="wave"
-                                sx={{ bgcolor: 'rgba(0, 0, 0, 0.03)' }}
+                                sx={{ bgcolor: 'var(--skeleton-bg)' }}
                             />
                             <Skeleton
                                 variant="text"
                                 width={70}
                                 height={14}
                                 animation="wave"
-                                sx={{ bgcolor: 'rgba(0, 0, 0, 0.03)' }}
+                                sx={{ bgcolor: 'var(--skeleton-bg)' }}
                             />
                         </Box>
                     </Box>
@@ -105,7 +105,7 @@ const ChannelCardSkeleton = ({ count = 1 }) => {
                             width="100%"
                             height={12}
                             animation="wave"
-                            sx={{ borderRadius: '99px', bgcolor: 'rgba(0, 0, 0, 0.03)' }}
+                            sx={{ borderRadius: '99px', bgcolor: 'var(--skeleton-bg)' }}
                         />
                         <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                             <Skeleton
@@ -113,14 +113,14 @@ const ChannelCardSkeleton = ({ count = 1 }) => {
                                 width={80}
                                 height={18}
                                 animation="wave"
-                                sx={{ bgcolor: 'rgba(0, 0, 0, 0.03)' }}
+                                sx={{ bgcolor: 'var(--skeleton-bg)' }}
                             />
                             <Skeleton
                                 variant="text"
                                 width={70}
                                 height={18}
                                 animation="wave"
-                                sx={{ bgcolor: 'rgba(0, 0, 0, 0.03)' }}
+                                sx={{ bgcolor: 'var(--skeleton-bg)' }}
                             />
                         </Box>
                     </Box>
@@ -135,14 +135,14 @@ const ChannelCardSkeleton = ({ count = 1 }) => {
                             width="100%"
                             height={36}
                             animation="wave"
-                            sx={{ borderRadius: '8px', bgcolor: 'rgba(0, 0, 0, 0.03)' }}
+                            sx={{ borderRadius: '8px', bgcolor: 'var(--skeleton-bg)' }}
                         />
                         <Skeleton
                             variant="rounded"
                             width="100%"
                             height={36}
                             animation="wave"
-                            sx={{ borderRadius: '8px', bgcolor: 'rgba(0, 0, 0, 0.03)' }}
+                            sx={{ borderRadius: '8px', bgcolor: 'var(--skeleton-bg)' }}
                         />
                     </Box>
                 </Paper>

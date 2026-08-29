@@ -15,7 +15,7 @@ const hashString = (value) => {
   return Math.abs(hash);
 };
 
-const getInitials = (name) => {
+export const getInitials = (name) => {
   const cleaned = String(name ?? '').trim();
   if (!cleaned) return '?';
 
@@ -114,6 +114,19 @@ export const getWhatsAppAvatarConfig = (name, size = 40) => {
   };
 };
 
+/* Channel avatar — uses initials (e.g. "Optigo Waba" → "OW") + unique soft colors */
+export const getChannelAvatarConfig = (channel, size = 42) => {
+  const name = String(channel?.WhatsappName || channel?.whatsappName || '').trim();
+  const { bg, fg } = getSoftAvatarColors(name || 'unknown');
+
+  return {
+    initials: getInitials(name),
+    bg,
+    fg,
+    size,
+  };
+};
+
 export const getMessagePreview = (msg) => {
   const type = msg?.MessageType;
   const text = type === 'text' ? (msg?.Message || '')
@@ -184,7 +197,7 @@ export const processApiResponse = (apiData) => {
       ...conversation,
       Id: conversation.Id ?? conversation.ConversationId ?? conversation.autoid,
       ConversationId: conversation.ConversationId ?? conversation.Id ?? conversation.autoid,
-      lastMessage: preview.node,
+      lastMessage: preview.text || preview.node,
       lastMessageText: preview.text,
       lastMessageTime: formatChatTimestamp(lastMessage?.DateTime || conversation.DateTime),
       lastMessageTimestamp: lastMessage?.DateTime || conversation.DateTime,
@@ -352,15 +365,15 @@ export const getMessageStatusIcon = (member) => {
 
   switch (status) {
     case 0:
-      return React.createElement(Clock3, { size: 14, style: { marginRight: 5, color: '#9e9e9e' } });
+      return React.createElement(Clock3, { size: 14, style: { marginRight: 5, color: 'var(--text-tertiary)' } });
     case 1:
-      return React.createElement(Check, { size: 15, style: { marginRight: 5, color: '#9e9e9e' } });
+      return React.createElement(Check, { size: 15, style: { marginRight: 5, color: 'var(--text-tertiary)' } });
     case 2:
-      return React.createElement(CheckCheck, { size: 15, style: { marginRight: 5, color: '#9e9e9e' } });
+      return React.createElement(CheckCheck, { size: 15, style: { marginRight: 5, color: 'var(--text-tertiary)' } });
     case 3:
-      return React.createElement(CheckCheck, { size: 15, style: { marginRight: 5, color: '#1F51FF' } });
+      return React.createElement(CheckCheck, { size: 15, style: { marginRight: 5, color: 'var(--chat-primary, #25d366)' } });
     case 4:
-      return React.createElement(AlertCircle, { size: 14, style: { marginRight: 5, color: '#ff4444' } });
+      return React.createElement(AlertCircle, { size: 14, style: { marginRight: 5, color: 'var(--error-main)' } });
     default:
       return null;
   }
@@ -407,7 +420,7 @@ export const renderLinks = (text = '', { onLinkClick } = {}) => {
         target: isUrl ? '_blank' : undefined,
         rel: isUrl ? 'noopener noreferrer' : undefined,
         style: {
-          color: '#1daa61',
+          color: 'var(--primary-main)',
           textDecoration: 'none',
           fontWeight: 500,
           wordBreak: 'break-all',

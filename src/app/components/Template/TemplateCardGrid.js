@@ -9,15 +9,15 @@ import Pagination from '../Common/Pagination/Pagination';
 
 // ── Status Config ────────────────────────────────────────────────────────────
 const STATUS_CONFIG = {
-    APPROVED: { label: 'Approved', icon: CheckCircle2, color: '#1daa61', bg: 'rgba(29, 170, 97, 0.10)' },
-    REJECTED: { label: 'Rejected', icon: XCircle, color: '#d32f2f', bg: 'rgba(211, 47, 47, 0.10)' },
-    PENDING: { label: 'Pending', icon: Clock, color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.10)' },
+    APPROVED: { label: 'Approved', icon: CheckCircle2, color: 'var(--primary-main)', bg: 'rgba(29, 170, 97, 0.10)' },
+    REJECTED: { label: 'Rejected', icon: XCircle, color: 'var(--error-main)', bg: 'rgba(211, 47, 47, 0.10)' },
+    PENDING: { label: 'Pending', icon: Clock, color: 'var(--warning-main)', bg: 'rgba(245, 158, 11, 0.10)' },
     IN_APPEAL: { label: 'In Appeal', icon: AlertCircle, color: '#7367f0', bg: 'rgba(115, 103, 240, 0.10)' },
-    DRAFT: { label: 'Draft', icon: BookOpen, color: '#6D6B77', bg: 'rgba(109, 107, 119, 0.10)' },
+    DRAFT: { label: 'Draft', icon: BookOpen, color: 'var(--text-tertiary)', bg: 'rgba(109, 107, 119, 0.10)' },
 };
 
 const getStatusConfig = (status) =>
-    STATUS_CONFIG[status?.toUpperCase()] || { label: status || 'Unknown', icon: Clock, color: '#6b7280', bg: '#f3f4f6' };
+    STATUS_CONFIG[status?.toUpperCase()] || { label: status || 'Unknown', icon: Clock, color: 'var(--text-tertiary)', bg: 'var(--bg-light)' };
 
 // ── Header Type ───────────────────────────────────────────────────────────────
 const getHeaderType = (components = []) => {
@@ -34,9 +34,9 @@ const getHeaderType = (components = []) => {
 const HEADER_META = {
     carousel: { Icon: Image, label: 'Carousel', color: '#8b5cf6', bg: 'rgba(139,92,246,0.10)' },
     image: { Icon: Image, label: 'Image', color: '#7367f0', bg: 'rgba(115,103,240,0.10)' },
-    video: { Icon: Video, label: 'Video', color: '#03c3ec', bg: 'rgba(3,195,236,0.10)' },
+    video: { Icon: Video, label: 'Video', color: 'var(--info-main)', bg: 'rgba(3,195,236,0.10)' },
     document: { Icon: FileType, label: 'Document', color: '#ff9f43', bg: 'rgba(255,159,67,0.10)' },
-    text: { Icon: FileQuestion, label: 'Text', color: '#6D6B77', bg: 'rgba(109,107,119,0.10)' },
+    text: { Icon: FileQuestion, label: 'Text', color: 'var(--text-tertiary)', bg: 'rgba(109,107,119,0.10)' },
 };
 
 // ── Edit Permission ───────────────────────────────────────────────────────────
@@ -81,7 +81,7 @@ const TemplateCard = ({ template, onView, onSend, onClone, onEdit, onDelete, onP
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
-                border: '1px solid #eef0f4',
+                border: '1px solid var(--border-color)',
                 boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.02)',
                 transition: 'box-shadow 0.3s ease, transform 0.25s ease',
                 '&:hover': {
@@ -169,8 +169,8 @@ const TemplateCard = ({ template, onView, onSend, onClone, onEdit, onDelete, onP
                             fontFamily: 'Poppins, sans-serif',
                             height: 20,
                             borderRadius: '4px',
-                            backgroundColor: '#f4f5f7',
-                            color: '#8b8a94',
+                            backgroundColor: 'var(--bg-light)',
+                            color: 'var(--text-tertiary)',
                             '& .MuiChip-icon': { ml: '5px', mr: '-2px', color: 'inherit' },
                         }}
                     />
@@ -184,8 +184,8 @@ const TemplateCard = ({ template, onView, onSend, onClone, onEdit, onDelete, onP
                             fontFamily: 'Poppins, sans-serif',
                             height: 20,
                             borderRadius: '4px',
-                            backgroundColor: '#f4f5f7',
-                            color: '#8b8a94',
+                            backgroundColor: 'var(--bg-light)',
+                            color: 'var(--text-tertiary)',
                             '& .MuiChip-icon': { ml: '5px', mr: '-2px', color: 'inherit' },
                         }}
                     />
@@ -210,7 +210,7 @@ const TemplateCard = ({ template, onView, onSend, onClone, onEdit, onDelete, onP
                 {body?.text && (
                     <Box
                         sx={{
-                            background: '#f8f9fb',
+                            background: 'var(--bg-subtle)',
                             borderRadius: '10px',
                             p: '10px 12px',
                             mb: 1.5,
@@ -218,7 +218,7 @@ const TemplateCard = ({ template, onView, onSend, onClone, onEdit, onDelete, onP
                     >
                         <Typography
                             sx={{
-                                color: '#3d3b47',
+                                color: 'var(--text-primary)',
                                 fontSize: '0.85rem',
                                 lineHeight: 1.6,
                                 fontFamily: 'Poppins, sans-serif',
@@ -239,7 +239,7 @@ const TemplateCard = ({ template, onView, onSend, onClone, onEdit, onDelete, onP
                 {footer?.text && (
                     <Typography
                         sx={{
-                            color: '#b8bbc4',
+                            color: 'var(--text-placeholder)',
                             fontSize: '0.7rem',
                             fontFamily: 'Poppins, sans-serif',
                             display: 'block',
@@ -286,7 +286,7 @@ const TemplateCard = ({ template, onView, onSend, onClone, onEdit, onDelete, onP
             >
                 <Typography
                     sx={{
-                        color: '#c5c8ce',
+                        color: 'var(--text-placeholder)',
                         fontSize: '0.68rem',
                         fontFamily: 'Poppins, sans-serif',
                         fontWeight: 500,

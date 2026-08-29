@@ -37,7 +37,8 @@ export const createCampaign = async (campaignData) => {
             userId,
             customerJson,
             customerFilters,
-            campaignId
+            campaignId,
+            accountId,
         } = campaignData;
 
         const p = {
@@ -49,7 +50,8 @@ export const createCampaign = async (campaignData) => {
             UserId: userId,
             CustomerJson: JSON.stringify(customerJson),
             CustomerFilters: customerFilters ? JSON.stringify(customerFilters) : null,
-            ExcelId: campaignId
+            ExcelId: campaignId,
+            AccountId: Number(accountId) || 1,
         };
 
         const body = {

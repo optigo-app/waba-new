@@ -185,14 +185,16 @@ export default function TagSidebar({
                 disableAutoFocusItem
                 anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
                 transformOrigin={{ vertical: 'top', horizontal: 'left' }}
-                PaperProps={{
-                    sx: {
-                        borderRadius: 2,
-                        minWidth: 220,
-                        overflow: 'hidden',
-                        boxShadow: '0 18px 50px rgba(17, 24, 39, 0.18)',
-                        border: '1px solid rgba(0,0,0,0.06)',
-                    },
+                slotProps={{
+                    paper: {
+                        sx: {
+                            borderRadius: 2,
+                            minWidth: 220,
+                            overflow: 'hidden',
+                            boxShadow: '0 18px 50px rgba(17, 24, 39, 0.18)',
+                            border: '1px solid rgba(0,0,0,0.06)',
+                        },
+                    }
                 }}
                 MenuListProps={{
                     sx: { p: 0, maxHeight: 360, overflowY: 'auto' },

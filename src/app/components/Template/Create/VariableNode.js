@@ -28,8 +28,8 @@ export class VariableNode extends TextNode {
         dom.setAttribute('data-number', String(this.__number));
         dom.contentEditable = 'false';
         dom.style.display = 'inline-block';
-        dom.style.backgroundColor = '#e0e7ff';
-        dom.style.color = '#4338ca';
+        dom.style.backgroundColor = 'var(--new-main)';
+        dom.style.color = 'var(--new-light)';
         dom.style.padding = '0 4px';
         dom.style.borderRadius = '4px';
         dom.style.fontWeight = '600';

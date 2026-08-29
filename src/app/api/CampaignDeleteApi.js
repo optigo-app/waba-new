@@ -1,11 +1,11 @@
 import { callCommonApi } from "./CommonApi";
 
-export const campaignDeleteApi = async (CampaignId, userId) => {
+export const campaignDeleteApi = async (CampaignId, userId, accountId) => {
     try {
         const response = await callCommonApi({
             mode: "broadcast_camp_delete",
             f: "Broadcast ( broadcast_camp_delete )",
-            p: JSON.stringify({ "CampaignId": CampaignId }),
+            p: JSON.stringify({ "CampaignId": CampaignId, AccountId: Number(accountId) || 1 }),
             userId,
         });
         if (response?.Data) {

@@ -5,8 +5,8 @@
     flex-direction: column;
     height: 100vh;
     width: 100%;
-    background-color: #f8fafc;
-    background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+    background-color: var(--bg-light);
+    background-image: radial-gradient(var(--border-strong) 1px, transparent 1px);
     background-size: 22px 22px;
     overflow: hidden;
 }
@@ -17,8 +17,8 @@
     align-items: center;
     justify-content: space-between;
     padding: 0.6rem 1rem;
-    background: #fff;
-    border-bottom: 1px solid $sidebar-borderColor;
+    background: var(--bg-paper);
+    border-bottom: 1px solid var(--sidebar-borderColor);
     flex-shrink: 0;
     position: relative;
     z-index: 30;
@@ -45,47 +45,47 @@
 .toolbarBackBtn {
     font-family: 'Poppins', sans-serif !important;
     text-transform: capitalize !important;
-    color: $secondaryColor !important;
+    color: var(--secondary-color) !important;
     font-size: 0.75rem !important;
-    border: 1px solid $sidebar-borderColor !important;
+    border: 1px solid var(--sidebar-borderColor) !important;
     border-radius: 10px !important;
-    background: #f8fafc !important;
+    background: var(--bg-light) !important;
 
     &:hover {
-        background: #f1f5f9 !important;
-        color: $titleColor !important;
+        background: var(--bg-light) !important;
+        color: var(--titleColor) !important;
     }
 }
 
 .toolbarDivider {
     width: 1px;
     height: 24px;
-    background: $sidebar-borderColor;
+    background: var(--sidebar-borderColor);
 }
 
 .toolbarUndoRedo {
     display: flex;
     align-items: center;
     gap: 2px;
-    background: #f8fafc;
-    border: 1px solid $sidebar-borderColor;
+    background: var(--bg-light);
+    border: 1px solid var(--sidebar-borderColor);
     border-radius: 10px;
     padding: 2px;
 }
 
 .toolbarUndoBtn,
 .toolbarRedoBtn {
-    color: $secondaryColor !important;
+    color: var(--secondary-color) !important;
     border-radius: 8px !important;
     padding: 4px !important;
 
     &:hover:not(:disabled) {
-        background: #e2e8f0 !important;
-        color: $titleColor !important;
+        background: var(--border-color) !important;
+        color: var(--titleColor) !important;
     }
 
     &:disabled {
-        color: #cbd5e1 !important;
+        color: var(--border-strong) !important;
         cursor: not-allowed;
     }
 }
@@ -105,7 +105,7 @@
     font-family: 'Poppins', sans-serif;
     font-size: 0.85rem;
     font-weight: 700;
-    color: $titleColor;
+    color: var(--titleColor);
     background: transparent;
     border: none;
     border-bottom: 1px solid transparent;
@@ -115,17 +115,17 @@
     transition: border-color 0.2s;
 
     &:hover {
-        border-bottom-color: $sidebar-borderColor;
+        border-bottom-color: var(--sidebar-borderColor);
     }
 
     &:focus {
-        border-bottom-color: $primary-main;
+        border-bottom-color: var(--primary-main);
     }
 }
 
 .toolbarFlowDesc {
     font-size: 0.62rem;
-    color: $secondaryColor;
+    color: var(--secondary-color);
     font-family: 'Poppins', sans-serif;
     white-space: nowrap;
     overflow: hidden;
@@ -143,18 +143,18 @@
     font-size: 0.7rem;
     padding: 0.35rem 0.75rem;
     border-radius: 10px;
-    border: 1px solid $sidebar-borderColor;
+    border: 1px solid var(--sidebar-borderColor);
 }
 
 .toolbarTriggerKeyword {
-    background: #f8fafc;
-    color: $secondaryColor;
+    background: var(--bg-light);
+    color: var(--secondary-color);
 }
 
 .toolbarTriggerInstant {
-    background: rgba($warning-main, 0.08);
-    border-color: rgba($warning-main, 0.2);
-    color: darken($warning-main, 15%);
+    background: var(--warning-light-bg);
+    border-color: var(--warning-light-bg);
+    color: var(--warning-main);
 }
 
 // Inline trigger in header
@@ -169,7 +169,7 @@
     font-family: 'Poppins', sans-serif;
     font-size: 0.65rem;
     font-weight: 600;
-    color: $secondaryColor;
+    color: var(--secondary-color);
     white-space: nowrap;
 }
 
@@ -177,8 +177,8 @@
     font-family: monospace;
     font-size: 0.7rem;
     font-weight: 600;
-    color: $primary-main;
-    background: rgba($primary-main, 0.08);
+    color: var(--primary-main);
+    background: var(--primary-light-bg);
     padding: 3px 8px;
     border-radius: 6px;
     white-space: nowrap;
@@ -186,33 +186,33 @@
 
 .toolbarTriggerInput {
     width: 90px;
-    border: 1px solid $sidebar-borderColor;
+    border: 1px solid var(--sidebar-borderColor);
     border-radius: 8px;
     padding: 4px 8px;
     font-family: monospace;
     font-size: 0.72rem;
-    color: $titleColor;
-    background: #f8fafc;
+    color: var(--titleColor);
+    background: var(--bg-light);
     outline: none;
     transition: border-color 0.2s, box-shadow 0.2s;
 
     &:focus {
-        border-color: $primary-main;
-        box-shadow: 0 0 0 2px rgba($primary-main, 0.1);
+        border-color: var(--primary-main);
+        box-shadow: 0 0 0 2px var(--primary-light-bg);
     }
 
     &::placeholder {
-        color: #cbd5e1;
+        color: var(--border-strong);
     }
 }
 
 .toolbarTriggerInputError {
-    border-color: $error-main !important;
-    background: rgba($error-main, 0.04);
+    border-color: var(--error-main) !important;
+    background: var(--error-light-bg);
 
     &:focus {
-        border-color: $error-main !important;
-        box-shadow: 0 0 0 2px rgba($error-main, 0.1) !important;
+        border-color: var(--error-main) !important;
+        box-shadow: 0 0 0 2px var(--error-light-bg) !important;
     }
 }
 
@@ -220,7 +220,7 @@
     font-family: 'Poppins', sans-serif;
     font-size: 0.58rem;
     font-weight: 500;
-    color: $error-main;
+    color: var(--error-main);
     white-space: nowrap;
     max-width: 200px;
     overflow: hidden;
@@ -231,8 +231,8 @@
     font-family: 'Poppins', sans-serif;
     font-size: 0.58rem;
     font-weight: 600;
-    color: $primary-main;
-    background: rgba($primary-main, 0.08);
+    color: var(--primary-main);
+    background: var(--primary-light-bg);
     padding: 2px 6px;
     border-radius: 6px;
     white-space: nowrap;
@@ -246,9 +246,9 @@
     font-family: 'Poppins', sans-serif;
     font-size: 0.65rem;
     font-weight: 600;
-    color: darken($warning-main, 15%);
-    background: rgba($warning-main, 0.08);
-    border: 1px solid rgba($warning-main, 0.2);
+    color: var(--warning-main);
+    background: var(--warning-light-bg);
+    border: 1px solid var(--warning-light-bg);
     border-radius: 8px;
     padding: 4px 10px;
     margin-left: 0.5rem;
@@ -259,18 +259,18 @@
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: $primary-main;
+    background: var(--primary-main);
     display: inline-block;
     animation: pulse 2s infinite;
 }
 
 .toolbarTriggerInstant .toolbarTriggerDot {
-    background: $warning-main;
+    background: var(--warning-main);
 }
 
 .toolbarTriggerKeywordValue {
     font-weight: 700;
-    color: $primary-main;
+    color: var(--primary-main);
     font-family: monospace;
 }
 
@@ -289,20 +289,20 @@
 }
 
 .toolbarTriggerConfigBtn {
-    color: darken($warning-main, 15%);
-    border-color: rgba($warning-main, 0.3);
+    color: var(--warning-main);
+    border-color: var(--warning-light-bg);
 
     &:hover {
-        background: rgba($warning-main, 0.1);
+        background: var(--warning-light-bg);
     }
 }
 
 .toolbarTriggerEditBtn {
-    color: $secondaryColor;
-    border-color: $sidebar-borderColor;
+    color: var(--secondary-color);
+    border-color: var(--sidebar-borderColor);
 
     &:hover {
-        background: #f1f5f9;
+        background: var(--bg-light);
     }
 }
 
@@ -312,14 +312,14 @@
 }
 
 .toolbarInfoBtn {
-    border: 1px solid $sidebar-borderColor !important;
+    border: 1px solid var(--sidebar-borderColor) !important;
     border-radius: 10px !important;
-    color: $secondaryColor !important;
-    background: #f8fafc !important;
+    color: var(--secondary-color) !important;
+    background: var(--bg-light) !important;
 
     &:hover {
-        background: #f1f5f9 !important;
-        color: $titleColor !important;
+        background: var(--bg-light) !important;
+        color: var(--titleColor) !important;
     }
 }
 
@@ -327,8 +327,8 @@
     position: absolute;
     top: calc(100% + 8px);
     right: 0;
-    background: #fff;
-    border: 1px solid $sidebar-borderColor;
+    background: var(--bg-paper);
+    border: 1px solid var(--sidebar-borderColor);
     border-radius: 14px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
     width: 280px;
@@ -340,11 +340,11 @@
     align-items: center;
     justify-content: space-between;
     padding: 0.65rem 1rem;
-    border-bottom: 1px solid $sidebar-borderColor;
+    border-bottom: 1px solid var(--sidebar-borderColor);
     font-family: 'Poppins', sans-serif;
     font-weight: 700;
     font-size: 0.78rem;
-    color: $titleColor;
+    color: var(--titleColor);
 }
 
 .shortcutsBody {
@@ -360,7 +360,7 @@
     gap: 0.5rem;
     font-family: 'Poppins', sans-serif;
     font-size: 0.7rem;
-    color: $secondaryColor;
+    color: var(--secondary-color);
     line-height: 1.5;
 }
 
@@ -374,11 +374,11 @@
     font-family: monospace;
     font-size: 0.62rem;
     font-weight: 700;
-    background: #f1f5f9;
-    border: 1px solid $sidebar-borderColor;
+    background: var(--bg-light);
+    border: 1px solid var(--sidebar-borderColor);
     border-radius: 4px;
     padding: 1px 6px;
-    color: $titleColor;
+    color: var(--titleColor);
 }
 
 // Status button
@@ -404,13 +404,13 @@
 }
 
 .toolbarStatusDraft {
-    color: $secondaryColor !important;
-    border-color: $sidebar-borderColor !important;
-    background: #f8fafc !important;
+    color: var(--secondary-color) !important;
+    border-color: var(--sidebar-borderColor) !important;
+    background: var(--bg-light) !important;
 
     &:hover {
-        background: #f1f5f9 !important;
-        color: $titleColor !important;
+        background: var(--bg-light) !important;
+        color: var(--titleColor) !important;
     }
 }
 
@@ -419,13 +419,13 @@
     text-transform: capitalize !important;
     font-size: 0.72rem !important;
     border-radius: 10px !important;
-    color: $primary-main !important;
-    border-color: rgba($primary-main, 0.2) !important;
-    background: rgba($primary-main, 0.06) !important;
+    color: var(--primary-main) !important;
+    border-color: var(--primary-light-bg) !important;
+    background: var(--primary-light-bg) !important;
 
     &:hover {
-        background: rgba($primary-main, 0.12) !important;
-        border-color: $primary-main !important;
+        background: var(--primary-light-bg) !important;
+        border-color: var(--primary-main) !important;
     }
 }
 
@@ -435,8 +435,8 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background: #fff;
-    border: 1px solid $sidebar-borderColor;
+    background: var(--bg-paper);
+    border: 1px solid var(--sidebar-borderColor);
     border-radius: 14px;
     box-shadow: 0 12px 48px rgba(0, 0, 0, 0.25), 0 4px 12px rgba(0, 0, 0, 0.1);
     width: 360px;
@@ -448,11 +448,11 @@
     align-items: center;
     justify-content: space-between;
     padding: 0.75rem 1rem;
-    border-bottom: 1px solid $sidebar-borderColor;
+    border-bottom: 1px solid var(--sidebar-borderColor);
     font-family: 'Poppins', sans-serif;
     font-weight: 700;
     font-size: 0.8rem;
-    color: $titleColor;
+    color: var(--titleColor);
 }
 
 .configPopoverBody {
@@ -475,18 +475,18 @@
     align-items: center;
     justify-content: space-between;
     padding: 4px 8px;
-    background: #f8fafc;
+    background: var(--bg-light);
     border-radius: 6px;
 }
 
 .configKeywordText {
     font-family: monospace;
     font-size: 0.72rem;
-    color: $titleColor;
+    color: var(--titleColor);
 }
 
 .configKeywordRemove {
-    color: #ef4444 !important;
+    color: var(--error-main) !important;
     padding: 2px !important;
 }
 
@@ -502,7 +502,7 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background: #fff;
+    background: var(--bg-paper);
     border-radius: 16px;
     box-shadow: 0 16px 48px rgba(0, 0, 0, 0.16);
     width: 480px;
@@ -516,24 +516,24 @@
     align-items: center;
     justify-content: space-between;
     padding: 1rem 1.5rem;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid var(--bg-light);
 }
 
 .saveModalHeaderText {
     font-family: 'Poppins', sans-serif;
     font-size: 0.88rem;
     font-weight: 700;
-    color: $titleColor;
+    color: var(--titleColor);
     letter-spacing: -0.01em;
 }
 
 .saveModalCloseBtn {
-    color: $secondaryColor !important;
-    background: #f1f5f9 !important;
+    color: var(--secondary-color) !important;
+    background: var(--bg-light) !important;
 
     &:hover {
-        background: #e2e8f0 !important;
-        color: $titleColor !important;
+        background: var(--border-color) !important;
+        color: var(--titleColor) !important;
     }
 }
 
@@ -590,7 +590,7 @@
     font-family: 'Poppins', sans-serif;
     font-size: 1.1rem;
     font-weight: 700;
-    color: $titleColor;
+    color: var(--titleColor);
     margin: 0 0 0.5rem 0;
     letter-spacing: -0.01em;
 }
@@ -598,7 +598,7 @@
 .saveSuccessDesc {
     font-family: 'Poppins', sans-serif;
     font-size: 0.78rem;
-    color: $secondaryColor;
+    color: var(--secondary-color);
     line-height: 1.6;
     margin: 0 0 1.5rem 0;
     max-width: 340px;
@@ -654,8 +654,8 @@
     font-size: 0.78rem;
     color: #334155;
     line-height: 1.5;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
+    background: var(--bg-light);
+    border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 0.625rem 0.875rem;
 }
@@ -683,8 +683,8 @@
     display: flex;
     align-items: center;
     gap: 0;
-    background: #f8fafc;
-    border: 1px solid #f1f5f9;
+    background: var(--bg-light);
+    border: 1px solid var(--bg-light);
     border-radius: 12px;
     padding: 0.875rem 1.25rem;
     width: 100%;
@@ -701,7 +701,7 @@
 .saveSuccessInfoLabel {
     font-family: 'Poppins', sans-serif;
     font-size: 0.6rem;
-    color: $secondaryColor;
+    color: var(--secondary-color);
     text-transform: uppercase;
     letter-spacing: 0.04em;
     font-weight: 500;
@@ -710,14 +710,14 @@
 .saveSuccessInfoValue {
     font-family: 'Poppins', sans-serif;
     font-size: 0.85rem;
-    color: $titleColor;
+    color: var(--titleColor);
     font-weight: 700;
 }
 
 .saveSuccessInfoDivider {
     width: 1px;
     height: 32px;
-    background: #e2e8f0;
+    background: var(--border-color);
     flex-shrink: 0;
 }
 
@@ -733,8 +733,8 @@
 .sidebar {
     width: 300px;
     flex-shrink: 0;
-    background: #fff;
-    border-right: 1px solid $sidebar-borderColor;
+    background: var(--bg-paper);
+    border-right: 1px solid var(--sidebar-borderColor);
     display: flex;
     flex-direction: column;
     padding: 1.5rem 1rem 0 1.25rem;
@@ -759,13 +759,13 @@
 }
 
 .sidebarTitleIcon {
-    color: $primary-main;
+    color: var(--primary-main);
 }
 
 .sidebarTitle {
     font-size: 0.78rem !important;
     font-weight: 700 !important;
-    color: $titleColor;
+    color: var(--titleColor);
     font-family: 'Poppins', sans-serif !important;
     margin: 0;
     text-transform: uppercase;
@@ -775,12 +775,12 @@
 
 .sidebarCloseBtn {
     margin-left: auto !important;
-    color: $secondaryColor !important;
+    color: var(--secondary-color) !important;
     padding: 4px !important;
 
     &:hover {
         background: rgba(0, 0, 0, 0.04) !important;
-        color: $titleColor !important;
+        color: var(--titleColor) !important;
     }
 }
 
@@ -789,22 +789,22 @@
     top: 70px;
     left: 12px;
     z-index: 10;
-    background: #fff !important;
-    border: 1px solid $sidebar-borderColor;
+    background: var(--bg-paper) !important;
+    border: 1px solid var(--sidebar-borderColor);
     border-radius: 8px !important;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-    color: $secondaryColor !important;
+    color: var(--secondary-color) !important;
 
     &:hover {
-        background: #f8fafc !important;
-        color: $primary-main !important;
-        border-color: $primary-main;
+        background: var(--bg-light) !important;
+        color: var(--primary-main) !important;
+        border-color: var(--primary-main);
     }
 }
 
 .sidebarHint {
     font-size: 0.62rem !important;
-    color: $secondaryColor;
+    color: var(--secondary-color);
     font-family: 'Poppins', sans-serif !important;
     margin: 0;
     line-height: 1.65;
@@ -813,7 +813,7 @@
 
 .sidebarSeparator {
     height: 1px;
-    background: $sidebar-borderColor;
+    background: var(--sidebar-borderColor);
     margin: 1rem 0.25rem 0.75rem 0;
     flex-shrink: 0;
 }
@@ -836,12 +836,12 @@
     }
 
     &::-webkit-scrollbar-thumb {
-        background: #e2e8f0;
+        background: var(--border-color);
         border-radius: 999px;
     }
 
     &::-webkit-scrollbar-thumb:hover {
-        background: #cbd5e1;
+        background: var(--border-strong);
     }
 }
 
@@ -854,7 +854,7 @@
 .nodeCategoryTitle {
     font-size: 0.56rem;
     font-weight: 700;
-    color: $secondaryColor;
+    color: var(--secondary-color);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     font-family: 'Poppins', sans-serif;
@@ -874,15 +874,15 @@
     gap: 0.7rem;
     padding: 0.7rem 0.8rem;
     border-radius: 12px;
-    border: 1px solid $sidebar-borderColor;
-    background: #f8fafc;
+    border: 1px solid var(--sidebar-borderColor);
+    background: var(--bg-light);
     cursor: grab;
     transition: all 0.2s ease;
     position: relative;
 
     &:hover {
-        background: #fff;
-        border-color: #cbd5e1;
+        background: var(--bg-paper);
+        border-color: var(--border-strong);
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.07);
         transform: translateY(-1px);
     }
@@ -911,14 +911,14 @@
 .nodeItemLabel {
     font-size: 0.73rem;
     font-weight: 600;
-    color: $titleColor;
+    color: var(--titleColor);
     font-family: 'Poppins', sans-serif;
     line-height: 1.35;
 }
 
 .nodeItemDesc {
     font-size: 0.58rem;
-    color: $secondaryColor;
+    color: var(--secondary-color);
     font-family: 'Poppins', sans-serif;
     white-space: nowrap;
     overflow: hidden;
@@ -931,7 +931,7 @@
     font-size: 0.52rem;
     font-weight: 700;
     font-family: monospace;
-    color: #cbd5e1;
+    color: var(--border-strong);
     opacity: 0;
     transition: opacity 0.2s;
     flex-shrink: 0;
@@ -943,8 +943,8 @@
 
 .sidebarTip {
     padding: 0.875rem 1rem;
-    background: #f8fafc;
-    border-top: 1px solid $sidebar-borderColor;
+    background: var(--bg-light);
+    border-top: 1px solid var(--sidebar-borderColor);
     border-radius: 0 0 0 12px;
     flex-shrink: 0;
     margin: 0 -1rem 0 -1.25rem;
@@ -952,7 +952,7 @@
 
 .sidebarTipText {
     font-size: 0.58rem;
-    color: $secondaryColor;
+    color: var(--secondary-color);
     font-family: 'Poppins', sans-serif;
     line-height: 1.65;
     padding-right: 0.25rem;
@@ -966,15 +966,15 @@
 }
 
 .reactFlow {
-    background: #f8fafc;
+    background: var(--bg-light);
 }
 
 // ── Settings Panel ────────────────────────────────────────────────────────────
 .settingsPanel {
     width: 320px;
     flex-shrink: 0;
-    background: #fff;
-    border-left: 1px solid $sidebar-borderColor;
+    background: var(--bg-paper);
+    border-left: 1px solid var(--sidebar-borderColor);
     display: flex;
     flex-direction: column;
     box-shadow: -4px 0 24px rgba(0, 0, 0, 0.08);
@@ -1004,14 +1004,14 @@
 }
 
 .settingsEmptyIcon {
-    color: #cbd5e1;
+    color: var(--border-strong);
     margin-bottom: 0.75rem;
 }
 
 .settingsEmptyText {
     font-family: 'Poppins', sans-serif !important;
     font-size: 0.7rem !important;
-    color: $secondaryColor !important;
+    color: var(--secondary-color) !important;
     line-height: 1.6 !important;
     max-width: 220px;
 }
@@ -1021,15 +1021,15 @@
     align-items: center;
     justify-content: space-between;
     padding: 0.6rem 1rem;
-    border-bottom: 1px solid $sidebar-borderColor;
-    background: #f8fafc;
+    border-bottom: 1px solid var(--sidebar-borderColor);
+    background: var(--bg-light);
     flex-shrink: 0;
 }
 
 .settingsHeaderLabel {
     font-size: 0.58rem;
     font-weight: 700;
-    color: $secondaryColor;
+    color: var(--secondary-color);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     font-family: 'Poppins', sans-serif;
@@ -1038,7 +1038,7 @@
 .settingsHeaderTitle {
     font-size: 0.72rem;
     font-weight: 700;
-    color: $titleColor;
+    color: var(--titleColor);
     text-transform: uppercase;
     font-family: 'Poppins', sans-serif;
     margin-top: 2px;
@@ -1051,13 +1051,13 @@
 .settingsHeaderId {
     font-size: 0.58rem;
     font-weight: 500;
-    color: $secondaryColor;
+    color: var(--secondary-color);
     font-family: monospace;
     text-transform: none;
 }
 
 .settingsCloseBtn {
-    color: $secondaryColor !important;
+    color: var(--secondary-color) !important;
 }
 
 .settingsBody {
@@ -1078,7 +1078,7 @@
 .settingsFieldLabel {
     font-size: 0.62rem;
     font-weight: 700;
-    color: $titleColor;
+    color: var(--titleColor);
     text-transform: uppercase;
     letter-spacing: 0.04em;
     font-family: 'Poppins', sans-serif;
@@ -1087,7 +1087,7 @@
 .settingsFieldHint {
     font-family: 'Poppins', sans-serif !important;
     font-size: 0.58rem !important;
-    color: $secondaryColor !important;
+    color: var(--secondary-color) !important;
     line-height: 1.5 !important;
 }
 
@@ -1100,16 +1100,16 @@
 }
 
 .settingsDivider {
-    border-color: $sidebar-borderColor !important;
+    border-color: var(--sidebar-borderColor) !important;
     margin: 0.25rem 0 !important;
 }
 
 // ── Reorderable sections ──────────────────────────────────────────────────────
 .reorderableSection {
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--border-color);
     border-radius: 10px;
     margin-bottom: 0.5rem;
-    background: #fff;
+    background: var(--bg-paper);
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
 
     &:hover {
@@ -1127,8 +1127,8 @@
     align-items: center;
     gap: 0.375rem;
     padding: 0.375rem 0.625rem;
-    background: #f8fafc;
-    border-bottom: 1px solid #e2e8f0;
+    background: var(--bg-light);
+    border-bottom: 1px solid var(--border-color);
     border-radius: 10px 10px 0 0;
     cursor: grab;
     user-select: none;
@@ -1141,7 +1141,7 @@
 .sectionDragHandle {
     display: flex;
     align-items: center;
-    color: #94a3b8;
+    color: var(--text-placeholder);
     flex-shrink: 0;
 }
 
@@ -1150,7 +1150,7 @@
     font-family: 'Poppins', sans-serif;
     font-size: 0.62rem;
     font-weight: 600;
-    color: #64748b;
+    color: var(--text-tertiary);
     text-transform: uppercase;
     letter-spacing: 0.04em;
     white-space: nowrap;
@@ -1173,7 +1173,7 @@
     height: 20px;
     border: none;
     background: transparent;
-    color: #94a3b8;
+    color: var(--text-placeholder);
     cursor: pointer;
     border-radius: 5px;
     transition: all 0.15s ease;
@@ -1198,27 +1198,27 @@
 }
 
 .attachmentDropzone {
-    border: 2px dashed #cbd5e1;
+    border: 2px dashed var(--border-strong);
     border-radius: 10px;
     padding: 1.25rem 0.75rem;
     text-align: center;
     cursor: pointer;
     transition: all 0.2s;
-    background: #f8fafc;
+    background: var(--bg-light);
 
     &:hover {
-        border-color: $primary-main;
+        border-color: var(--primary-main);
         background: #f0f9ff;
     }
 }
 
 .attachmentDropzoneActive {
-    border-color: $primary-main;
+    border-color: var(--primary-main);
     background: #eff6ff;
 }
 
 .attachmentDropzoneIcon {
-    color: #94a3b8;
+    color: var(--text-placeholder);
     margin-bottom: 0.4rem;
     display: flex;
     justify-content: center;
@@ -1227,14 +1227,14 @@
 .attachmentDropzoneText {
     font-family: 'Poppins', sans-serif;
     font-size: 0.68rem;
-    color: #64748b;
+    color: var(--text-tertiary);
     font-weight: 500;
 }
 
 .attachmentDropzoneHint {
     font-family: 'Poppins', sans-serif;
     font-size: 0.56rem;
-    color: #94a3b8;
+    color: var(--text-placeholder);
     margin-top: 0.2rem;
 }
 
@@ -1242,8 +1242,8 @@
     position: relative;
     border-radius: 10px;
     overflow: hidden;
-    border: 1px solid #e2e8f0;
-    background: #f8fafc;
+    border: 1px solid var(--border-color);
+    background: var(--bg-light);
 }
 
 .attachmentPreviewImage {
@@ -1261,8 +1261,8 @@
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    background: #f1f5f9;
-    color: #94a3b8;
+    background: var(--bg-light);
+    color: var(--text-placeholder);
     font-family: 'Poppins', sans-serif;
     font-size: 0.7rem;
 }
@@ -1295,7 +1295,7 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.75rem;
-    background: #f8fafc;
+    background: var(--bg-light);
 }
 
 .attachmentPreviewDocIcon {
@@ -1306,7 +1306,7 @@
 .attachmentPreviewDocName {
     font-family: 'Poppins', sans-serif;
     font-size: 0.65rem;
-    color: #475569;
+    color: var(--text-tertiary);
     font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
@@ -1318,14 +1318,14 @@
     align-items: center;
     justify-content: space-between;
     padding: 0.4rem 0.6rem;
-    background: #fff;
-    border-top: 1px solid #f1f5f9;
+    background: var(--bg-paper);
+    border-top: 1px solid var(--bg-light);
 }
 
 .attachmentPreviewMetaText {
     font-family: 'Poppins', sans-serif;
     font-size: 0.56rem;
-    color: #94a3b8;
+    color: var(--text-placeholder);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1337,7 +1337,7 @@
     gap: 0.25rem;
     font-family: 'Poppins', sans-serif;
     font-size: 0.58rem;
-    color: #ef4444;
+    color: var(--error-main);
     cursor: pointer;
     border: none;
     background: none;
@@ -1369,7 +1369,7 @@
 .attachmentUploadError {
     font-family: 'Poppins', sans-serif;
     font-size: 0.58rem;
-    color: #ef4444;
+    color: var(--error-main);
     background: #fef2f2;
     border-radius: 6px;
     padding: 0.4rem 0.6rem;
@@ -1398,7 +1398,7 @@
 }
 
 .validationWarningIcon {
-    color: #f59e0b;
+    color: var(--warning-main);
     flex-shrink: 0;
     margin-top: 1px;
 }
@@ -1429,7 +1429,7 @@
     gap: 0.35rem;
     font-family: 'Poppins', sans-serif;
     font-size: 0.58rem;
-    color: $primary-main;
+    color: var(--primary-main);
     cursor: pointer;
     border: none;
     background: none;
@@ -1446,8 +1446,8 @@
     display: flex;
     gap: 0.5rem;
     padding: 0.75rem 1rem;
-    border-top: 1px solid $sidebar-borderColor;
-    background: #f8fafc;
+    border-top: 1px solid var(--sidebar-borderColor);
+    background: var(--bg-light);
     flex-shrink: 0;
 }
 
@@ -1457,8 +1457,8 @@
     text-transform: capitalize !important;
     border-radius: 10px !important;
     font-size: 0.72rem !important;
-    color: $secondaryColor !important;
-    border-color: $sidebar-borderColor !important;
+    color: var(--secondary-color) !important;
+    border-color: var(--sidebar-borderColor) !important;
 }
 
 .settingsApplyBtn {
@@ -1486,15 +1486,15 @@
 .keywordChip {
     font-family: monospace !important;
     font-size: 0.68rem !important;
-    background: #f1f5f9 !important;
-    color: $titleColor !important;
-    border: 1px solid $sidebar-borderColor !important;
+    background: var(--bg-light) !important;
+    color: var(--titleColor) !important;
+    border: 1px solid var(--sidebar-borderColor) !important;
 }
 
 .keywordEmpty {
     font-family: 'Poppins', sans-serif !important;
     font-size: 0.62rem !important;
-    color: $secondaryColor !important;
+    color: var(--secondary-color) !important;
     font-style: italic !important;
 }
 
@@ -1513,8 +1513,8 @@
     align-items: center;
     justify-content: space-between;
     padding: 0.4rem 0.6rem;
-    background: #f8fafc;
-    border: 1px solid $sidebar-borderColor;
+    background: var(--bg-light);
+    border: 1px solid var(--sidebar-borderColor);
     border-radius: 8px;
     gap: 0.25rem;
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -1528,7 +1528,7 @@
 .buttonListDragHandle {
     display: flex;
     align-items: center;
-    color: #94a3b8;
+    color: var(--text-placeholder);
     cursor: grab;
     flex-shrink: 0;
     padding: 0 0.125rem;
@@ -1554,7 +1554,7 @@
     height: 24px;
     border: none;
     background: transparent;
-    color: #94a3b8;
+    color: var(--text-placeholder);
     cursor: pointer;
     border-radius: 6px;
     transition: all 0.15s ease;
@@ -1591,7 +1591,7 @@
 .buttonListItemLabel {
     font-size: 0.68rem;
     font-weight: 600;
-    color: $titleColor;
+    color: var(--titleColor);
     font-family: 'Poppins', sans-serif;
     white-space: nowrap;
     overflow: hidden;
@@ -1600,7 +1600,7 @@
 
 .buttonListItemDesc {
     font-size: 0.58rem;
-    color: $secondaryColor;
+    color: var(--secondary-color);
     font-family: 'Poppins', sans-serif;
     white-space: nowrap;
     overflow: hidden;
@@ -1609,13 +1609,13 @@
 }
 
 .buttonListRemove {
-    color: $error-main !important;
+    color: var(--error-main) !important;
     flex-shrink: 0;
 }
 
 .buttonAddBox {
-    background: rgba($primary-main, 0.03);
-    border: 1px solid rgba($primary-main, 0.1);
+    background: var(--primary-light-bg);
+    border: 1px solid var(--primary-light-bg);
     border-radius: 12px;
     padding: 0.6rem;
     display: flex;
@@ -1632,23 +1632,23 @@
 .buttonAddLabel {
     font-size: 0.52rem;
     font-weight: 700;
-    color: $secondaryColor;
+    color: var(--secondary-color);
     text-transform: uppercase;
     font-family: 'Poppins', sans-serif;
 }
 
 .buttonAddCount {
     font-size: 0.52rem;
-    color: $secondaryColor;
+    color: var(--secondary-color);
     font-family: monospace;
 }
 
 .buttonLimitReached {
     font-family: 'Poppins', sans-serif !important;
     font-size: 0.62rem !important;
-    color: $error-main !important;
-    background: rgba($error-main, 0.06);
-    border: 1px solid rgba($error-main, 0.15);
+    color: var(--error-main) !important;
+    background: var(--error-light-bg);
+    border: 1px solid var(--error-light-bg);
     border-radius: 8px;
     padding: 0.4rem 0.6rem;
 }
@@ -1666,8 +1666,8 @@
     align-items: center;
     justify-content: space-between;
     padding: 0.35rem 0.5rem;
-    background: #f8fafc;
-    border: 1px solid $sidebar-borderColor;
+    background: var(--bg-light);
+    border: 1px solid var(--sidebar-borderColor);
     border-radius: 6px;
     gap: 0.5rem;
 }
@@ -1675,7 +1675,7 @@
 .headerListItemText {
     font-family: monospace;
     font-size: 0.58rem;
-    color: $titleColor;
+    color: var(--titleColor);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1716,7 +1716,7 @@
 .waFlowInfoText {
     font-family: 'Poppins', sans-serif !important;
     font-size: 0.58rem !important;
-    color: $secondaryColor !important;
+    color: var(--secondary-color) !important;
     line-height: 1.5 !important;
 }
 
@@ -1735,8 +1735,8 @@
     align-items: flex-start;
     justify-content: space-between;
     padding: 0.4rem 0.6rem;
-    background: #f8fafc;
-    border: 1px solid $sidebar-borderColor;
+    background: var(--bg-light);
+    border: 1px solid var(--sidebar-borderColor);
     border-radius: 8px;
     gap: 0.5rem;
 }
@@ -1767,16 +1767,16 @@
 .fieldListItemLabel {
     font-size: 0.68rem;
     font-weight: 600;
-    color: $titleColor;
+    color: var(--titleColor);
     font-family: 'Poppins', sans-serif;
 }
 
 .fieldListItemType {
     font-size: 0.5rem;
     font-weight: 700;
-    color: $secondaryColor;
-    background: #f1f5f9;
-    border: 1px solid $sidebar-borderColor;
+    color: var(--secondary-color);
+    background: var(--bg-light);
+    border: 1px solid var(--sidebar-borderColor);
     padding: 1px 4px;
     border-radius: 4px;
     text-transform: uppercase;
@@ -1784,14 +1784,14 @@
 }
 
 .fieldListItemRequired {
-    color: $error-main;
+    color: var(--error-main);
     font-weight: 700;
     font-size: 0.62rem;
 }
 
 .fieldListItemPlaceholder {
     font-size: 0.56rem;
-    color: $secondaryColor;
+    color: var(--secondary-color);
     font-style: italic;
     font-family: 'Poppins', sans-serif;
     margin-top: 2px;
@@ -1844,7 +1844,7 @@
     & > span {
     font-family: 'Poppins', sans-serif !important;
     font-size: 0.68rem !important;
-    color: $titleColor !important;
+    color: var(--titleColor) !important;
     }
 }
 
@@ -1872,13 +1872,13 @@
 :global(.react-flow__handle) {
     width: 10px;
     height: 10px;
-    background: $primary-main;
+    background: var(--primary-main);
     border: 2px solid #fff;
     border-radius: 50%;
 }
 
 :global(.react-flow__edge-path) {
-    stroke: $primary-main;
+    stroke: var(--primary-main);
     stroke-width: 2;
 }
 
@@ -1889,15 +1889,15 @@
 }
 
 :global(.react-flow__controls-button) {
-    border-bottom: 1px solid $sidebar-borderColor;
-    background: #fff;
+    border-bottom: 1px solid var(--sidebar-borderColor);
+    background: var(--bg-paper);
 
     &:hover {
-        background: rgba($primary-main, 0.06);
+        background: var(--primary-light-bg);
     }
 
     svg {
-        fill: $primary-main;
+        fill: var(--primary-main);
     }
 }
 
@@ -1906,8 +1906,8 @@
     width: 420px;
     flex-shrink: 0;
     height: 100%;
-    background: #f8fafc;
-    border-left: 1px solid #e2e8f0;
+    background: var(--bg-light);
+    border-left: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
     box-shadow: -4px 0 24px rgba(0, 0, 0, 0.08);
@@ -1919,8 +1919,8 @@
 .simHeader {
     height: 54px;
     padding: 0 1rem;
-    background: #fff;
-    border-bottom: 1px solid #e2e8f0;
+    background: var(--bg-paper);
+    border-bottom: 1px solid var(--border-color);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -1958,7 +1958,7 @@
     font-family: 'Poppins', sans-serif;
     font-size: 0.625rem;
     font-weight: 500;
-    color: #94a3b8;
+    color: var(--text-placeholder);
     margin: 0;
 }
 
@@ -1971,9 +1971,9 @@
 .simHeaderBtn {
     padding: 6px;
     border-radius: 8px;
-    border: 1px solid #e2e8f0;
-    background: #fff;
-    color: #64748b;
+    border: 1px solid var(--border-color);
+    background: var(--bg-paper);
+    color: var(--text-tertiary);
     cursor: pointer;
     transition: all 0.15s ease;
     display: flex;
@@ -1981,7 +1981,7 @@
     justify-content: center;
 
     &:hover {
-        background: #f1f5f9;
+        background: var(--bg-light);
         color: #1e293b;
     }
 }
@@ -1989,8 +1989,8 @@
 // Tabs
 .simTabs {
     padding: 0 1rem;
-    background: #f1f5f9;
-    border-bottom: 1px solid #e2e8f0;
+    background: var(--bg-light);
+    border-bottom: 1px solid var(--border-color);
     display: flex;
     align-items: center;
     flex-shrink: 0;
@@ -2006,7 +2006,7 @@
     border: none;
     border-bottom: 2px solid transparent;
     background: none;
-    color: #64748b;
+    color: var(--text-tertiary);
     cursor: pointer;
     transition: all 0.15s ease;
     display: flex;
@@ -2026,8 +2026,8 @@
 }
 
 .simTabBadge {
-    background: #e2e8f0;
-    color: #475569;
+    background: var(--border-color);
+    color: var(--text-tertiary);
     border-radius: 999px;
     font-size: 0.5rem;
     padding: 1px 5px;
@@ -2070,7 +2070,7 @@
     display: flex;
     align-items: center;
     gap: 0.375rem;
-    color: #94a3b8;
+    color: var(--text-placeholder);
     font-size: 0.625rem;
     letter-spacing: 0.05em;
     text-transform: uppercase;
@@ -2082,7 +2082,7 @@
     font-size: 0.5625rem;
     font-weight: 700;
     background: #020617;
-    color: #94a3b8;
+    color: var(--text-placeholder);
     border: 1px solid #1e293b;
     border-radius: 6px;
     padding: 2px 8px;
@@ -2122,7 +2122,7 @@
 
 .simVarsInlineLabel {
     font-size: 0.5rem;
-    color: #64748b;
+    color: var(--text-tertiary);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -2149,7 +2149,7 @@
 }
 
 .simVarsCancelBtn {
-    color: #64748b;
+    color: var(--text-tertiary);
     font-weight: 700;
     padding: 2px 8px;
     background: #1e293b;
@@ -2163,7 +2163,7 @@
     font-family: 'Poppins', sans-serif;
 
     &:hover {
-        color: #cbd5e1;
+        color: var(--border-strong);
     }
 }
 
@@ -2219,7 +2219,7 @@
 }
 
 .simVarName {
-    color: #64748b;
+    color: var(--text-tertiary);
     font-size: 0.53125rem;
     font-weight: 600;
     display: block;
@@ -2242,7 +2242,7 @@
 }
 
 .simVarValueUnset {
-    color: #475569;
+    color: var(--text-tertiary);
     font-style: italic;
 }
 
@@ -2266,7 +2266,7 @@
     background: none;
     border-radius: 4px;
     cursor: pointer;
-    color: #64748b;
+    color: var(--text-tertiary);
     transition: all 0.15s ease;
     flex-shrink: 0;
     display: flex;
@@ -2283,7 +2283,7 @@
     align-items: center;
     gap: 0.375rem;
     font-size: 0.5625rem;
-    color: #64748b;
+    color: var(--text-tertiary);
     margin-top: 0.625rem;
     padding-top: 0.375rem;
     border-top: 1px solid rgba(30, 41, 59, 0.6);
@@ -2346,7 +2346,7 @@
 }
 
 .simFlowModal {
-    background: #fff;
+    background: var(--bg-paper);
     border-radius: 20px 20px 0 0;
     box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.2);
     display: flex;
@@ -2356,12 +2356,12 @@
 
 .simFlowModalHeader {
     padding: 0.875rem 1.25rem;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid var(--bg-light);
     display: flex;
     align-items: center;
     justify-content: space-between;
     flex-shrink: 0;
-    background: #f8fafc;
+    background: var(--bg-light);
     border-radius: 20px 20px 0 0;
 }
 
@@ -2389,7 +2389,7 @@
 .simFlowModalScreenId {
     font-size: 0.5rem;
     font-family: monospace;
-    color: #94a3b8;
+    color: var(--text-placeholder);
     font-weight: 700;
     text-transform: uppercase;
     line-height: 1;
@@ -2400,16 +2400,16 @@
 .simFlowModalClose {
     padding: 6px;
     border-radius: 50%;
-    background: #e2e8f0;
+    background: var(--border-color);
     border: none;
-    color: #94a3b8;
+    color: var(--text-placeholder);
     cursor: pointer;
     transition: all 0.15s ease;
     display: flex;
     align-items: center;
 
     &:hover {
-        background: #cbd5e1;
+        background: var(--border-strong);
         color: #334155;
     }
 }
@@ -2435,7 +2435,7 @@
 .simFlowFieldLabel {
     font-size: 0.625rem;
     font-weight: 800;
-    color: #64748b;
+    color: var(--text-tertiary);
     letter-spacing: 0.025em;
     text-transform: uppercase;
 }
@@ -2448,8 +2448,8 @@
 .simFlowInput {
     width: 100%;
     padding: 8px 12px;
-    border: 1px solid #e2e8f0;
-    background: #fff;
+    border: 1px solid var(--border-color);
+    background: var(--bg-paper);
     border-radius: 10px;
     outline: none;
     transition: border-color 0.15s ease;
@@ -2464,8 +2464,8 @@
 .simFlowSelect {
     width: 100%;
     padding: 8px 12px;
-    border: 1px solid #e2e8f0;
-    background: #fff;
+    border: 1px solid var(--border-color);
+    background: var(--bg-paper);
     border-radius: 10px;
     outline: none;
     font-size: 0.6875rem;
@@ -2498,8 +2498,8 @@
 
 .simFlowModalFooter {
     padding: 1rem;
-    border-top: 1px solid #f1f5f9;
-    background: #f8fafc;
+    border-top: 1px solid var(--bg-light);
+    background: var(--bg-light);
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
@@ -2536,27 +2536,27 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
     font-weight: 800;
-    color: #94a3b8;
+    color: var(--text-placeholder);
     background: none;
     border: none;
     cursor: pointer;
     transition: color 0.15s ease;
 
     &:hover {
-        color: #475569;
+        color: var(--text-tertiary);
     }
 }
 
 // Phone Status Bar
 .simPhoneStatusBar {
     height: 28px;
-    background: #f1f5f9;
+    background: var(--bg-light);
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 0 1.5rem;
     font-size: 0.625rem;
-    color: #475569;
+    color: var(--text-tertiary);
     font-weight: 700;
     z-index: 10;
     flex-shrink: 0;
@@ -2594,7 +2594,7 @@
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background: #128c7e;
+    background: var(--primary-main);
     font-weight: 700;
     font-size: 0.75rem;
     display: flex;
@@ -2654,7 +2654,7 @@
 
 .simMsgSystem {
     background: rgba(15, 23, 42, 0.85);
-    color: #f1f5f9;
+    color: var(--bg-light);
     font-size: 0.625rem;
     padding: 6px 12px;
     border-radius: 8px;
@@ -2696,10 +2696,10 @@
 }
 
 .simMsgBubbleBot {
-    background: #fff;
+    background: var(--bg-paper);
     color: #1e293b;
     border-radius: 2px 12px 12px 12px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--border-color);
 }
 
 .simMsgMedia {
@@ -2728,7 +2728,7 @@
 
 .simMsgFlowTrigger {
     margin-top: 0.75rem;
-    border-top: 1px solid #f1f5f9;
+    border-top: 1px solid var(--bg-light);
     padding-top: 0.5rem;
     flex-shrink: 0;
 }
@@ -2778,7 +2778,7 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
-    border-top: 1px solid #f1f5f9;
+    border-top: 1px solid var(--bg-light);
     padding-top: 0.5rem;
     flex-shrink: 0;
 }
@@ -2788,7 +2788,7 @@
     padding: 8px 12px;
     font-size: 0.6875rem;
     font-weight: 700;
-    color: #00a884;
+    color: var(--primary-main);
     background: rgba(16, 185, 129, 0.08);
     border: 1px solid rgba(16, 185, 129, 0.15);
     border-radius: 8px;
@@ -2801,7 +2801,7 @@
 
     &:hover {
         color: #fff;
-        background: #00a884;
+        background: var(--primary-main);
     }
 }
 
@@ -2823,7 +2823,7 @@
 
 .simMsgTime {
     font-size: 0.5rem;
-    color: #94a3b8;
+    color: var(--text-placeholder);
     font-family: monospace;
     text-align: right;
     margin-top: 4px;
@@ -2833,7 +2833,7 @@
 // Instant Card
 .simInstantCard {
     width: 100%;
-    background: #fff;
+    background: var(--bg-paper);
     border-radius: 16px;
     padding: 1rem;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
@@ -2870,7 +2870,7 @@
 
 .simInstantCardDesc {
     font-size: 0.625rem;
-    color: #64748b;
+    color: var(--text-tertiary);
     margin: 4px 0 0 0;
     line-height: 1.4;
 }
@@ -2905,8 +2905,8 @@
 }
 
 .simTypingBubble {
-    background: #fff;
-    border: 1px solid #e2e8f0;
+    background: var(--bg-paper);
+    border: 1px solid var(--border-color);
     border-radius: 12px 2px 12px 12px;
     padding: 8px 12px;
     display: flex;
@@ -2918,7 +2918,7 @@
 
 .simTypingText {
     font-size: 0.5625rem;
-    color: #94a3b8;
+    color: var(--text-placeholder);
     font-weight: 600;
     font-style: italic;
     margin-right: 4px;
@@ -2927,7 +2927,7 @@
 .simTypingDot {
     width: 6px;
     height: 6px;
-    background: #00a884;
+    background: var(--primary-main);
     border-radius: 50%;
     animation: simBounce 1.4s infinite ease-in-out;
 }
@@ -2935,7 +2935,7 @@
 // Input Area
 .simInputArea {
     background: #f0f2f5;
-    border-top: 1px solid #e2e8f0;
+    border-top: 1px solid var(--border-color);
     padding: 10px;
     display: flex;
     align-items: center;
@@ -2976,8 +2976,8 @@
 
 .simInput {
     flex: 1;
-    background: #fff;
-    border: 1px solid #f1f5f9;
+    background: var(--bg-paper);
+    border: 1px solid var(--bg-light);
     border-radius: 10px;
     padding: 6px 14px;
     font-size: 0.75rem;
@@ -2986,7 +2986,7 @@
     transition: border-color 0.15s ease;
 
     &:focus {
-        border-color: #cbd5e1;
+        border-color: var(--border-strong);
     }
 }
 
@@ -3039,7 +3039,7 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    color: #94a3b8;
+    color: var(--text-placeholder);
     font-size: 0.625rem;
     letter-spacing: 0.05em;
     text-transform: uppercase;
@@ -3064,13 +3064,13 @@
 .simTraceLiveText {
     font-size: 0.625rem;
     font-weight: 700;
-    color: #94a3b8;
+    color: var(--text-placeholder);
 }
 
 .simTraceClearBtn {
     font-size: 0.5625rem;
     font-weight: 700;
-    color: #94a3b8;
+    color: var(--text-placeholder);
     background: #0f172a;
     border: 1px solid #1e293b;
     padding: 2px 8px;
@@ -3100,7 +3100,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    color: #475569;
+    color: var(--text-tertiary);
     text-align: center;
     gap: 0.5rem;
     padding: 2.5rem 0;
@@ -3176,11 +3176,11 @@
 
 .simTraceLogTime {
     font-size: 0.5625rem;
-    color: #64748b;
+    color: var(--text-tertiary);
 }
 
 .simTraceLogMsg {
-    color: #f1f5f9;
+    color: var(--bg-light);
     font-weight: 500;
     word-break: break-word;
     margin: 0;
@@ -3189,7 +3189,7 @@
 
 .simTraceLogNode {
     font-size: 0.5625rem;
-    color: #64748b;
+    color: var(--text-tertiary);
     display: flex;
     align-items: center;
     gap: 0.25rem;
@@ -3206,7 +3206,7 @@
     padding: 1px 4px;
     border-radius: 4px;
     font-weight: 700;
-    color: #94a3b8;
+    color: var(--text-placeholder);
 }
 
 .simTraceFooter {
@@ -3218,7 +3218,7 @@
     align-items: center;
     gap: 0.5rem;
     font-size: 0.625rem;
-    color: #64748b;
+    color: var(--text-tertiary);
     font-family: 'Poppins', sans-serif;
     font-weight: 500;
     line-height: 1.4;
@@ -3253,7 +3253,7 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    color: #cbd5e1;
+    color: var(--border-strong);
     font-size: 0.625rem;
     letter-spacing: 0.05em;
     text-transform: uppercase;
@@ -3309,13 +3309,13 @@
     align-items: flex-start;
     gap: 0.5rem;
     font-family: 'Poppins', sans-serif;
-    color: #94a3b8;
+    color: var(--text-placeholder);
     font-weight: 500;
     font-size: 0.625rem;
     line-height: 1.5;
 
     strong {
-        color: #cbd5e1;
+        color: var(--border-strong);
     }
 }
 
@@ -3334,7 +3334,7 @@
 .flowNode {
     min-width: 270px;
     max-width: 310px;
-    background: #fff;
+    background: var(--bg-paper);
     border: 1px solid #e4e8ee;
     border-radius: 14px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
@@ -3419,7 +3419,7 @@
 
 .flowNodeActionDelete {
     &:hover {
-        background: #ef4444;
+        background: var(--error-main);
     }
 }
 
@@ -3428,7 +3428,7 @@
     display: flex;
     flex-direction: column;
     gap: 0.7rem;
-    background: #fff;
+    background: var(--bg-paper);
 }
 
 .flowNodeFooter {
@@ -3436,10 +3436,10 @@
     align-items: center;
     justify-content: space-between;
     padding: 0.4rem 0.85rem;
-    background: #f8fafc;
-    border-top: 1px solid #f1f5f9;
+    background: var(--bg-light);
+    border-top: 1px solid var(--bg-light);
     font-size: 0.58rem;
-    color: #94a3b8;
+    color: var(--text-placeholder);
     font-family: 'Poppins', sans-serif;
     border-radius: 0 0 14px 14px;
 }
@@ -3467,7 +3467,7 @@
     gap: 0.75rem;
 
     strong {
-        color: #64748b;
+        color: var(--text-tertiary);
         font-weight: 700;
         font-family: monospace;
     }
@@ -3525,7 +3525,7 @@
 }
 
 .inlineEditPlaceholder {
-    color: #cbd5e1;
+    color: var(--border-strong);
     font-style: italic;
 }
 
@@ -3535,7 +3535,7 @@
     font-size: inherit;
     font-weight: inherit;
     color: inherit;
-    background: #fff;
+    background: var(--bg-paper);
     border: 1.5px solid #6366f1;
     border-radius: 6px;
     padding: 4px 8px;
@@ -3575,22 +3575,22 @@
 .flowNodeSectionLabel {
     font-size: 0.56rem;
     font-weight: 700;
-    color: #94a3b8;
+    color: var(--text-placeholder);
     text-transform: uppercase;
     letter-spacing: 0.06em;
 }
 
 .flowNodeEmpty {
     font-size: 0.64rem;
-    color: #94a3b8;
+    color: var(--text-placeholder);
     font-style: italic;
 }
 
 .flowNodeMessage {
     font-size: 0.72rem;
     color: #334155;
-    background: #f8fafc;
-    border: 1px solid #f1f5f9;
+    background: var(--bg-light);
+    border: 1px solid var(--bg-light);
     border-radius: 10px;
     padding: 0.6rem 0.7rem;
     line-height: 1.5;
@@ -3617,7 +3617,7 @@
 .flowNodeSectionDragLabel {
     display: flex;
     align-items: center;
-    color: #cbd5e1;
+    color: var(--border-strong);
 }
 
 .flowNodeSectionDragBtns {
@@ -3631,9 +3631,9 @@
     justify-content: center;
     width: 22px;
     height: 22px;
-    border: 1px solid #e2e8f0;
-    background: #fff;
-    color: #64748b;
+    border: 1px solid var(--border-color);
+    background: var(--bg-paper);
+    color: var(--text-tertiary);
     cursor: pointer;
     border-radius: 5px;
     transition: all 0.12s ease;
@@ -3655,7 +3655,7 @@
     position: relative;
     border-radius: 10px;
     overflow: hidden;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--border-color);
 }
 
 .flowNodeMediaImage {
@@ -3825,8 +3825,8 @@
 
 .flowNodeMatchMode {
     font-size: 0.62rem;
-    color: #64748b;
-    border-top: 1px solid #f1f5f9;
+    color: var(--text-tertiary);
+    border-top: 1px solid var(--bg-light);
     padding-top: 0.4rem;
     margin-top: 0.2rem;
 
@@ -3865,7 +3865,7 @@
 
 .flowNodeConditionOperator {
     font-size: 0.64rem;
-    color: #64748b;
+    color: var(--text-tertiary);
 
     strong {
         color: #334155;
@@ -3991,7 +3991,7 @@
 }
 
 .flowNodeApiUrl {
-    color: #64748b;
+    color: var(--text-tertiary);
     font-family: monospace;
     white-space: nowrap;
     overflow: hidden;
@@ -4002,12 +4002,12 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: #f8fafc;
-    border: 1px solid #f1f5f9;
+    background: var(--bg-light);
+    border: 1px solid var(--bg-light);
     border-radius: 8px;
     padding: 0.45rem 0.65rem;
     font-size: 0.6rem;
-    color: #64748b;
+    color: var(--text-tertiary);
 
     span:last-child {
         font-weight: 700;
@@ -4045,8 +4045,8 @@
 }
 
 .flowNodeEndBox {
-    background: #f1f5f9;
-    border: 1px solid #e2e8f0;
+    background: var(--bg-light);
+    border: 1px solid var(--border-color);
     border-radius: 10px;
     padding: 0.85rem;
     text-align: center;
@@ -4055,7 +4055,7 @@
 .flowNodeEndLabel {
     font-size: 0.62rem;
     font-weight: 800;
-    color: #475569;
+    color: var(--text-tertiary);
     text-transform: uppercase;
     letter-spacing: 0.04em;
     margin-bottom: 0.4rem;
@@ -4063,7 +4063,7 @@
 
 .flowNodeEndBox p {
     font-size: 0.64rem;
-    color: #64748b;
+    color: var(--text-tertiary);
     line-height: 1.5;
     margin: 0;
 }
@@ -4092,7 +4092,7 @@
 
 .flowNodeWaBannerMeta {
     font-size: 0.56rem;
-    color: #64748b;
+    color: var(--text-tertiary);
     font-family: monospace;
     margin-top: 0.15rem;
 
@@ -4103,10 +4103,10 @@
 }
 
 .flowNodeWaFields {
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--border-color);
     border-radius: 10px;
     padding: 0.65rem 0.75rem;
-    background: #fff;
+    background: var(--bg-paper);
 }
 
 .flowNodeWaFieldList {
@@ -4117,8 +4117,8 @@
 }
 
 .flowNodeWaField {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
+    background: var(--bg-light);
+    border: 1px solid var(--border-color);
     border-radius: 6px;
     padding: 0.4rem 0.55rem;
 }
@@ -4129,7 +4129,7 @@
     justify-content: space-between;
     gap: 0.5rem;
     font-size: 0.64rem;
-    color: #475569;
+    color: var(--text-tertiary);
     font-weight: 700;
 
     span:first-child {
@@ -4143,8 +4143,8 @@
     font-size: 0.5rem;
     font-weight: 800;
     text-transform: uppercase;
-    color: #64748b;
-    background: #e2e8f0;
+    color: var(--text-tertiary);
+    background: var(--border-color);
     padding: 1px 5px;
     border-radius: 3px;
     font-family: monospace;
@@ -4153,7 +4153,7 @@
 
 .flowNodeWaFieldPlaceholder {
     font-size: 0.58rem;
-    color: #94a3b8;
+    color: var(--text-placeholder);
     font-style: italic;
     margin-top: 0.25rem;
     white-space: nowrap;

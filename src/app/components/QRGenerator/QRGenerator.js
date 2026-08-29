@@ -38,8 +38,7 @@ import { getFlyerTemplate } from './FlyerTemplate';
 import { getStandeeTemplate } from './StandeeTemplate';
 import styles from './QRGenerator.module.scss';
 
-const WHATSAPP_GREEN = '#25D366';
-const WHATSAPP_DARK = '#0F6A44';
+const WHATSAPP_DARK = '#000000';
 
 const phoneInputStyles = {
     input: {
@@ -47,20 +46,20 @@ const phoneInputStyles = {
         height: '40px',
         fontSize: '0.875rem',
         borderRadius: '10px',
-        border: '1px solid #e2e8f0',
-        backgroundColor: '#fff',
-        color: '#444050',
+        border: '1px solid var(--border-color)',
+        backgroundColor: 'var(--bg-paper)',
+        color: 'var(--text-primary)',
         fontFamily: 'Inter, sans-serif',
         fontWeight: '500'
     },
     button: {
-        border: '1px solid #e2e8f0',
+        border: '1px solid var(--border-color)',
         borderRadius: '10px 0 0 10px',
-        backgroundColor: '#f8fafc'
+        backgroundColor: 'var(--bg-light)'
     },
     dropdown: {
         borderRadius: '10px',
-        border: '1px solid #e2e8f0',
+        border: '1px solid var(--border-color)',
         zIndex: 1,
         fontFamily: 'Inter, sans-serif'
     },
@@ -68,7 +67,7 @@ const phoneInputStyles = {
         margin: '8px',
         padding: '8px 12px',
         borderRadius: '8px',
-        border: '1px solid #e2e8f0',
+        border: '1px solid var(--border-color)',
         fontSize: '0.875rem'
     },
     container: {
@@ -284,7 +283,7 @@ const QRGenerator = () => {
     const handlePrint = useCallback(async () => {
         if (!qrDataUrl || !flyerRef.current) return;
 
-        const printWindow = window.open('', '_blank', 'width=800,height=900');
+        const printWindow = window.open('', '_blank', 'width=900,height=1200');
         if (!printWindow) {
             toast.error('Please allow pop-ups to print');
             return;
@@ -298,8 +297,6 @@ const QRGenerator = () => {
                 logging: false,
             });
             const imgData = canvas.toDataURL('image/png');
-            const imgWidth = canvas.width;
-            const imgHeight = canvas.height;
 
             printWindow.document.write(`<!DOCTYPE html>
 <html lang="en">
@@ -309,12 +306,12 @@ const QRGenerator = () => {
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body { background: #fff; }
-@page { size: ${imgWidth}px ${imgHeight}px; margin: 0; }
+@page { size: A4 portrait; margin: 0; }
 body { display: flex; justify-content: center; align-items: center; }
-.print-img { width: ${imgWidth}px; height: ${imgHeight}px; display: block; }
+.print-img { width: 210mm; height: 297mm; display: block; }
 @media print {
     body { display: block; }
-    .print-img { max-width: 100%; max-height: 100vh; }
+    .print-img { width: 210mm; height: 297mm; }
 }
 </style>
 </head>
@@ -350,20 +347,21 @@ body { display: flex; justify-content: center; align-items: center; }
             const pageWidth = 210;
             const pageHeight = 297;
 
-            // Calculate dimensions to fit the flyer on one A4 page
-            const imgWidth = pageWidth;
-            const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-            // If the image is taller than the page, scale to fit
-            let finalWidth = imgWidth;
-            let finalHeight = imgHeight;
-            if (imgHeight > pageHeight) {
+            // Scale to fit and center on the A4 page
+            const imgRatio = canvas.width / canvas.height;
+            const pageRatio = pageWidth / pageHeight;
+            let finalWidth;
+            let finalHeight;
+            if (imgRatio > pageRatio) {
+                finalWidth = pageWidth;
+                finalHeight = pageWidth / imgRatio;
+            } else {
                 finalHeight = pageHeight;
-                finalWidth = (canvas.width * finalHeight) / canvas.height;
+                finalWidth = pageHeight * imgRatio;
             }
 
             const xOffset = (pageWidth - finalWidth) / 2;
-            const yOffset = 0;
+            const yOffset = (pageHeight - finalHeight) / 2;
 
             pdf.addImage(imgData, 'PNG', xOffset, yOffset, finalWidth, finalHeight);
             pdf.save(`whatsapp-qr-${digitsOnly}.pdf`);
@@ -471,8 +469,8 @@ body { display: flex; justify-content: center; align-items: center; }
                                 }}
                                 inputStyle={{
                                     ...phoneInputStyles.input,
-                                    borderColor: phoneError ? '#ef4444' : '#e2e8f0',
-                                    boxShadow: phoneError ? '0 0 0 1px #ef4444' : 'none',
+                                    borderColor: phoneError ? 'var(--error-main)' : 'var(--border-color)',
+                                    boxShadow: phoneError ? '0 0 0 1px var(--error-main)' : 'none',
                                 }}
                                 buttonStyle={phoneInputStyles.button}
                                 dropdownStyle={phoneInputStyles.dropdown}
@@ -550,11 +548,11 @@ body { display: flex; justify-content: center; align-items: center; }
                                         display: 'flex',
                                         gap: 1,
                                         alignItems: 'center',
-                                        border: isDragOver ? '2px dashed #25D366' : '2px dashed #cbd5e1',
+                                        border: isDragOver ? '2px dashed var(--primary-main)' : '2px dashed var(--border-strong)',
                                         borderRadius: '8px',
                                         padding: '8px',
                                         transition: 'border-color 0.2s',
-                                        backgroundColor: isDragOver ? 'rgba(37, 211, 102, 0.05)' : 'transparent',
+                                        backgroundColor: isDragOver ? 'var(--primary-light-bg)' : 'transparent',
                                     }}
                                 >
                                     <Button
@@ -576,11 +574,11 @@ body { display: flex; justify-content: center; align-items: center; }
                                         />
                                     </Button>
                                     {logoFile ? (
-                                        <Typography variant="caption" sx={{ color: '#64748b', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        <Typography variant="caption" sx={{ color: 'var(--text-tertiary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                             {logoFile.name}
                                         </Typography>
                                     ) : (
-                                        <Typography variant="caption" sx={{ color: '#94a3b8', flex: 1 }}>
+                                        <Typography variant="caption" sx={{ color: 'var(--text-placeholder)', flex: 1 }}>
                                             Drop image here or paste (Ctrl+V)
                                         </Typography>
                                     )}
@@ -623,7 +621,7 @@ body { display: flex; justify-content: center; align-items: center; }
                         {!hasGenerated ? (
                             <Box className={styles.emptyPreview}>
                                 <Box className={styles.emptyPreviewIcon}>
-                                    <QrCode size={48} color={WHATSAPP_GREEN} />
+                                    <QrCode size={48} color="var(--primary-main)" />
                                 </Box>
                                 <Typography className={styles.emptyPreviewTitle}>
                                     QR Code Preview
@@ -638,8 +636,8 @@ body { display: flex; justify-content: center; align-items: center; }
                                 <svg width="0" height="0" style={{ position: 'absolute' }}>
                                     <defs>
                                         <linearGradient id="waGrad" x1="100%" y1="0%" x2="0%" y2="0%">
-                                            <stop offset="0%" stopColor="rgba(37, 211, 102, 0.85)" />
-                                            <stop offset="100%" stopColor="#1daa61" />
+                                            <stop offset="0%" stopColor="var(--primary-main)" />
+                                            <stop offset="100%" stopColor="var(--primary-main)" />
                                         </linearGradient>
                                     </defs>
                                 </svg>
@@ -665,7 +663,7 @@ body { display: flex; justify-content: center; align-items: center; }
                                         <img src={logoDataUrl} alt="Logo" className={styles.standeeLogoImg} />
                                     ) : brandName ? (
                                         <Box className={styles.standeeBrandText}>
-                                            <span style={{ color: '#1daa61' }}>✦</span> {brandName}
+                                            <span style={{ color: 'var(--primary-main)' }}>✦</span> {brandName}
                                         </Box>
                                     ) : null}
                                 </Box>
@@ -750,7 +748,7 @@ body { display: flex; justify-content: center; align-items: center; }
                                             <img src={qrDataUrl} alt="WhatsApp QR Code" className={styles.flyerQr} />
                                         </Box>
                                         <Box className={styles.flyerQrBadge}>
-                                            <MessageCircle size={16} color="#fff" />
+                                            <MessageCircle size={16} color="var(--text-white)" />
                                             <span>Scan to Chat on WhatsApp</span>
                                         </Box>
                                     </Box>
@@ -759,21 +757,21 @@ body { display: flex; justify-content: center; align-items: center; }
                                     <Box className={styles.flyerBenefits}>
                                         <Box className={styles.flyerBenefit}>
                                             <Box className={styles.flyerBenefitIcon}>
-                                                <Zap size={28} color={WHATSAPP_GREEN} />
+                                                <Zap size={28} color="var(--primary-main)" />
                                             </Box>
                                             <Typography className={styles.flyerBenefitLabel}>Quick Support</Typography>
                                             <Typography className={styles.flyerBenefitSub}>Get help instantly</Typography>
                                         </Box>
                                         <Box className={styles.flyerBenefit}>
                                             <Box className={styles.flyerBenefitIcon}>
-                                                <Clock size={28} color={WHATSAPP_GREEN} />
+                                                <Clock size={28} color="var(--primary-main)" />
                                             </Box>
                                             <Typography className={styles.flyerBenefitLabel}>Instant Response</Typography>
                                             <Typography className={styles.flyerBenefitSub}>No waiting time</Typography>
                                         </Box>
                                         <Box className={styles.flyerBenefit}>
                                             <Box className={styles.flyerBenefitIcon}>
-                                                <MessageCircle size={28} color={WHATSAPP_GREEN} />
+                                                <MessageCircle size={28} color="var(--primary-main)" />
                                             </Box>
                                             <Typography className={styles.flyerBenefitLabel}>Easy Communication</Typography>
                                             <Typography className={styles.flyerBenefitSub}>Chat anytime</Typography>

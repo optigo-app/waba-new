@@ -15,12 +15,14 @@ const parseMessages = (raw) => {
   return [];
 };
 
-export const fetchPreloadChat = async (userId, page = 1, pageSize = 100) => {
+export const fetchPreloadChat = async (userId, page = 1, pageSize = 100, accountId = '') => {
   try {
+    const payload = { Page: page, PageSize: pageSize };
+    if (accountId) payload.AccountId = Number(accountId);
     const response = await callCommonApi({
       mode: 'wa_pre_load_chat',
       f: 'Chat ( Preload chat List Conversation )',
-      p: JSON.stringify({ Page: page, PageSize: pageSize }),
+      p: JSON.stringify(payload),
       userId,
     });
     if (response?.Data) {

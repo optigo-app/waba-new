@@ -12,9 +12,9 @@
     max-width: 380px;
     // height: 100%;
     max-height: calc(100vh - 140px);
-    border: 1px solid #d7dde6;
+    border: 1px solid var(--border-color);
     border-radius: 16px;
-    background: #fff;
+    background: var(--bg-paper);
     box-shadow: 0 10px 24px rgba(15, 23, 42, 0.16);
     overflow-y: auto;
     overflow-x: hidden;
@@ -31,12 +31,12 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.55rem 0.65rem;
-    background: #128c7e;
-    color: #fff;
+    background: var(--wa-header);
+    color: var(--button-color);
 }
 
 .headerIcon {
-    color: #fff;
+    color: var(--button-color);
     opacity: 0.95;
 }
 
@@ -81,9 +81,11 @@
     padding: 0.85rem;
     display: flex;
     align-items: flex-end;
-    background-color: #e8e2d6;
-    background-size: cover;
-    background-position: center;
+    background: linear-gradient(var(--chat-bg-overlay), var(--chat-bg-overlay)), var(--chat-bg-image);
+    background-position: center, center;
+    background-repeat: repeat, repeat;
+    background-size: auto, auto;
+    background-attachment: scroll, scroll;
 }
 
 .previewBubbleWrap {
@@ -97,11 +99,11 @@
 }
 
 .previewBubble {
-    background: #ffffff;
+    background: var(--wa-bubble);
     border-radius: 0 12px 12px 12px;
     padding: 0.85rem;
     width: 100%;
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+    box-shadow: 0 2px 8px var(--wa-bubble-shadow);
 }
 
 .previewHeaderText {
@@ -119,7 +121,7 @@
     height: auto;
     border-radius: 10px;
     margin-bottom: 0.55rem;
-    border: 1px solid rgba(15, 23, 42, 0.08);
+    border: 1px solid var(--wa-bubble-border);
 }
 
 .previewHeaderVideo {
@@ -128,8 +130,8 @@
     max-height: 170px;
     border-radius: 10px;
     margin-bottom: 0.55rem;
-    background: #0f172a;
-    border: 1px solid rgba(15, 23, 42, 0.1);
+    background: var(--wa-video-bg);
+    border: 1px solid var(--wa-bubble-border);
 }
 
 .previewVideoFallback {
@@ -142,12 +144,12 @@
     border-radius: 10px;
     margin-bottom: 0.55rem;
     background: rgba(15, 23, 42, 0.05);
-    border: 1px dashed rgba(148, 163, 184, 0.5);
+    border: 1px dashed var(--border-strong);
     gap: 0.3rem;
 
     span {
         font-size: 0.7rem;
-        color: #94a3b8;
+        color: var(--text-placeholder);
     }
 }
 
@@ -158,8 +160,8 @@
     padding: 0.55rem 0.6rem;
     border-radius: 10px;
     margin-bottom: 0.55rem;
-    border: 1px solid rgba(148, 163, 184, 0.35);
-    background: rgba(248, 250, 252, 0.95);
+    border: 1px solid var(--border-color);
+    background: var(--wa-doc-bg);
 }
 
 .previewDocIconWrap {
@@ -169,11 +171,11 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(37, 99, 235, 0.12);
+    background: var(--info-light-bg);
 }
 
 .previewDocIcon {
-    color: #2563eb;
+    color: var(--wa-link);
 }
 
 .previewDocMeta {
@@ -185,7 +187,7 @@
 .previewDocTitle {
     font-size: 0.72rem;
     font-weight: 600;
-    color: #1f2937;
+    color: var(--text-primary);
 }
 
 .previewDocSub {
@@ -198,7 +200,7 @@
 
 .previewBodyText {
     font-size: 0.78rem;
-    color: #1f2937;
+    color: var(--text-primary);
     white-space: pre-wrap;
     line-height: 1.5;
 }
@@ -206,7 +208,7 @@
 .previewFooterText {
     margin-top: 0.5rem;
     font-size: 0.7rem;
-    color: #6b7280;
+    color: var(--text-tertiary);
 }
 
 .previewButtons {
@@ -219,10 +221,10 @@
 
 .previewActionBtn {
     border: none;
-    border-top: 1px solid #f1f5f9;
+    border-top: 1px solid var(--border-color);
     border-radius: 0;
     background: transparent;
-    color: #00a884;
+    color: var(--wa-header);
     font-size: 0.78rem;
     font-weight: 600;
     padding: 0.5rem 0.6rem;
@@ -256,7 +258,7 @@
 }
 
 .previewTick {
-    color: #128c7e;
+    color: var(--wa-header);
 }
 
 .previewEmptyHint {
@@ -265,7 +267,7 @@
     align-items: center;
     justify-content: center;
     font-size: 0.78rem;
-    color: #9ca3af;
+    color: var(--text-placeholder);
     text-align: center;
     padding: 1rem;
 }
@@ -300,13 +302,13 @@
 
 .previewCard {
     width: 100%;
-    background: #fff;
+    background: var(--wa-bubble);
     border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 12px var(--wa-bubble-shadow);
     display: flex;
     flex-direction: column;
-    border: 1px solid rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--wa-bubble-border);
 }
 
 .carouselNavBtnLeft,
@@ -314,8 +316,8 @@
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
-    background: rgba(255, 255, 255, 0.9);
-    border: 1px solid rgba(0, 0, 0, 0.1);
+    background: var(--wa-bubble);
+    border: 1px solid var(--border-color);
     border-radius: 50%;
     width: 28px;
     height: 28px;
@@ -324,14 +326,14 @@
     justify-content: center;
     cursor: pointer;
     z-index: 10;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-    color: #4b5563;
+    box-shadow: 0 2px 6px var(--wa-bubble-shadow);
+    color: var(--text-primary);
     transition: all 0.2s;
 
     &:hover {
-        background: #fff;
-        color: #1f2937;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+        background: var(--bg-paper);
+        color: var(--text-primary);
+        box-shadow: 0 4px 10px var(--wa-bubble-shadow);
     }
 }
 
@@ -355,12 +357,12 @@
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: #cbd5e1;
+    background: var(--border-strong);
     transition: all 0.3s;
 }
 
 .carouselDotActive {
-    background: #00a884;
+    background: var(--wa-header);
     transform: scale(1.2);
 }
 
@@ -368,7 +370,7 @@
     width: 100%;
     height: 140px;
     object-fit: cover;
-    background: #f1f5f9;
+    background: var(--bg-light);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -384,7 +386,7 @@
 
 .previewCardBody {
     font-size: 0.82rem;
-    color: #1f2937;
+    color: var(--text-primary);
     line-height: 1.4;
     word-break: break-word;
 }
@@ -392,18 +394,18 @@
 .previewCardButtons {
     display: flex;
     flex-direction: column;
-    border-top: 1px solid #f1f5f9;
+    border-top: 1px solid var(--border-color);
 }
 
 .previewCardBtn {
     background: transparent;
-    color: #00a884;
+    color: var(--wa-header);
     font-size: 0.85rem;
     font-weight: 600;
     padding: 10px 12px;
     text-align: center;
     border: none;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid var(--border-color);
     cursor: default;
     display: flex;
     align-items: center;
@@ -416,7 +418,7 @@
     }
 
     &:hover {
-        background: #f8fafc;
+        background: var(--bg-subtle);
     }
 }
 

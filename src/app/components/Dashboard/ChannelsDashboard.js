@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     Box,
@@ -14,8 +14,10 @@ import WalletDrawer from './WalletDrawer';
 import ChannelCardSkeleton from './ChannelCardSkeleton';
 import ChannelCard from './ChannelCard';
 import BusinessProfile from '../BusinessProfile/BusinessProfile';
+import Pagination from '../Common/Pagination/Pagination';
 import { useAuth } from '../../hooks/useAuth';
 import { useWallet } from '../../contexts/WalletContext';
+import { buildQueryString } from '../../utils/urlUtils';
 import styles from './ChannelsDashboard.module.scss';
 
 // ── Static data (replace with API later) ──────────────────────────────────────
@@ -31,11 +33,22 @@ const CHANNELS = [
 const ChannelsDashboard = () => {
     const router = useRouter();
     const { auth } = useAuth();
-    const { walletInfo, isLoading, loadWalletData } = useWallet();
+    const { walletInfo, channels: walletChannels, isLoading, loadWalletData } = useWallet();
     const [walletOpen, setWalletOpen] = useState(false);
     const [profileOpen, setProfileOpen] = useState(false);
     const [activeChannel, setActiveChannel] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [currentPage, setCurrentPage] = useState(0);
+    const [itemsPerPage, setItemsPerPage] = useState(50);
+    const [pageChangeLoading, setPageChangeLoading] = useState(false);
+    const pageChangeTimeoutRef = useRef(null);
+
+    useEffect(() => () => {
+        if (pageChangeTimeoutRef.current) {
+            clearTimeout(pageChangeTimeoutRef.current);
+            pageChangeTimeoutRef.current = null;
+        }
+    }, []);
 
     const appUserId = useMemo(
         () => auth?.userid || auth?.userId || auth?.appuserid || '',
@@ -47,34 +60,55 @@ const ChannelsDashboard = () => {
     }, [appUserId, loadWalletData]);
 
     const channels = useMemo(() => {
-        if (!walletInfo) return [];
+        if (!walletChannels || walletChannels.length === 0) return [];
 
-        return CHANNELS.map((channel) => ({
-            ...channel,
-            ...walletInfo,
-            balance: walletInfo.availableBalance,
-            totalCredits: walletInfo.totalCredits,
-            used: walletInfo.used,
-            progressPercent: walletInfo.progressPercent,
-            companyCode: walletInfo.companyCode || '-',
-            mobileNumber: walletInfo.mobileNumber || '-',
-            wabaId: walletInfo.wabaId || '-',
-            wabaPhoneNo: walletInfo.wabaPhoneNo || '-',
-            whatsappName: walletInfo.whatsappName || '',
-            profilePictureUrl: walletInfo.profilePictureUrl || '',
-            refundBalance: walletInfo.refundBalance,
+        return walletChannels.map((ch) => ({
+            id: ch.Id || ch.id,
+            ...ch,
+            balance: ch.availableBalance,
+            totalCredits: ch.totalBalance,
+            used: Math.max(0, Number(ch.totalBalance || 0) - Number(ch.availableBalance || 0)),
+            progressPercent: ch.totalBalance > 0 ? Math.min(100, ((ch.totalBalance - ch.availableBalance) / ch.totalBalance) * 100) : 0,
         }));
-    }, [walletInfo]);
+    }, [walletChannels]);
 
     const filteredChannels = useMemo(() => {
         if (!searchQuery.trim()) return channels;
         const q = searchQuery.toLowerCase();
         return channels.filter((ch) =>
-            ch.companyCode.toLowerCase().includes(q) ||
-            ch.mobileNumber.toLowerCase().includes(q) ||
-            ch.wabaId.toLowerCase().includes(q)
+            (ch.companyCode || '').toLowerCase().includes(q) ||
+            (ch.mobileNumber || '').toLowerCase().includes(q) ||
+            (ch.wabaId || '').toLowerCase().includes(q) ||
+            (ch.whatsappName || '').toLowerCase().includes(q)
         );
     }, [channels, searchQuery]);
+
+    const handleSearchChange = useCallback((val) => {
+        setSearchQuery(val);
+        setCurrentPage(0);
+    }, []);
+
+    const paginatedChannels = useMemo(() => {
+        const start = currentPage * itemsPerPage;
+        return filteredChannels.slice(start, start + itemsPerPage);
+    }, [filteredChannels, currentPage, itemsPerPage]);
+
+    const handlePageChange = useCallback((_, newPage) => {
+        setPageChangeLoading(true);
+        setCurrentPage(newPage);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        if (pageChangeTimeoutRef.current) clearTimeout(pageChangeTimeoutRef.current);
+        pageChangeTimeoutRef.current = setTimeout(() => setPageChangeLoading(false), 400);
+    }, []);
+
+    const handleRowsPerPageChange = useCallback((val) => {
+        setPageChangeLoading(true);
+        setItemsPerPage(val);
+        setCurrentPage(0);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        if (pageChangeTimeoutRef.current) clearTimeout(pageChangeTimeoutRef.current);
+        pageChangeTimeoutRef.current = setTimeout(() => setPageChangeLoading(false), 400);
+    }, []);
 
     const handleWalletOpen = (channel) => {
         setActiveChannel(channel);
@@ -114,31 +148,32 @@ const ChannelsDashboard = () => {
                             display: 'flex',
                             alignItems: 'center',
                             borderRadius: '12px',
-                            border: '1px solid #e4e8ee',
+                            border: '1px solid',
+                            borderColor: 'var(--border-color)',
                             px: '1rem',
                             py: '6px',
                             width: { xs: '100%', sm: '280px' },
-                            background: '#fff',
+                            background: 'var(--bg-paper)',
                             transition: 'border-color 0.2s',
                             '&:focus-within': {
-                                borderColor: '#1daa61',
-                                boxShadow: '0 0 0 3px rgba(29, 170, 97, 0.08)',
+                                borderColor: 'var(--primary-main)',
+                                boxShadow: '0 0 0 3px var(--primary-light-bg)',
                             },
                         }}
                     >
-                        <Search size={18} color="#6D6B77" />
+                        <Search size={18} color="var(--text-tertiary)" />
                         <InputBase
                             placeholder="Search channels..."
                             value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
+                            onChange={(e) => handleSearchChange(e.target.value)}
                             sx={{
                                 ml: '0.75rem',
                                 flex: 1,
                                 fontFamily: 'Poppins, sans-serif',
                                 fontSize: '0.85rem',
-                                color: '#444050',
+                                color: 'var(--text-primary)',
                                 '& input::placeholder': {
-                                    color: '#a0a0a0',
+                                    color: 'var(--text-placeholder)',
                                     opacity: 1,
                                 },
                             }}
@@ -158,13 +193,13 @@ const ChannelsDashboard = () => {
                                 fontFamily: 'Poppins, sans-serif',
                                 fontWeight: 600,
                                 fontSize: '0.875rem',
-                                background: '#1daa61',
-                                color: '#fff',
+                                background: 'var(--primary-main)',
+                                color: 'var(--button-color)',
                                 px: '1.25rem',
                                 py: '8px',
                                 boxShadow: '0 4px 12px rgba(29, 170, 97, 0.25)',
                                 '&:hover': {
-                                    background: '#1a9a57',
+                                    background: 'var(--primary-main)',
                                     boxShadow: '0 6px 16px rgba(29, 170, 97, 0.35)',
                                 },
                             }}
@@ -177,8 +212,8 @@ const ChannelsDashboard = () => {
 
             {/* Content */}
             <div className={styles.contentArea}>
-                {isLoading ? (
-                    <ChannelCardSkeleton count={3} />
+                {isLoading || pageChangeLoading ? (
+                    <ChannelCardSkeleton count={Math.min(itemsPerPage, Math.max(3, filteredChannels.length || itemsPerPage))} />
                 ) : filteredChannels.length === 0 ? (
                     <Box
                         sx={{
@@ -205,7 +240,7 @@ const ChannelsDashboard = () => {
                                 boxShadow: '0 8px 32px rgba(29,170,97,0.12)',
                             }}
                         >
-                            <MessageCircle size={48} color="#1daa61" strokeWidth={1.5} />
+                            <MessageCircle size={48} color="var(--primary-main)" strokeWidth={1.5} />
                         </Paper>
 
                         <Box sx={{ textAlign: 'center', maxWidth: 420 }}>
@@ -214,7 +249,7 @@ const ChannelsDashboard = () => {
                                     fontFamily: 'Poppins, sans-serif',
                                     fontWeight: 700,
                                     fontSize: { xs: '1.25rem', sm: '1.5rem' },
-                                    color: '#444050',
+                                    color: 'var(--text-primary)',
                                     mb: 1,
                                     lineHeight: 1.3,
                                 }}
@@ -225,7 +260,7 @@ const ChannelsDashboard = () => {
                                 sx={{
                                     fontFamily: 'Poppins, sans-serif',
                                     fontSize: '0.92rem',
-                                    color: '#6D6B77',
+                                    color: 'var(--text-tertiary)',
                                     lineHeight: 1.7,
                                     maxWidth: 340,
                                     mx: 'auto',
@@ -251,13 +286,13 @@ const ChannelsDashboard = () => {
                                         fontFamily: 'Poppins, sans-serif',
                                         fontWeight: 600,
                                         fontSize: '0.95rem',
-                                        background: '#1daa61',
-                                        color: '#fff',
+                                        background: 'var(--primary-main)',
+                                        color: 'var(--button-color)',
                                         px: '2rem',
                                         py: '10px',
                                         boxShadow: '0 4px 16px rgba(29, 170, 97, 0.3)',
                                         '&:hover': {
-                                            background: '#1a9a57',
+                                            background: 'var(--primary-main)',
                                             boxShadow: '0 6px 20px rgba(29, 170, 97, 0.4)',
                                         },
                                     }}
@@ -268,7 +303,7 @@ const ChannelsDashboard = () => {
                                     sx={{
                                         fontFamily: 'Poppins, sans-serif',
                                         fontSize: '0.78rem',
-                                        color: '#a0a0a0',
+                                        color: 'var(--text-placeholder)',
                                     }}
                                 >
                                     Connect securely via Facebook Embedded Signup
@@ -277,29 +312,43 @@ const ChannelsDashboard = () => {
                         )}
                     </Box>
                 ) : (
-                    <Box
-                        sx={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(3, 1fr)',
-                            gap: '1.5rem',
-                            '@media (max-width: 1200px)': {
-                                gridTemplateColumns: 'repeat(2, 1fr)',
-                            },
-                            '@media (max-width: 768px)': {
-                                gridTemplateColumns: '1fr',
-                            },
-                        }}
-                    >
-                        {filteredChannels.map((channel) => (
-                            <ChannelCard
-                                key={channel.id}
-                                channel={channel}
-                                onWalletOpen={() => handleWalletOpen(channel)}
-                                onTemplatesClick={() => router.push('/templates')}
-                                onBusinessProfileClick={() => handleBusinessProfileOpen(channel)}
+                    <>
+                        <Box
+                            sx={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(3, 1fr)',
+                                gap: '1.5rem',
+                                '@media (max-width: 1200px)': {
+                                    gridTemplateColumns: 'repeat(2, 1fr)',
+                                },
+                                '@media (max-width: 768px)': {
+                                    gridTemplateColumns: '1fr',
+                                },
+                            }}
+                        >
+                            {paginatedChannels.map((channel) => (
+                                <ChannelCard
+                                    key={channel.id}
+                                    channel={channel}
+                                    onWalletOpen={() => handleWalletOpen(channel)}
+                                    onTemplatesClick={() => {
+                                        const qs = buildQueryString({ tempid: channel.Id, wabaid: channel.wabaId, whatsappNo: channel.mobileNumber });
+                                        router.push(qs ? `/templates?${qs}` : '/templates');
+                                    }}
+                                    onBusinessProfileClick={() => handleBusinessProfileOpen(channel)}
+                                />
+                            ))}
+                        </Box>
+                        {filteredChannels.length > itemsPerPage && (
+                            <Pagination
+                                count={filteredChannels.length}
+                                page={currentPage}
+                                rowsPerPage={itemsPerPage}
+                                onPageChange={handlePageChange}
+                                onRowsPerPageChange={handleRowsPerPageChange}
                             />
-                        ))}
-                    </Box>
+                        )}
+                    </>
                 )}
             </div>
 

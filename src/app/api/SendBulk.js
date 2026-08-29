@@ -5,12 +5,14 @@ export const sendBulk = async ({
     userId,
     whatsappNumber,
     campaignId = 1,
+    accountId = '',
 } = {}) => {
     try {
         const body = {
             appuserid,
             userId,
             CampaignId: campaignId,
+            ...(accountId ? { AccountId: accountId } : {}),
         };
 
         const response = await SendBulkCampaign(body, whatsappNumber);

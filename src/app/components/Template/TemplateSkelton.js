@@ -22,7 +22,7 @@ const TemplateSkelton = ({ count = 4 }) => {
                             overflow: "hidden",
                             position: "relative",
                             background:
-                                "linear-gradient(145deg, #ffffff, #f8f9fb)",
+                                "linear-gradient(145deg, var(--bg-paper), var(--bg-subtle))",
 
                             // Better shadow
                             boxShadow:

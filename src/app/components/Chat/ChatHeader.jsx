@@ -2,9 +2,9 @@
 
 import { Avatar, IconButton, Popover, useMediaQuery, useTheme } from '@mui/material';
 import {
-  ArrowLeft, X, Plus, Tag as TagIcon, ChevronLeft, ChevronRight,
+  ArrowLeft, X, Plus, Tag as TagIcon, ChevronLeft, ChevronRight, Flag,
 } from 'lucide-react';
-import { getCustomerDisplayName, getCustomerAvatarSeed, getWhatsAppAvatarConfig } from './utils/chatUtils';
+import { getCustomerDisplayName, getCustomerAvatarSeed, getWhatsAppAvatarConfig, hasCustomerName } from './utils/chatUtils';
 import AssigneeDropdown from './AssigneeDropdown';
 import EscalatedDropdown from './EscalatedDropdown';
 import { fetchAgentLists } from '../../api/chat/conversationApi';
@@ -40,7 +40,7 @@ export default function ChatHeader({
   const refreshAgents = async () => {
     if (auth?.userId) {
       try {
-        const res = await fetchAgentLists(auth.userId);
+        const res = await fetchAgentLists(auth.userId, undefined);
         if (res?.rd) setAssigneeList(res.rd);
         if (res?.rd1) setEscalatedList(res.rd1);
       } catch (e) { /* ignore */ }
@@ -55,9 +55,9 @@ export default function ChatHeader({
             size="small"
             onClick={onBack}
             sx={{
-              color: '#6b7280',
+              color: 'var(--text-secondary)',
               mr: 0.5,
-              '&:hover': { bgcolor: 'rgba(0,0,0,0.04)' },
+              '&:hover': { bgcolor: 'var(--bg-light)' },
             }}
           >
             <ArrowLeft size={22} />
@@ -65,11 +65,24 @@ export default function ChatHeader({
         )}
         <Avatar
           {...baseAvatarConfig}
-          sx={{ ...baseAvatarConfig.sx, width: 40, height: 40, cursor: 'pointer' }}
+          className={!hasCustomerName(selectedCustomer) ? 'lead-avatar' : ''}
+          sx={{
+            ...baseAvatarConfig.sx,
+            width: 40,
+            height: 40,
+            cursor: 'pointer',
+          }}
           onClick={onToggleDetails}
         />
         <div className="chat-conv-header-info" onClick={onToggleDetails}>
-          <p className="chat-conv-header-name">{getCustomerDisplayName(selectedCustomer)}</p>
+          <p className="chat-conv-header-name">
+            {getCustomerDisplayName(selectedCustomer)}
+            {!hasCustomerName(selectedCustomer) && (
+              <span className="lead-indicator-icon" title="Lead">
+                <Flag size={14} fill="#f59e0b" />
+              </span>
+            )}
+          </p>
           {selectedCustomer?.CustomerPhone && (
             <p className="chat-conv-header-phone">{selectedCustomer.CustomerPhone}</p>
           )}
@@ -102,7 +115,7 @@ export default function ChatHeader({
                         p: 1.5,
                         maxWidth: 280,
                         borderRadius: '12px',
-                        boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+                        boxShadow: 'var(--box-shadow)',
                         fontFamily: 'var(--chat-font)',
                       },
                     },
@@ -121,7 +134,7 @@ export default function ChatHeader({
                       Add tag
                     </span>
                     {tagsList.length === 0 ? (
-                      <div style={{ fontSize: '12px', color: '#9ca3af', textAlign: 'center', padding: '4px 0', fontFamily: 'var(--chat-font)' }}>
+                      <div style={{ fontSize: '12px', color: 'var(--text-secondary)', textAlign: 'center', padding: '4px 0', fontFamily: 'var(--chat-font)' }}>
                         No tags added yet
                       </div>
                     ) : (

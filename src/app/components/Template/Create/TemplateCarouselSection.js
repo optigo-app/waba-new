@@ -32,7 +32,7 @@ const TemplateCarouselSection = ({
     const activeCard = carouselCards[activeCardIndex];
 
     return (
-        <Paper elevation={0} sx={{ p: 3, mb: 2, border: '1px solid #e2e8f0', borderRadius: '12px' }}>
+        <Paper elevation={0} sx={{ p: 3, mb: 2, border: '1px solid var(--border-color)', borderRadius: '12px' }}>
             <Box className={styles.sectionHeaderRow}>
                 <h3 className={styles.sectionTitle}>Carousel Cards</h3>
                 <span className={styles.charCounter}>{carouselCards.length}/10 Cards</span>
@@ -53,11 +53,11 @@ const TemplateCarouselSection = ({
                                 borderRadius: '8px',
                                 border: '1px solid',
                                 borderColor: activeCardIndex === idx ? 'var(--primary-main)' : 'var(--sidebar-borderColor)',
-                                color: activeCardIndex === idx ? 'var(--primary-main)' : 'var(--text2ndColor)',
-                                backgroundColor: activeCardIndex === idx ? 'var(--primary-light-bg)' : '#ffffff',
+                                color: activeCardIndex === idx ? 'var(--primary-main)' : 'var(--text-tertiary)',
+                                backgroundColor: activeCardIndex === idx ? 'var(--primary-light-bg)' : 'var(--bg-paper)',
                                 '&:hover': {
                                     borderColor: 'var(--primary-main)',
-                                    backgroundColor: activeCardIndex === idx ? 'var(--primary-light-bg)' : 'rgba(29, 170, 97, 0.02)',
+                                    backgroundColor: activeCardIndex === idx ? 'var(--primary-light-bg)' : 'var(--primary-light-bg)',
                                 }
                             }}
                         >
@@ -75,9 +75,9 @@ const TemplateCarouselSection = ({
                                 borderRadius: '8px',
                                 border: '1px dashed var(--sidebar-borderColor)',
                                 color: 'var(--primary-main)',
-                                backgroundColor: '#ffffff',
+                                backgroundColor: 'var(--bg-paper)',
                                 '&:hover': {
-                                    backgroundColor: 'rgba(29, 170, 97, 0.04)',
+                                    backgroundColor: 'var(--primary-light-bg)',
                                     borderColor: 'var(--primary-main)',
                                 }
                             }}

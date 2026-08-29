@@ -118,9 +118,9 @@ export default function MediaSection({
                 >
                   {src ? (
                     isVideo ? (
-                      <Play size={22} color="#fff" />
+                      <Play size={22} color="var(--button-color)" />
                     ) : (
-                      <Image size={22} color="#fff" />
+                      <Image size={22} color="var(--button-color)" />
                     )
                   ) : null}
                 </Box>

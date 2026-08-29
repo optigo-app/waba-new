@@ -5,7 +5,7 @@
     width: 480px;
     max-width: 100%;
     height: 100%;
-    background: #fff;
+    background: var(--bg-paper);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -20,7 +20,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 1.25rem 1.5rem;
-    background: #fff;
+    background: var(--bg-paper);
     border-bottom: 1px solid var(--sidebar-borderColor);
     flex-shrink: 0;
 
@@ -38,7 +38,7 @@
 .drawerTitle {
     font-size: 1.05rem;
     font-weight: 600;
-    color: $titleColor;
+    color: var(--text-primary);
     font-family: $font-family;
 }
 
@@ -52,7 +52,7 @@
     border-radius: 8px;
     border: 1px solid var(--sidebar-borderColor);
     background: var(--sidebar-borderColor);
-    color: $text2ndColor;
+    color: var(--text-tertiary);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -60,8 +60,8 @@
     transition: all 0.15s;
 
     &:hover {
-        background: $button-color-hover;
-        color: #fff;
+        background: var(--primary-main);
+        color: var(--button-color);
     }
 }
 
@@ -88,6 +88,12 @@
     gap: 4px;
     position: relative;
     overflow: hidden;
+    border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+
+    :root[data-theme="dark"] & {
+        background: color-mix(in srgb, currentColor 14%, var(--bg-elevated));
+        border-color: color-mix(in srgb, currentColor 30%, transparent);
+    }
 }
 
 .summaryLabel {
@@ -112,29 +118,30 @@
     position: absolute;
     bottom: 10px;
     right: 10px;
-    opacity: 0.2;
+    opacity: 0.35;
     width: 20px;
     height: 20px;
+    color: currentColor;
 }
 
 .summaryTotal {
-    background: linear-gradient(135deg, #eff6ff, #dbeafe);
-    color: #1e40af;
+    background: var(--info-light-bg);
+    color: var(--info-main);
 }
 
 .summaryDeducted {
-    background: linear-gradient(135deg, #fff1f2, #ffe4e6);
-    color: #be123c;
+    background: var(--error-light-bg);
+    color: var(--error-main);
 }
 
 .summaryRemaining {
-    background: linear-gradient(135deg, #f0fdf4, #dcfce7);
-    color: #166534;
+    background: var(--success-light-bg);
+    color: var(--success-main);
 }
 
 .summaryRefund {
-    background: linear-gradient(135deg, #ecfeff, #cffafe);
-    color: #0f766e;
+    background: var(--info-light-bg);
+    color: var(--info-main);
 }
 
 // ── Drawer Progress ───────────────────────────────────────────────────────────
@@ -152,7 +159,7 @@
     justify-content: space-between;
     font-size: 0.75rem;
     font-weight: 500;
-    color: $text2ndColor;
+    color: var(--text-tertiary);
     margin-bottom: 6px;
     font-family: $font-family;
 }
@@ -195,7 +202,7 @@
     }
 
     &::-webkit-scrollbar-thumb {
-        background: #e2e8f0;
+        background: var(--scrollbar-thumb);
         border-radius: 99px;
     }
 }
@@ -203,7 +210,7 @@
 .transactionTitle {
     font-size: 0.82rem;
     font-weight: 600;
-    color: $text2ndColor;
+    color: var(--text-tertiary);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     margin: 0 0 0.25rem;
@@ -215,7 +222,7 @@
     display: flex;
     flex-direction: column;
     gap: 0;
-    background: #fff;
+    background: var(--bg-paper);
     border-radius: 16px;
     border: 1px solid var(--sidebar-borderColor);
     overflow: hidden;
@@ -252,27 +259,27 @@
 }
 
 .txnDotCredit {
-    background: #22c55e;
-    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+    background: var(--success-main);
+    box-shadow: 0 0 0 3px var(--success-light-bg);
 }
 
 .txnDotDebit {
-    background: #f43f5e;
-    box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.15);
+    background: var(--error-main);
+    box-shadow: 0 0 0 3px var(--error-light-bg);
 }
 
 .txnDesc {
     display: block;
     font-size: 0.82rem;
     font-weight: 600;
-    color: $titleColor;
+    color: var(--text-primary);
     font-family: $font-family;
 }
 
 .txnDate {
     display: block;
     font-size: 0.72rem;
-    color: $text2ndColor;
+    color: var(--text-tertiary);
     font-weight: 400;
     font-family: $font-family;
     margin-top: 1px;
@@ -301,6 +308,6 @@
 
 .txnBalance {
     font-size: 0.7rem;
-    color: $text2ndColor;
+    color: var(--text-tertiary);
     font-family: $font-family;
 }

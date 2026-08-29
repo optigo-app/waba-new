@@ -26,20 +26,20 @@ const VariableInputs = memo(({
                         placeholder="e.g. John"
                         sx={{
                             '& .MuiOutlinedInput-input': {
-                                color: '#444050',
+                                color: 'var(--text-primary)',
                                 fontWeight: 500,
                             },
                             '& .MuiOutlinedInput-input::placeholder': {
-                                color: '#9e9ba8',
+                                color: 'var(--text-placeholder)',
                                 opacity: '1 !important',
                                 fontWeight: 400,
                             },
                             '& .MuiInputLabel-root': {
-                                color: '#7D7f85',
+                                color: 'var(--text-secondary)',
                                 fontWeight: 500,
                             },
                             '& .Mui-focused .MuiInputLabel-root': {
-                                color: '#1daa61',
+                                color: 'var(--primary-main)',
                             },
                         }}
                     />
@@ -82,7 +82,7 @@ const TemplateBodySection = ({
     textareaRef,
 }) => {
     return (
-        <Paper elevation={0} className={styles.sectionCard} sx={{ p: 2.5, mb: 2, border: '1px solid #e2e8f0', borderRadius: '12px' }}>
+        <Paper elevation={0} className={styles.sectionCard} sx={{ p: 2.5, mb: 2, border: '1px solid var(--border-color)', borderRadius: '12px' }}>
             <h3 className={styles.sectionTitle}>Body <span style={{ color: 'red' }}>*</span></h3>
             <p className={styles.sectionSubtitle}>Enter the text for your message in the language that you've selected.</p>
             <MemoizedTemplateBodyInput
@@ -111,7 +111,7 @@ const TemplateBodySection = ({
                     <span style={{
                         fontSize: '0.78rem',
                         fontWeight: bodyCharCount > 1024 ? 600 : 400,
-                        color: bodyCharCount > 1024 ? '#ef4444' : 'var(--secondary-color)',
+                        color: bodyCharCount > 1024 ? 'var(--error-main)' : 'var(--text-secondary)',
                     }}>
                         Effective characters (with variable values): {bodyCharCount}/1024
                         {bodyCharCount > 1024 && ' — exceeds limit'}

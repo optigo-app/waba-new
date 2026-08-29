@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Box, Typography, Button, Paper } from '@mui/material';
-import { FileText, Wallet, Building2 } from 'lucide-react';
+import { FileText, Wallet, Building2, Star } from 'lucide-react';
 import { Whatsapp } from '../../assests/svg';
 
 const ChannelCard = ({ channel, onWalletOpen, onTemplatesClick, onBusinessProfileClick }) => {
@@ -15,20 +15,54 @@ const ChannelCard = ({ channel, onWalletOpen, onTemplatesClick, onBusinessProfil
     return (
         <Paper
             sx={{
-                background: '#fff',
+                background: 'var(--bg-paper)',
                 borderRadius: '16px',
-                border: '1px solid #e4e8ee',
+                border: '1px solid var(--border-color)',
                 padding: { xs: '1rem', sm: '1.5rem' },
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
+                boxShadow: 'var(--box-shadow)',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '1.25rem',
                 overflow: 'hidden',
+                position: 'relative',
                 transition: 'box-shadow 0.2s ease, border-color 0.2s ease',
-                '&:hover': {
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.06)',
-                    borderColor: 'rgba(29, 170, 97, 0.25)',
-                },
+                ...(channel.isDefault ? {
+                    '&::before': {
+                        content: '""',
+                        position: 'absolute',
+                        top: '-80px',
+                        right: '-80px',
+                        width: '200px',
+                        height: '200px',
+                        borderRadius: '50%',
+                        background: 'radial-gradient(circle, rgba(29,170,97,0.15) 0%, rgba(29,170,97,0.06) 40%, transparent 70%)',
+                        pointerEvents: 'none',
+                        zIndex: 0,
+                        transition: 'background 0.2s ease',
+                    },
+                    'html[data-theme="dark"] &::before': {
+                        background: 'radial-gradient(circle, rgba(29,170,97,0.20) 0%, rgba(29,170,97,0.09) 40%, transparent 70%)',
+                    },
+                    '&:hover': {
+                        boxShadow: 'var(--box-shadow)',
+                        borderColor: 'var(--primary-light)',
+                        '&::before': {
+                            background: 'radial-gradient(circle, rgba(29,170,97,0.22) 0%, rgba(29,170,97,0.10) 40%, transparent 70%)',
+                        },
+                    },
+                    'html[data-theme="dark"] &:hover::before': {
+                        background: 'radial-gradient(circle, rgba(29,170,97,0.28) 0%, rgba(29,170,97,0.13) 40%, transparent 70%)',
+                    },
+                    '& > *': {
+                        position: 'relative',
+                        zIndex: 1,
+                    },
+                } : {
+                    '&:hover': {
+                        boxShadow: 'var(--box-shadow)',
+                        borderColor: 'var(--primary-light)',
+                    },
+                }),
             }}
         >
             {/* Top Row: Icon + Info | Balance */}
@@ -41,12 +75,12 @@ const ChannelCard = ({ channel, onWalletOpen, onTemplatesClick, onBusinessProfil
                             borderRadius: '14px',
                             background: hasProfilePic
                                 ? 'transparent'
-                                : 'linear-gradient(135deg, rgba(29,170,97,0.12), rgba(37,211,102,0.08))',
+                                : 'linear-gradient(135deg, var(--primary-light-bg), var(--primary-light))',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             flexShrink: 0,
-                            border: '1px solid rgba(29,170,97,0.15)',
+                            border: '1px solid var(--primary-light-bg)',
                             overflow: 'hidden',
                         }}
                     >
@@ -58,25 +92,52 @@ const ChannelCard = ({ channel, onWalletOpen, onTemplatesClick, onBusinessProfil
                                 onError={() => setImgError(true)}
                             />
                         ) : (
-                            <Whatsapp width={28} height={28} fill="#1daa61" />
+                            <Whatsapp width={28} height={28} fill="var(--primary-main)" />
                         )}
                     </Box>
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                        <Typography
-                            sx={{
-                                fontSize: '1rem',
-                                fontWeight: 600,
-                                color: '#444050',
-                                lineHeight: 1.2,
-                                fontFamily: 'Poppins, sans-serif',
-                            }}
-                        >
-                            {channel.whatsappName || channel.companyCode}
-                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <Typography
+                                sx={{
+                                    fontSize: '1rem',
+                                    fontWeight: 600,
+                                    color: 'var(--text-primary)',
+                                    lineHeight: 1.2,
+                                    fontFamily: 'Poppins, sans-serif',
+                                }}
+                            >
+                                {channel.whatsappName || channel.companyCode}
+                            </Typography>
+                            {channel.isDefault && (
+                                <Box
+                                    sx={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '3px',
+                                        px: '7px',
+                                        py: '2px',
+                                        borderRadius: '99px',
+                                        fontSize: '0.62rem',
+                                        fontWeight: 700,
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.04em',
+                                        fontFamily: 'Poppins, sans-serif',
+                                        color: 'var(--primary-main)',
+                                        background: 'var(--primary-light-bg)',
+                                        border: '1px solid color-mix(in srgb, var(--primary-main) 30%, transparent)',
+                                        whiteSpace: 'nowrap',
+                                        lineHeight: 1,
+                                    }}
+                                >
+                                    <Star size={10} fill="currentColor" strokeWidth={0} />
+                                    Default
+                                </Box>
+                            )}
+                        </Box>
                         <Typography
                             sx={{
                                 fontSize: '0.75rem',
-                                color: '#6D6B77',
+                                color: 'var(--text-tertiary)',
                                 fontWeight: 500,
                                 fontFamily: 'Poppins, sans-serif',
                             }}
@@ -86,7 +147,7 @@ const ChannelCard = ({ channel, onWalletOpen, onTemplatesClick, onBusinessProfil
                         <Typography
                             sx={{
                                 fontSize: '0.75rem',
-                                color: '#6D6B77',
+                                color: 'var(--text-tertiary)',
                                 fontWeight: 500,
                                 fontFamily: 'Poppins, sans-serif',
                             }}
@@ -99,7 +160,7 @@ const ChannelCard = ({ channel, onWalletOpen, onTemplatesClick, onBusinessProfil
                     <Typography
                         sx={{
                             fontSize: '0.68rem',
-                            color: '#6D6B77',
+                            color: 'var(--text-tertiary)',
                             fontWeight: 600,
                             textTransform: 'uppercase',
                             letterSpacing: '0.05em',
@@ -112,7 +173,7 @@ const ChannelCard = ({ channel, onWalletOpen, onTemplatesClick, onBusinessProfil
                         sx={{
                             fontSize: '1.4rem',
                             fontWeight: 600,
-                            color: '#1daa61',
+                            color: 'var(--primary-main)',
                             letterSpacing: '-0.02em',
                             fontFamily: 'Poppins, sans-serif',
                         }}
@@ -122,7 +183,7 @@ const ChannelCard = ({ channel, onWalletOpen, onTemplatesClick, onBusinessProfil
                     <Typography
                         sx={{
                             fontSize: '0.72rem',
-                            color: '#0ea5a4',
+                            color: 'var(--info-main)',
                             fontWeight: 600,
                             fontFamily: 'Poppins, sans-serif',
                         }}
@@ -138,7 +199,7 @@ const ChannelCard = ({ channel, onWalletOpen, onTemplatesClick, onBusinessProfil
                     <Typography
                         sx={{
                             fontSize: '0.72rem',
-                            color: '#6D6B77',
+                            color: 'var(--text-tertiary)',
                             fontWeight: 500,
                             fontFamily: 'Poppins, sans-serif',
                         }}
@@ -148,7 +209,7 @@ const ChannelCard = ({ channel, onWalletOpen, onTemplatesClick, onBusinessProfil
                     <Typography
                         sx={{
                             fontSize: '0.72rem',
-                            color: '#6D6B77',
+                            color: 'var(--text-tertiary)',
                             fontWeight: 600,
                             fontFamily: 'Poppins, sans-serif',
                         }}
@@ -161,7 +222,7 @@ const ChannelCard = ({ channel, onWalletOpen, onTemplatesClick, onBusinessProfil
                         width: '100%',
                         height: '8px',
                         borderRadius: '99px',
-                        backgroundColor: '#edf2f7',
+                        backgroundColor: 'var(--bg-light)',
                         overflow: 'hidden',
                     }}
                 >
@@ -170,7 +231,7 @@ const ChannelCard = ({ channel, onWalletOpen, onTemplatesClick, onBusinessProfil
                             width: `${Math.min(progressPercent, 100)}%`,
                             height: '100%',
                             borderRadius: '99px',
-                            background: 'linear-gradient(90deg, #1daa61, #25d366)',
+                            background: 'linear-gradient(90deg, var(--primary-main), var(--success-main))',
                             transition: 'width 0.5s ease',
                         }}
                     />
@@ -179,7 +240,7 @@ const ChannelCard = ({ channel, onWalletOpen, onTemplatesClick, onBusinessProfil
                     <Typography
                         sx={{
                             fontSize: '0.72rem',
-                            color: '#6D6B77',
+                            color: 'var(--text-tertiary)',
                             fontWeight: 500,
                             fontFamily: 'Poppins, sans-serif',
                         }}
@@ -189,7 +250,7 @@ const ChannelCard = ({ channel, onWalletOpen, onTemplatesClick, onBusinessProfil
                     <Typography
                         sx={{
                             fontSize: '0.72rem',
-                            color: '#6D6B77',
+                            color: 'var(--text-tertiary)',
                             fontWeight: 500,
                             fontFamily: 'Poppins, sans-serif',
                         }}
@@ -255,15 +316,15 @@ const ChannelCard = ({ channel, onWalletOpen, onTemplatesClick, onBusinessProfil
                                 flex: isExpanded ? '1 1 0%' : '0 0 40px',
                                 whiteSpace: 'nowrap',
                                 overflow: 'hidden',
-                                background: isActive ? '#1daa61' : 'transparent',
-                                color: isActive ? '#fff' : '#444050',
-                                borderColor: isActive ? '#1daa61' : '#e4e8ee',
+                                background: isActive ? 'var(--primary-main)' : 'transparent',
+                                color: isActive ? 'var(--button-color)' : 'var(--text-primary)',
+                                borderColor: isActive ? 'var(--primary-main)' : 'var(--border-color)',
                                 boxShadow: 'none',
                                 transition: 'flex 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s ease, color 0.2s ease, border-color 0.2s ease',
                                 '&:hover': {
-                                    background: isActive ? '#1a9a57' : 'rgba(29, 170, 97, 0.04)',
-                                    borderColor: '#1daa61',
-                                    color: isActive ? '#fff' : '#1daa61',
+                                    background: isActive ? 'var(--primary-main)' : 'var(--primary-light-bg)',
+                                    borderColor: 'var(--primary-main)',
+                                    color: isActive ? 'var(--button-color)' : 'var(--primary-main)',
                                     boxShadow: 'none',
                                 },
                                 '& .MuiButton-startIcon': {

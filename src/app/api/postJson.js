@@ -1,7 +1,7 @@
 import { getHeaders } from './Config';
 
-export const postJson = async (url, payload, signal) => {
-  const headers = getHeaders();
+export const postJson = async (url, payload, signal, headerInit = {}) => {
+  const headers = getHeaders(headerInit);
   const response = await fetch(url, {
     method: 'POST',
     headers: {

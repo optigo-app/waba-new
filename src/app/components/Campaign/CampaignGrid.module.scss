@@ -6,7 +6,8 @@
     flex-direction: column;
     gap: 0.75rem;
     padding: 0.75rem 1rem;
-    background: #f8fafc;
+    background: var(--bg-default);
+    color: var(--text-primary);
     height: 100vh;
     overflow: hidden;
     box-sizing: border-box;
@@ -24,13 +25,13 @@
     justify-content: space-between;
     align-items: center;
     padding: 0.75rem 1.5rem;
-    background: #fff;
-    border-bottom: 1px solid $sidebar-borderColor;
-    border-radius: 12px;    
+    background: var(--bg-paper);
+    border-bottom: 1px solid var(--sidebar-borderColor);
+    border-radius: 12px;
     flex-shrink: 0;
     flex-wrap: wrap;
     gap: 1rem;
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    box-shadow: var(--box-shadow);
 }
 
 .topBarLeft {
@@ -43,8 +44,8 @@
     width: 36px;
     height: 36px;
     border-radius: 10px;
-    background: rgba($primary-main, 0.1);
-    color: $primary-main;
+    background: var(--primary-light-bg);
+    color: var(--primary-main);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -54,7 +55,7 @@
 .pageTitle {
     font-size: 1rem;
     font-weight: 600;
-    color: $titleColor;
+    color: var(--text-primary);
     margin: 0;
     font-family: $font-family;
     line-height: 1.2;
@@ -62,7 +63,7 @@
 
 .pageSubtitle {
     font-size: 0.75rem;
-    color: $secondaryColor;
+    color: var(--text-secondary);
     margin: 0;
     font-family: $font-family;
     line-height: 1.2;
@@ -104,18 +105,18 @@
 
 // ── Highlighting ──────────────────────────────────────────────────────────────
 .stoppingRow {
-    background-color: rgba($error-main, 0.06) !important;
+    background-color: var(--error-light-bg) !important;
     transition: background-color 0.3s ease;
 
     &:hover {
-        background-color: rgba($error-main, 0.1) !important;
+        background-color: var(--error-light-bg) !important;
     }
 }
 
 .stoppingCard {
-    border-color: $error-main !important;
-    box-shadow: 0 0 0 2px rgba($error-main, 0.2) !important;
-    background-color: rgba($error-main, 0.02) !important;
+    border-color: var(--error-main) !important;
+    box-shadow: 0 0 0 2px var(--error-light-bg) !important;
+    background-color: var(--error-light-bg) !important;
     transform: translateY(-2px);
     transition: all 0.3s ease !important;
 }
@@ -148,24 +149,24 @@
 
 .stopButtonPulse {
     animation: heartbeat 1.2s infinite ease-in-out;
-    color: $error-main !important;
-    background-color: rgba($error-main, 0.12) !important;
-    box-shadow: 0 0 0 4px rgba($error-main, 0.15) !important;
+    color: var(--error-main) !important;
+    background-color: var(--error-light-bg) !important;
+    box-shadow: 0 0 0 4px var(--error-light-bg) !important;
     border-radius: 8px !important;
-    border: 1px solid rgba($error-main, 0.3) !important;
+    border: 1px solid var(--error-main) !important;
 }
 
 @keyframes rocketGlow {
     0% {
-        box-shadow: 0 0 0 0 rgba($primary-main, 0.4);
+        box-shadow: 0 0 0 0 var(--primary-light);
     }
 
     50% {
-        box-shadow: 0 0 0 6px rgba($primary-main, 0.2);
+        box-shadow: 0 0 0 6px var(--primary-light-bg);
     }
 
     100% {
-        box-shadow: 0 0 0 0 rgba($primary-main, 0.4);
+        box-shadow: 0 0 0 0 var(--primary-light);
     }
 }
 

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Typography, TextField, Button, RadioGroup, Radio, FormControlLabel, Select, MenuItem, Box, IconButton, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Grid, Menu, ListItemText, ListItemIcon, Popover, Skeleton, Alert, Drawer, useMediaQuery } from '@mui/material';
+import { Typography, TextField, Button, RadioGroup, Radio, FormControlLabel, Select, MenuItem, Box, IconButton, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Grid, Menu, ListItemText, ListItemIcon, Popover, Skeleton, Alert, Drawer, useMediaQuery, Paper } from '@mui/material';
 import { Smile, Send, Info, Eye, X } from 'lucide-react';
 import SelectAutocomplete from '../../Audience/SelectAutocomplete';
 import { useAuthToken } from '../../../../hooks/useAuthToken';
+import { useWallet } from '../../../../contexts/WalletContext';
 import Picker from '@emoji-mart/react';
 import data from '@emoji-mart/data';
 import MessagePreview from '../../../Common/MessagePreview';
@@ -49,9 +50,21 @@ const LocalTextField = React.memo(({ value, onChange, ...props }) => {
 
 
 
-const Message = ({ onNext, onBack, onMessageConfigured, showError, messageError, onTemplateData }) => {
+const Message = ({ onNext, onBack, onMessageConfigured, showError, messageError, onTemplateData, onChannelSelect, channelId, preSelectedTemplate }) => {
   const { userToken } = useAuthToken();
+  const { channels } = useWallet();
   const router = useRouter();
+  const [selectedChannel, setSelectedChannel] = useState(channelId || '');
+
+  useEffect(() => {
+    if (channelId && channelId !== selectedChannel) {
+      setSelectedChannel(channelId);
+    }
+  }, [channelId]);
+
+  useEffect(() => {
+    onChannelSelect?.(selectedChannel);
+  }, [selectedChannel, onChannelSelect]);
   const [messageType, setMessageType] = useState('preApprovedTemplate');
   const [template, setTemplate] = useState(null);
   const [variables, setVariables] = useState({});
@@ -92,15 +105,24 @@ const Message = ({ onNext, onBack, onMessageConfigured, showError, messageError,
     handleVariableMenuClose();
   };
 
-  // Fetch templates on mount
+  // Fetch templates only when a channel is selected
   useEffect(() => {
     const fetchTemplates = async () => {
       if (!userToken?.userId && !userToken?.userid && !userToken?.appuserid) return;
+      if (!selectedChannel) {
+        setTemplates([]);
+        return;
+      }
       setTemplatesLoading(true);
       try {
-        const response = await fetchTemplateLists(userToken?.userId || userToken?.userid || userToken?.appuserid);
+        const response = await fetchTemplateLists(userToken?.userId || userToken?.userid || userToken?.appuserid, selectedChannel);
         if (response?.data) {
           setTemplates(response.data);
+          // Auto-select template when editing/cloning (matched by TemplateId from draft)
+          if (preSelectedTemplate?.TemplateId) {
+            const matched = response.data.find(t => String(t.Id) === String(preSelectedTemplate.TemplateId));
+            if (matched) setTemplate(matched);
+          }
         }
       } catch (error) {
         console.error('Error fetching templates:', error);
@@ -109,7 +131,7 @@ const Message = ({ onNext, onBack, onMessageConfigured, showError, messageError,
       }
     };
     fetchTemplates();
-  }, [userToken?.userId]);
+  }, [userToken?.userId, userToken?.userid, userToken?.appuserid, selectedChannel]);
 
   // Parse template to get variable count
   useEffect(() => {
@@ -411,7 +433,113 @@ const Message = ({ onNext, onBack, onMessageConfigured, showError, messageError,
       <Grid container spacing={4}>
         {/* Left: Form */}
         <Grid size={{ lg: showPreview ? 8 : 12, md: showPreview ? 8 : 12, sm: 12, xs: 12 }} sx={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          {/* Message Type */}
+          {!selectedChannel && (
+            <Box className={styles.infoAlert}>
+              <Info size={18} className={styles.alertIcon} />
+              <Typography variant="body2" className={styles.alertMessage}>
+                Please select a channel to proceed. Templates are channel-specific, so you need to choose a channel before configuring your message.
+              </Typography>
+            </Box>
+          )}
+
+          {/* Channel Selection - Cards on desktop (≤4 channels), dropdown otherwise */}
+          <div className={styles.formField}>
+            <label className={styles.label}>Channel</label>
+            {channels && channels.length > 0 && channels.length <= 4 && !isMobilePreview ? (
+              <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mb: 3 }}>
+                {channels.map((ch) => {
+                  const isSelected = String(selectedChannel) === String(ch.Id);
+                  return (
+                    <Paper
+                      key={ch.Id}
+                      onClick={() => {
+                        setSelectedChannel(String(ch.Id));
+                        setTemplate(null);
+                      }}
+                      sx={{
+                        cursor: 'pointer',
+                        borderRadius: '12px',
+                        border: isSelected ? '2px solid #1daa61' : '1px solid #e4e8ee',
+                        background: isSelected ? 'rgba(29,170,97,0.04)' : '#fff',
+                        p: 1.5,
+                        minWidth: 180,
+                        maxWidth: 240,
+                        flex: '1 1 180px',
+                        transition: 'all 0.2s',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        '&:hover': {
+                          borderColor: 'rgba(29,170,97,0.4)',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                        },
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: '10px',
+                          background: 'linear-gradient(135deg, rgba(29,170,97,0.12), rgba(37,211,102,0.08))',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                          border: '1px solid rgba(29,170,97,0.15)',
+                        }}
+                      >
+                        <Box sx={{ fontSize: '1.1rem' }}>💬</Box>
+                      </Box>
+                      <Box sx={{ minWidth: 0, flex: 1 }}>
+                        <Typography sx={{ fontSize: '0.82rem', fontWeight: 600, color: '#444050', fontFamily: 'Poppins, sans-serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {ch.whatsappName || `Channel ${ch.Id}`}
+                        </Typography>
+                        <Typography sx={{ fontSize: '0.72rem', color: '#6D6B77', fontFamily: 'Poppins, sans-serif' }}>
+                          {ch.MobileNumber && ch.MobileNumber !== '-' ? ch.MobileNumber : (ch.mobileNumber || '-')}
+                        </Typography>
+                      </Box>
+                      {isSelected && (
+                        <Box sx={{ color: '#1daa61', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+                          ✓
+                        </Box>
+                      )}
+                    </Paper>
+                  );
+                })}
+              </Box>
+            ) : (
+              <Select
+                value={selectedChannel}
+                onChange={(e) => {
+                  setSelectedChannel(e.target.value);
+                  setTemplate(null);
+                }}
+                displayEmpty
+                sx={{
+                  width: '100%',
+                  borderRadius: '8px',
+                  fontFamily: 'Poppins, sans-serif',
+                  fontSize: '0.875rem',
+                  color: '#444050',
+                  '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e2e8f0' },
+                  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#cbd5e1' },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#1daa61' },
+                }}
+              >
+                <MenuItem value="" disabled sx={{ fontFamily: 'Poppins, sans-serif', fontSize: '0.875rem', color: '#9e9e9e' }}>
+                  Select a channel
+                </MenuItem>
+                {channels && channels.map((ch) => (
+                  <MenuItem key={ch.Id} value={String(ch.Id)} sx={{ fontFamily: 'Poppins, sans-serif', fontSize: '0.875rem' }}>
+                    {ch.whatsappName || ch.mobileNumber || `Channel ${ch.Id}`} {ch.MobileNumber && ch.MobileNumber !== '-' ? `(${ch.MobileNumber})` : ''}
+                  </MenuItem>
+                ))}
+              </Select>
+            )}
+          </div>
+
+          {/* Message Type - Only show after channel is selected */}
+          {selectedChannel && (
           <div className={styles.formField}>
             <label className={styles.label}>Message Type</label>
             <RadioGroup
@@ -458,9 +586,10 @@ const Message = ({ onNext, onBack, onMessageConfigured, showError, messageError,
               </Box>
             )}
           </div>
+          )}
 
-          {/* Template Section - Only show for Pre Approved Template */}
-          {messageType === 'preApprovedTemplate' && (
+          {/* Template Section - Only show for Pre Approved Template when channel is selected */}
+          {messageType === 'preApprovedTemplate' && selectedChannel && (
             <div className={styles.formField} style={{ marginBottom: '1rem' }}>
               <label className={styles.label}>Template</label>
               {templatesLoading ? (

@@ -1,17 +1,18 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { CircularProgress } from '@mui/material';
-import { Paperclip, ArrowDown } from 'lucide-react';
+import { Paperclip, ArrowDown, MessageCircle } from 'lucide-react';
 import { formatDateHeader } from './utils/dateUtils';
 import MessageBubble from './MessageBubble';
 import MediaPreviewOverlay from './MediaPreviewOverlay';
-import { getStaticUrl } from '../../utils/globalFunc';
+
 
 export default function ChatMessagesArea({
   conversationId,
   messages,
   loading,
+  hasFetched,
   isDragOver,
   containerRef,
   messagesListRef,
@@ -91,17 +92,6 @@ export default function ChatMessagesArea({
     return grouped;
   }, [messages]);
 
-  const bgStyle = useMemo(() => {
-    if (typeof window === 'undefined') return {};
-    const bgUrl = getStaticUrl('/bg-3.jpg');
-    return {
-      backgroundImage: `linear-gradient(rgba(249, 250, 251, 0.80), rgba(249, 250, 251, 0.80)), url(${bgUrl})`,
-      backgroundSize: 'auto, contain',
-      backgroundPosition: 'center, center',
-      backgroundRepeat: 'repeat, repeat',
-    };
-  }, []);
-
   return (
     <div
       className={`chat-messages-area ${isDragOver ? 'drag-over' : ''} ${mediaPreview.length > 0 ? 'media-preview-open' : ''}`}
@@ -125,21 +115,26 @@ export default function ChatMessagesArea({
         className="chat-messages-list fade-in"
         key={conversationId}
         ref={messagesListRef}
-        style={bgStyle}
       >
         {/* Blur overlay + CircularProgress while loading initial conversation */}
         {loading && messages.length === 0 && (
           <div className="chat-messages-loading-overlay">
             <div className="chat-messages-loading-blur" />
             <div className="chat-messages-loading-content">
-              <CircularProgress size={40} thickness={3.5} sx={{ color: '#3b82f6' }} />
+              <CircularProgress size={40} thickness={3.5} sx={{ color: 'var(--chat-primary, #25d366)' }} />
               <span className="chat-messages-loading-text">Loading conversation...</span>
             </div>
           </div>
         )}
 
-        {!loading && messages.length === 0 && (
-          <div className="chat-empty-center">No messages yet. Start the conversation!</div>
+        {!loading && messages.length === 0 && hasFetched && (
+          <div className="chat-empty-center">
+            <div className="chat-empty-icon">
+              <MessageCircle size={48} strokeWidth={1.5} />
+            </div>
+            <div className="chat-empty-title">No messages yet</div>
+            <div className="chat-empty-subtitle">Start the conversation below</div>
+          </div>
         )}
 
         {Object.entries(groupMessagesByDate()).reverse().map(([date, dateMessages]) => (
@@ -186,8 +181,8 @@ export default function ChatMessagesArea({
         {/* Loading indicator at visual top (last in DOM = top in column-reverse) */}
         {isLoadingMore && (
           <div className="chat-messages-loading-more" style={{ padding: '8px 0', display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
-            <CircularProgress size={18} thickness={4} sx={{ color: '#1daa61' }} />
-            <span style={{ fontSize: 12, color: '#888' }}>Loading older messages...</span>
+            <CircularProgress size={18} thickness={4} sx={{ color: 'var(--primary-main)' }} />
+            <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Loading older messages...</span>
           </div>
         )}
       </div>

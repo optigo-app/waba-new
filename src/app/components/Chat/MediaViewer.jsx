@@ -124,7 +124,7 @@ export default function MediaViewer({
         );
       case 'audio':
         return (
-          <Box sx={{ color: '#fff', textAlign: 'center', p: 4 }}>
+          <Box sx={{ color: 'var(--button-color)', textAlign: 'center', p: 4 }}>
             <FileText size={64} />
             <Typography variant="h6" sx={{ mt: 2 }}>{item.name || 'Audio'}</Typography>
             <audio src={item.src} controls style={{ marginTop: 16, width: '100%', maxWidth: 400 }} />
@@ -135,7 +135,7 @@ export default function MediaViewer({
           <iframe
             src={item.src}
             title={item.name || 'PDF'}
-            style={{ width: '90vw', height: '85vh', border: 'none', borderRadius: 8, background: '#fff' }}
+            style={{ width: '90vw', height: '85vh', border: 'none', borderRadius: 8, background: 'var(--bg-paper)' }}
             onLoad={() => setLoading(false)}
             onError={() => setLoading(false)}
           />
@@ -146,7 +146,7 @@ export default function MediaViewer({
           <iframe
             src={viewerUrl}
             title={item.name || 'Excel'}
-            style={{ width: '90vw', height: '85vh', border: 'none', borderRadius: 8, background: '#fff' }}
+            style={{ width: '90vw', height: '85vh', border: 'none', borderRadius: 8, background: 'var(--bg-paper)' }}
             onLoad={() => setLoading(false)}
             onError={() => setLoading(false)}
           />
@@ -158,7 +158,7 @@ export default function MediaViewer({
           <iframe
             src={viewerUrl}
             title={item.name || 'Word'}
-            style={{ width: '90vw', height: '85vh', border: 'none', borderRadius: 8, background: '#fff' }}
+            style={{ width: '90vw', height: '85vh', border: 'none', borderRadius: 8, background: 'var(--bg-paper)' }}
             onLoad={() => setLoading(false)}
             onError={() => setLoading(false)}
           />
@@ -172,7 +172,7 @@ export default function MediaViewer({
         const color = isExcel ? '#217346' : isWord ? '#2B579A' : '#4285F4';
 
         return (
-          <Box sx={{ color: '#fff', textAlign: 'center', p: 4 }}>
+          <Box sx={{ color: 'var(--button-color)', textAlign: 'center', p: 4 }}>
             <Icon size={80} style={{ color, marginBottom: 16 }} />
             <Typography variant="h6">{item.name || 'Document'}</Typography>
             <Typography variant="body2" sx={{ mt: 1, opacity: 0.7 }}>
@@ -255,7 +255,7 @@ export default function MediaViewer({
       <div className="media-viewer-content" ref={containerRef}>
         {loading && currentType !== 'video' && currentType !== 'audio' && (
           <div className="media-viewer-loading">
-            <CircularProgress size={40} sx={{ color: '#fff' }} />
+            <CircularProgress size={40} sx={{ color: 'var(--button-color)' }} />
           </div>
         )}
         {renderContent()}

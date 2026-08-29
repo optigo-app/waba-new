@@ -11,7 +11,7 @@ import styles from './FlowBuilder.module.scss';
 const edgeOptions = {
     type: 'smoothstep',
     animated: true,
-    style: { strokeWidth: 2, stroke: '#1daa61' },
+    style: { strokeWidth: 2, stroke: 'var(--primary-main)' },
 };
 
 const Canvas = () => {
@@ -87,19 +87,19 @@ const Canvas = () => {
 
     const miniMapNodeColor = useCallback((n) => {
         const colors = {
-            keyword_trigger: '#1daa61',
-            send_question: '#25D366',
-            send_message: '#25D366',
-            condition: '#f57c00',
-            delay: '#00CFE8',
+            keyword_trigger: 'var(--primary-main)',
+            send_question: 'var(--success-main)',
+            send_message: 'var(--success-main)',
+            condition: 'var(--warning-main)',
+            delay: 'var(--info-main)',
             goto: '#6366f1',
             set_variable: '#a855f7',
             api_call: '#3b82f6',
             human_handoff: '#ec4899',
-            end_flow: '#64748b',
+            end_flow: 'var(--text-tertiary)',
             whatsapp_flow: '#075E54',
         };
-        return colors[n.type] || '#94a3b8';
+        return colors[n.type] || 'var(--text-placeholder)';
     }, []);
 
     return (
@@ -119,7 +119,7 @@ const Canvas = () => {
                 fitView
                 className={styles.reactFlow}
             >
-                <Background color="#cbd5e1" gap={22} size={1.5} />
+                <Background color="var(--border-strong)" gap={22} size={1.5} />
                 <Controls />
                 <MiniMap
                     zoomable
