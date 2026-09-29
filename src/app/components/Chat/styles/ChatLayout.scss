@@ -208,6 +208,14 @@
   gap: 8px;
 }
 
+.chat-refresh-spin {
+  animation: chatRefreshSpin 0.8s linear infinite;
+}
+
+@keyframes chatRefreshSpin {
+  to { transform: rotate(360deg); }
+}
+
 .header-action-btn {
   color: var(--text-secondary) !important;
   transition: all 0.2s ease !important;
@@ -1057,9 +1065,9 @@
 }
 
 .channel-item-selected:hover {
-  background: var(--sidebar-active-bg, #1daa61);
-  border-color: rgba(29, 170, 97, 0.3);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  background: linear-gradient(135deg, rgba(29, 170, 97, 0.16), rgba(37, 211, 102, 0.10));
+  border-color: rgba(29, 170, 97, 0.28);
+  box-shadow: 0 2px 8px rgba(29, 170, 97, 0.10);
 }
 
 .channel-avatar {
@@ -1117,6 +1125,17 @@
   transition: color 0.2s ease;
 }
 
+.channel-subname {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+  opacity: 0.85;
+}
+
 .channel-meta {
   display: flex;
   align-items: center;
@@ -1132,18 +1151,21 @@
 }
 
 .channel-item-selected {
-  background: var(--sidebar-active-bg, #1daa61);
+  background: linear-gradient(135deg, rgba(29, 170, 97, 0.14), rgba(37, 211, 102, 0.08));
   border-color: rgba(29, 170, 97, 0.22);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  box-shadow: 0 2px 8px rgba(29, 170, 97, 0.08);
 
   .channel-name {
-    color: #fff;
+    color: var(--text-primary);
+  }
+  .channel-subname {
+    color: var(--text-secondary);
   }
   .channel-meta {
-    color: rgba(255,255,255,0.85);
+    color: var(--text-secondary);
   }
   .channel-meta svg {
-    color: rgba(255,255,255,0.85);
+    color: var(--primary-main);
   }
 }
 
@@ -1171,8 +1193,8 @@
 }
 
 .channel-item-selected .channel-unread-badge {
-  background: #fff;
-  color: var(--sidebar-active-bg, #1daa61);
+  background: var(--chat-primary, #25d366);
+  color: #fff;
 }
 
 .channel-empty {
@@ -1307,6 +1329,12 @@
   list-style: none;
   margin: 0;
   flex: 1;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.channel-list-mini::-webkit-scrollbar {
+  display: none;
 }
 
 .channel-item-mini {
@@ -1443,6 +1471,16 @@
   text-overflow: ellipsis;
 }
 
+.channel-mini-popover-subname {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.85;
+}
+
 .channel-mini-popover-meta {
   display: flex;
   align-items: center;
@@ -1470,3 +1508,6 @@
   color: var(--chat-primary, #25d366);
   font-weight: 600;
 }
+
+/* ─── Add-channel upsell card styles live in AddChannelPromo.scss so the
+   component can be reused outside the chat layout. ────────────────────────── */

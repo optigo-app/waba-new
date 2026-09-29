@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Search, MessageCircle, Smartphone, CheckCircle2, PanelLeft, MessageSquare } from 'lucide-react';
-import { CircularProgress, Tooltip, IconButton, Popover } from '@mui/material';
+import { CircularProgress, Tooltip, IconButton, Popover, Box } from '@mui/material';
 import { fetchChannels } from '../../api/chat/conversationApi';
 import { useAuthStore } from '../../store/authStore';
 import { useChatStore } from '../../store/chatStore';
-import { getChannelAvatarConfig } from './utils/chatUtils';
+import { getChannelAvatarConfig, getChannelDisplayName, getChannelMobile, getChannelSubName } from './utils/chatUtils';
 import ChatPanelHeader from './ChatPanelHeader';
+import AddChannelPromo from './AddChannelPromo';
 import ProfileMenu from './ui/ProfileMenu';
 import toast from 'react-hot-toast';
 
@@ -15,8 +16,16 @@ export default function ChatChannelPanel({ onChannelSelect, selectedChannel, col
   const auth = useAuthStore((s) => s.auth);
   const userId = auth?.userId || auth?.userid || auth?.appuserid || '';
 
-  const [channels, setChannels] = useState([]);
-  const [loading, setLoading] = useState(false);
+  // Read preloaded channels from the store (set by ChatPreloader)
+  const storeChannels = useChatStore((s) => s.channels);
+  const storeChannelsLoaded = useChatStore((s) => s.channelsLoaded);
+
+  // Initialize from store directly — avoids blank screen after preloader hides
+  const [channels, setChannels] = useState(() => useChatStore.getState().channels || []);
+  const [loading, setLoading] = useState(() => {
+    const s = useChatStore.getState();
+    return !s.channelsLoaded || (s.channels || []).length === 0;
+  });
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -25,6 +34,12 @@ export default function ChatChannelPanel({ onChannelSelect, selectedChannel, col
   const [hoverAnchor, setHoverAnchor] = useState(null);
   const [imgErrors, setImgErrors] = useState({});
   const fetchedRef = useRef(false);
+  const searchedRef = useRef(false);
+  const skipSearchInitRef = useRef(true);
+  // If channels were preloaded in the store, mark as already fetched
+  if (!fetchedRef.current && storeChannelsLoaded && storeChannels.length > 0) {
+    fetchedRef.current = true;
+  }
   const listRef = useRef(null);
   const searchTimerRef = useRef(null);
 
@@ -33,19 +48,53 @@ export default function ChatChannelPanel({ onChannelSelect, selectedChannel, col
   }, []);
 
   const getChannelAvatar = useCallback((channel, size = 42) => {
-    const url = channel?.ProfilePictureUrl || channel?.profilePictureUrl || '';
+    const url = channel?.ChannelImage || channel?.channelImage || channel?.ProfilePictureUrl || channel?.profilePictureUrl || '';
     const hasImg = Boolean(url) && !imgErrors[channel?.Id];
     const config = getChannelAvatarConfig(channel, size);
     return { url, hasImg, initials: config.initials, bg: config.bg, fg: config.fg };
   }, [imgErrors]);
 
+  // Sync from store if preloaded channels arrive after mount
+  useEffect(() => {
+    if (storeChannelsLoaded && storeChannels.length > 0 && !fetchedRef.current && !searchTerm.trim()) {
+      setChannels(storeChannels);
+      setHasMore(storeChannels.length >= 20);
+      setPage(1);
+      fetchedRef.current = true;
+      setLoading(false);
+    }
+  }, [storeChannelsLoaded, storeChannels]);
+
+  // Keep local unread badges in sync when store channel counts change
+  // (e.g. a conversation was actually read → badge decrements)
+  useEffect(() => {
+    if (!storeChannels || storeChannels.length === 0) return;
+    const unreadById = new Map(storeChannels.map((c) => [String(c?.Id), c?.UnreadMessageCount]));
+    setChannels((prev) => {
+      let changed = false;
+      const next = prev.map((c) => {
+        const unread = unreadById.get(String(c?.Id));
+        if (unread !== undefined && unread !== c?.UnreadMessageCount) {
+          changed = true;
+          return { ...c, UnreadMessageCount: unread };
+        }
+        return c;
+      });
+      return changed ? next : prev;
+    });
+  }, [storeChannels]);
+
   const loadChannels = useCallback(async (targetPage = 1, append = false, search = '') => {
     if (!userId) return;
+    const isSearch = Boolean(search);
+    // Skip initial fetch if channels are already preloaded from the store —
+    // but never skip when clearing a previous search (the list must reset)
+    if (targetPage === 1 && !append && !isSearch && !searchedRef.current && fetchedRef.current) return;
     if (targetPage === 1) setLoading(true);
     else setIsLoadingMore(true);
 
     try {
-      const response = await fetchChannels(userId, null, targetPage, 100, search);
+      const response = await fetchChannels(userId, null, targetPage, 20, search);
       const list = response?.data || [];
 
       if (append) {
@@ -57,7 +106,14 @@ export default function ChatChannelPanel({ onChannelSelect, selectedChannel, col
       } else {
         setChannels(list);
         fetchedRef.current = true;
+        // Only cache the full unfiltered list — search results must not
+        // overwrite the preloaded channel cache
+        if (!isSearch) {
+          useChatStore.getState().setChannels(list);
+          useChatStore.getState().setChannelsLoaded(true);
+        }
       }
+      searchedRef.current = isSearch;
       setHasMore(response?.hasMore ?? false);
       setPage(targetPage);
     } catch (err) {
@@ -70,12 +126,17 @@ export default function ChatChannelPanel({ onChannelSelect, selectedChannel, col
   }, [userId]);
 
   useEffect(() => {
-    loadChannels();
+    // Only fetch if not already preloaded from store
+    if (!fetchedRef.current) loadChannels();
   }, [loadChannels]);
 
-  // Debounced server-side search
+  // Debounced server-side search (skip first run — mount effect handles it)
   useEffect(() => {
     if (!userId) return;
+    if (skipSearchInitRef.current) {
+      skipSearchInitRef.current = false;
+      return;
+    }
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     searchTimerRef.current = setTimeout(() => {
       loadChannels(1, false, searchTerm.trim());
@@ -99,15 +160,10 @@ export default function ChatChannelPanel({ onChannelSelect, selectedChannel, col
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channels, selectedChannel]);
 
-  // Select a channel and immediately clear its unread badge locally so the
-  // count disappears as soon as the user opens the channel (no stale badge).
+  // Select a channel — keep its unread badge as-is; it should only drop when
+  // conversations are actually read (server/socket updates), not on selection.
   const handleSelect = useCallback((channel) => {
     if (!channel || channel.IsActive === 0) return;
-    setChannels((prev) =>
-      prev.map((c) =>
-        c.Id === channel.Id ? { ...c, UnreadMessageCount: 0 } : c
-      )
-    );
     onChannelSelect?.(channel);
   }, [onChannelSelect]);
 
@@ -118,9 +174,7 @@ export default function ChatChannelPanel({ onChannelSelect, selectedChannel, col
         title="Waba Chat"
         onIconClick={collapsed ? onToggleCollapse : undefined}
         right={
-          collapsed ? (
-            <ProfileMenu variant="icon" size={18} />
-          ) : (
+          !collapsed && (
             <Tooltip title="Collapse channels" placement="right" arrow>
               <IconButton
                 size="small"
@@ -184,7 +238,7 @@ export default function ChatChannelPanel({ onChannelSelect, selectedChannel, col
                       {avatar.hasImg ? (
                         <img
                           src={avatar.url}
-                          alt={channel.WhatsappName || 'WhatsApp Channel'}
+                          alt={getChannelDisplayName(channel)}
                           className="channel-avatar-img"
                           onError={() => markImgError(channel.Id)}
                         />
@@ -202,13 +256,16 @@ export default function ChatChannelPanel({ onChannelSelect, selectedChannel, col
                         </span>
                       )}
                     </div>
-                    <div className="channel-info" title={channel.WhatsappName || 'WhatsApp Channel'}>
+                    <div className="channel-info" title={getChannelDisplayName(channel)}>
                       <div className="channel-name" >
-                        {channel.WhatsappName || 'WhatsApp Channel'}
+                        {getChannelDisplayName(channel)}
                       </div>
+                      {getChannelSubName(channel) && (
+                        <div className="channel-subname">{getChannelSubName(channel)}</div>
+                      )}
                       <div className="channel-meta">
                         <Smartphone size={12} />
-                        <span>{channel.MobileNumber || channel.WabaPhoneNo}</span>
+                        <span>{getChannelMobile(channel)}</span>
                       </div>
                     </div>
                     {unreadCount > 0 && (
@@ -257,7 +314,7 @@ export default function ChatChannelPanel({ onChannelSelect, selectedChannel, col
                   {avatar.hasImg ? (
                     <img
                       src={avatar.url}
-                      alt={channel.WhatsappName || 'WhatsApp Channel'}
+                      alt={getChannelDisplayName(channel)}
                       className="channel-mini-avatar-img"
                       onError={() => markImgError(channel.Id)}
                     />
@@ -313,7 +370,7 @@ export default function ChatChannelPanel({ onChannelSelect, selectedChannel, col
                 return avatar.hasImg ? (
                   <img
                     src={avatar.url}
-                    alt={hoveredChannel.WhatsappName || 'WhatsApp Channel'}
+                    alt={getChannelDisplayName(hoveredChannel)}
                     className="channel-mini-popover-avatar-img"
                     onError={() => markImgError(hoveredChannel.Id)}
                   />
@@ -328,11 +385,14 @@ export default function ChatChannelPanel({ onChannelSelect, selectedChannel, col
               })()}
               <div className="channel-mini-popover-info">
                 <span className="channel-mini-popover-name">
-                  {hoveredChannel.WhatsappName || 'WhatsApp Channel'}
+                  {getChannelDisplayName(hoveredChannel)}
                 </span>
+                {getChannelSubName(hoveredChannel) && (
+                  <span className="channel-mini-popover-subname">{getChannelSubName(hoveredChannel)}</span>
+                )}
                 <span className="channel-mini-popover-meta">
                   <Smartphone size={11} />
-                  {hoveredChannel.MobileNumber || hoveredChannel.WabaPhoneNo}
+                  {getChannelMobile(hoveredChannel)}
                 </span>
               </div>
             </div>
@@ -351,6 +411,13 @@ export default function ChatChannelPanel({ onChannelSelect, selectedChannel, col
           </div>
         )}
       </Popover>
+
+      {/* Upsell card — shown when the account has 1–2 channels */}
+      {!loading && !searchTerm.trim() && channels.length <= 2 && (
+        <Box sx={{ mx: 1.4 }} >
+          <AddChannelPromo collapsed={collapsed} />
+        </Box>
+      )}
 
       {/* Profile menu at the bottom */}
       <div className="channel-panel-footer">

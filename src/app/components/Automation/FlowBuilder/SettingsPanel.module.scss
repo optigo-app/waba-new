@@ -1,0 +1,891 @@
+@use '../../../globals.scss' as *;
+
+// ── Settings Panel ────────────────────────────────────────────────────────────
+.settingsPanel {
+    width: 340px;
+    flex-shrink: 0;
+    background: var(--bg-paper);
+    border-left: 1px solid var(--sidebar-borderColor);
+    display: flex;
+    flex-direction: column;
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.08);
+    z-index: 10;
+    overflow: hidden;
+    transition: width 0.2s ease-out;
+}
+
+.settingsPanelHidden {
+    width: 0;
+    border-left-color: transparent;
+    box-shadow: none;
+    pointer-events: none;
+}
+
+.settingsPanel > * {
+    min-width: 340px;
+}
+
+.settingsEmpty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 1.5rem;
+    text-align: center;
+}
+
+.settingsEmptyIcon {
+    color: var(--border-strong);
+    margin-bottom: 0.75rem;
+}
+
+.settingsEmptyText {
+    font-family: 'Poppins', sans-serif !important;
+    font-size: 0.7rem !important;
+    color: var(--secondary-color) !important;
+    line-height: 1.6 !important;
+    max-width: 220px;
+}
+
+.settingsHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.85rem 1.15rem;
+    border-bottom: 1px solid var(--sidebar-borderColor);
+    background: var(--bg-light);
+    flex-shrink: 0;
+}
+
+.settingsHeaderLabel {
+    font-size: 0.62rem;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-family: 'Poppins', sans-serif;
+}
+
+.settingsHeaderTitle {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--titleColor);
+    font-family: 'Poppins', sans-serif;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 230px;
+}
+
+.settingsHeaderId {
+    font-size: 0.58rem;
+    font-weight: 500;
+    color: var(--secondary-color);
+    font-family: monospace;
+    text-transform: none;
+}
+
+.settingsCloseBtn {
+    color: var(--secondary-color) !important;
+}
+
+.settingsBody {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.15rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+}
+
+.settingsField {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.settingsFieldLabel {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-family: 'Poppins', sans-serif;
+}
+
+.settingsFieldOptional {
+    font-weight: 400;
+    color: var(--text-tertiary);
+    text-transform: none;
+}
+
+.settingsFieldHint {
+    font-family: 'Poppins', sans-serif !important;
+    font-size: 0.68rem !important;
+    color: var(--text-tertiary) !important;
+    line-height: 1.5 !important;
+}
+
+.settingsInput {
+    & > div {
+        border-radius: 12px !important;
+        font-family: 'Poppins', sans-serif !important;
+        font-size: 0.82rem !important;
+    }
+}
+
+.settingsDivider {
+    border-color: var(--sidebar-borderColor) !important;
+    margin: 0.25rem 0 !important;
+}
+
+// ── Reorderable sections ──────────────────────────────────────────────────────
+.reorderableSection {
+    border: none;
+    border-radius: 10px;
+    margin-bottom: 0.5rem;
+    background: var(--bg-paper);
+    box-shadow: 0 0 0 1px var(--border-color);
+    transition: box-shadow 0.15s ease;
+
+    &:hover {
+        box-shadow: 0 0 0 1px #c7d2fe, 0 2px 8px rgba(99, 102, 241, 0.08);
+    }
+
+    // Section content — keeps items off the card edges on all sides
+    & > *:not(.sectionDragBar) {
+        padding: 0.55rem 0.65rem 0.65rem;
+    }
+}
+
+.sectionDragOver {
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.35), 0 4px 12px rgba(99, 102, 241, 0.12) !important;
+}
+
+.sectionDragBar {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.625rem;
+    background: var(--bg-light);
+    border-radius: 10px 10px 0 0;
+    box-shadow: 0 1px 0 var(--border-color);
+    cursor: grab;
+    user-select: none;
+
+    &:active {
+        cursor: grabbing;
+    }
+}
+
+.sectionDragHandle {
+    display: flex;
+    align-items: center;
+    color: var(--text-placeholder);
+    flex-shrink: 0;
+}
+
+.sectionDragLabel {
+    flex: 1;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.62rem;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sectionDragBtns {
+    display: flex;
+    align-items: center;
+    gap: 0.125rem;
+    flex-shrink: 0;
+}
+
+.sectionReorderBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border: none;
+    background: transparent;
+    color: var(--text-placeholder);
+    cursor: pointer;
+    border-radius: 5px;
+    transition: all 0.15s ease;
+    padding: 0;
+
+    &:hover:not(:disabled) {
+        background: #eef2ff;
+        color: #6366f1;
+    }
+
+    &:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+    }
+}
+
+// ── Attachment Upload ──────────────────────────────────────────────────────────
+.attachmentUpload {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.attachmentDropzone {
+    border: 2px dashed var(--border-strong);
+    border-radius: 10px;
+    padding: 1.25rem 0.75rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--bg-light);
+
+    &:hover {
+        border-color: var(--primary-main);
+        background: #f0f9ff;
+    }
+}
+
+.attachmentDropzoneActive {
+    border-color: var(--primary-main);
+    background: #eff6ff;
+}
+
+.attachmentDropzoneIcon {
+    color: var(--text-placeholder);
+    margin-bottom: 0.4rem;
+    display: flex;
+    justify-content: center;
+}
+
+.attachmentDropzoneText {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.68rem;
+    color: var(--text-tertiary);
+    font-weight: 500;
+}
+
+.attachmentDropzoneHint {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.56rem;
+    color: var(--text-placeholder);
+    margin-top: 0.2rem;
+}
+
+.attachmentPreview {
+    position: relative;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    background: var(--bg-light);
+}
+
+.attachmentPreviewImage {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+    display: block;
+}
+
+.attachmentPreviewFallback {
+    width: 100%;
+    height: 120px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background: var(--bg-light);
+    color: var(--text-placeholder);
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.7rem;
+}
+
+.attachmentPreviewVideo {
+    width: 100%;
+    max-height: 200px;
+    object-fit: contain;
+    display: block;
+    background: #000;
+    border-radius: 8px;
+}
+
+.attachmentPreviewAudio {
+    width: 100%;
+    padding: 16px 12px;
+    background: #1e293b;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    audio {
+        width: 100%;
+    }
+}
+
+.attachmentPreviewDoc {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background: var(--bg-light);
+}
+
+.attachmentPreviewDocIcon {
+    color: #ea580c;
+    flex-shrink: 0;
+}
+
+.attachmentPreviewDocName {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.65rem;
+    color: var(--text-tertiary);
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.attachmentPreviewMeta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.4rem 0.6rem;
+    background: var(--bg-paper);
+    border-top: 1px solid var(--bg-light);
+}
+
+.attachmentPreviewMetaText {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.56rem;
+    color: var(--text-placeholder);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.attachmentPreviewRemove {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.58rem;
+    color: var(--error-main);
+    cursor: pointer;
+    border: none;
+    background: none;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: background 0.15s;
+    flex-shrink: 0;
+
+    &:hover {
+        background: #fef2f2;
+    }
+}
+
+.attachmentUploading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background: #eff6ff;
+    border-radius: 10px;
+    border: 1px solid #bfdbfe;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.62rem;
+    color: #2563eb;
+    font-weight: 600;
+}
+
+.attachmentUploadError {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.58rem;
+    color: var(--error-main);
+    background: #fef2f2;
+    border-radius: 6px;
+    padding: 0.4rem 0.6rem;
+}
+
+// ── Validation Warnings ───────────────────────────────────────────────────────
+.validationWarnings {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 10px;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+}
+
+.validationWarningItem {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.68rem;
+    line-height: 1.35;
+    color: #92400e;
+}
+
+.validationWarningIcon {
+    color: var(--warning-main);
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.validationWarningAction {
+    flex-shrink: 0;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.6rem;
+    font-weight: 600;
+    color: #b300c3;
+    background: rgba(179, 0, 195, 0.08);
+    border: 1px solid rgba(179, 0, 195, 0.2);
+    padding: 2px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+
+    &:hover {
+        background: rgba(179, 0, 195, 0.15);
+        border-color: rgba(179, 0, 195, 0.4);
+    }
+}
+
+.attachmentUrlToggle {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.58rem;
+    color: var(--primary-main);
+    cursor: pointer;
+    border: none;
+    background: none;
+    padding: 0;
+    font-weight: 600;
+    margin-top: 0.25rem;
+
+    &:hover {
+        text-decoration: underline;
+    }
+}
+
+.settingsFooter {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--sidebar-borderColor);
+    background: var(--bg-light);
+    flex-shrink: 0;
+}
+
+.settingsCancelBtn {
+    flex: 1;
+    font-family: 'Poppins', sans-serif !important;
+    text-transform: capitalize !important;
+    border-radius: 10px !important;
+    font-size: 0.72rem !important;
+    color: var(--secondary-color) !important;
+    border-color: var(--sidebar-borderColor) !important;
+}
+
+.settingsApplyBtn {
+    flex: 1;
+    font-family: 'Poppins', sans-serif !important;
+    text-transform: capitalize !important;
+    border-radius: 10px !important;
+    font-size: 0.72rem !important;
+}
+
+// ── Keyword chips ─────────────────────────────────────────────────────────────
+.keywordInputRow {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+}
+
+.keywordChips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.4rem;
+}
+
+.keywordChip {
+    font-family: monospace !important;
+    font-size: 0.68rem !important;
+    background: var(--bg-light) !important;
+    color: var(--titleColor) !important;
+    border: 1px solid var(--sidebar-borderColor) !important;
+}
+
+.keywordEmpty {
+    font-family: 'Poppins', sans-serif !important;
+    font-size: 0.62rem !important;
+    color: var(--secondary-color) !important;
+    font-style: italic !important;
+}
+
+// ── Button list (SendQuestion) ────────────────────────────────────────────────
+.buttonList {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin-bottom: 0.4rem;
+    max-height: 180px;
+    overflow-y: auto;
+}
+
+.buttonListItem {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.4rem 0.6rem;
+    background: var(--bg-light);
+    border: none;
+    border-radius: 8px;
+    gap: 0.25rem;
+    box-shadow: 0 0 0 1px var(--sidebar-borderColor);
+    transition: box-shadow 0.15s ease;
+
+    &:hover {
+        box-shadow: 0 0 0 1px #c7d2fe, 0 1px 4px rgba(99, 102, 241, 0.08);
+    }
+}
+
+.buttonListDragHandle {
+    display: flex;
+    align-items: center;
+    color: var(--text-placeholder);
+    cursor: grab;
+    flex-shrink: 0;
+    padding: 0 0.125rem;
+
+    &:active {
+        cursor: grabbing;
+        color: #6366f1;
+    }
+}
+
+.buttonListActions {
+    display: flex;
+    align-items: center;
+    gap: 0.125rem;
+    flex-shrink: 0;
+}
+
+.buttonListReorderBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    color: var(--text-placeholder);
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.15s ease;
+    padding: 0;
+
+    &:hover:not(:disabled) {
+        background: #eef2ff;
+        color: #6366f1;
+    }
+
+    &:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+    }
+}
+
+.buttonListItemContent {
+    flex: 1;
+    min-width: 0;
+}
+
+.buttonListEditInput {
+    & > div {
+        font-size: 0.68rem !important;
+        font-family: 'Poppins', sans-serif !important;
+    }
+
+    & input {
+        padding: 4px 8px !important;
+        font-size: 0.68rem !important;
+    }
+}
+
+.buttonListItemLabel {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--titleColor);
+    font-family: 'Poppins', sans-serif;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.buttonListItemDesc {
+    font-size: 0.58rem;
+    color: var(--secondary-color);
+    font-family: 'Poppins', sans-serif;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 2px;
+}
+
+.buttonListRemove {
+    color: var(--error-main) !important;
+    flex-shrink: 0;
+}
+
+.buttonAddBox {
+    background: var(--primary-light-bg);
+    border: 1px solid var(--primary-light-bg);
+    border-radius: 12px;
+    padding: 0.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.buttonAddLabelRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.buttonAddLabel {
+    font-size: 0.52rem;
+    font-weight: 700;
+    color: var(--secondary-color);
+    text-transform: uppercase;
+    font-family: 'Poppins', sans-serif;
+}
+
+.buttonAddCount {
+    font-size: 0.52rem;
+    color: var(--secondary-color);
+    font-family: monospace;
+}
+
+.buttonLimitReached {
+    font-family: 'Poppins', sans-serif !important;
+    font-size: 0.62rem !important;
+    color: var(--error-main) !important;
+    background: var(--error-light-bg);
+    border: 1px solid var(--error-light-bg);
+    border-radius: 8px;
+    padding: 0.4rem 0.6rem;
+}
+
+// ── Header list (APICall) ─────────────────────────────────────────────────────
+.headerList {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin-bottom: 0.5rem;
+}
+
+.headerListItem {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.35rem 0.5rem;
+    background: var(--bg-light);
+    border: none;
+    border-radius: 8px;
+    gap: 0.5rem;
+    box-shadow: 0 0 0 1px var(--sidebar-borderColor);
+}
+
+.headerListItemText {
+    font-family: monospace;
+    font-size: 0.58rem;
+    color: var(--titleColor);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 190px;
+}
+
+.headerAddBox {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    background: rgba(249, 115, 22, 0.04);
+    border: 1px solid rgba(249, 115, 22, 0.12);
+    border-radius: 12px;
+    padding: 0.5rem;
+}
+
+// ── WhatsApp Flow form ────────────────────────────────────────────────────────
+.waFlowInfo {
+    background: rgba(7, 94, 84, 0.04);
+    border: 1px solid rgba(7, 94, 84, 0.12);
+    border-radius: 10px;
+    padding: 0.6rem 0.75rem;
+}
+
+.waFlowInfoHeader {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.58rem;
+    font-weight: 700;
+    color: #075E54;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-family: 'Poppins', sans-serif;
+    margin-bottom: 4px;
+}
+
+.waFlowInfoText {
+    font-family: 'Poppins', sans-serif !important;
+    font-size: 0.58rem !important;
+    color: var(--secondary-color) !important;
+    line-height: 1.5 !important;
+}
+
+// ── Field list (WhatsAppFlow) ─────────────────────────────────────────────────
+.fieldList {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin-bottom: 0.5rem;
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+.fieldListItem {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 0.4rem 0.6rem;
+    background: var(--bg-light);
+    border: 1px solid var(--sidebar-borderColor);
+    border-radius: 8px;
+    gap: 0.5rem;
+}
+
+.fieldListItemContent {
+    flex: 1;
+    min-width: 0;
+}
+
+.fieldListEditInput {
+    & > div {
+        font-size: 0.68rem !important;
+        font-family: 'Poppins', sans-serif !important;
+    }
+
+    & input {
+        padding: 4px 8px !important;
+        font-size: 0.68rem !important;
+    }
+}
+
+.fieldListItemHeader {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.fieldListItemLabel {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--titleColor);
+    font-family: 'Poppins', sans-serif;
+}
+
+.fieldListItemType {
+    font-size: 0.5rem;
+    font-weight: 700;
+    color: var(--secondary-color);
+    background: var(--bg-light);
+    border: 1px solid var(--sidebar-borderColor);
+    padding: 1px 4px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    font-family: monospace;
+}
+
+.fieldListItemRequired {
+    color: var(--error-main);
+    font-weight: 700;
+    font-size: 0.62rem;
+}
+
+.fieldListItemPlaceholder {
+    font-size: 0.56rem;
+    color: var(--secondary-color);
+    font-style: italic;
+    font-family: 'Poppins', sans-serif;
+    margin-top: 2px;
+}
+
+.fieldListItemOptions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-top: 0.3rem;
+}
+
+.fieldListItemOption {
+    font-size: 0.5rem;
+    font-weight: 700;
+    color: #1d4ed8;
+    background: rgba(29, 78, 216, 0.08);
+    border: 1px solid rgba(29, 78, 216, 0.15);
+    border-radius: 4px;
+    padding: 1px 5px;
+}
+
+.fieldAddBox {
+    background: rgba(29, 78, 216, 0.03);
+    border: 1px solid rgba(29, 78, 216, 0.1);
+    border-radius: 12px;
+    padding: 0.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.fieldAddTitle {
+    font-size: 0.56rem;
+    font-weight: 700;
+    color: #1d4ed8;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-family: 'Poppins', sans-serif;
+}
+
+.fieldAddRow {
+    display: flex;
+    gap: 0.4rem;
+}
+
+.fieldRequiredLabel {
+    margin-left: 0 !important;
+
+    & > span {
+    font-family: 'Poppins', sans-serif !important;
+    font-size: 0.68rem !important;
+    color: var(--titleColor) !important;
+    }
+}
+

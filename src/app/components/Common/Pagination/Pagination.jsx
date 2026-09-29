@@ -15,15 +15,16 @@ const Pagination = ({
     return (
         <Box
             sx={{
-                position: 'sticky',
-                bottom: 0,
-                left: 0,
-                right: 0,
+                position: 'fixed',
+                bottom: 16,
+                left: '50%',
+                transform: 'translateX(-50%)',
                 display: 'flex',
                 justifyContent: 'center',
-                py: 2,
+                py: 1,
+                px: 2,
                 backgroundColor: 'transparent',
-                zIndex: 1,
+                zIndex: 10,
             }}
         >
             <Box

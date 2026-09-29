@@ -15,7 +15,7 @@
     animation: fadeIn 0.3s ease-out;
 
     .confirmation-modal-content {
-        background: #ffffff;
+        background: var(--bg-paper, #ffffff);
         border-radius: 24px;
         padding: 32px;
         width: 90%;
@@ -26,20 +26,25 @@
         animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         border: 1px solid rgba($primary-main, 0.1);
 
+        :root[data-theme="dark"] & {
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            border-color: var(--border-color);
+        }
+
         .modal-icon-wrapper {
             width: 80px;
             height: 80px;
-            background: rgba($primary-main, 0.1);
+            background: var(--primary-light-bg, rgba($primary-main, 0.1));
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             margin: 0 auto 24px;
-            color: $primary-main;
+            color: var(--primary-main, $primary-main);
 
             &.danger {
-                background: rgba(211, 47, 47, 0.1);
-                color: #d32f2f;
+                background: var(--error-light-bg, rgba(211, 47, 47, 0.1));
+                color: var(--error-main, #d32f2f);
             }
 
             svg {
@@ -51,14 +56,14 @@
         }
 
         h2 {
-            color: $titleColor;
+            color: var(--titleColor, #{$titleColor});
             font-size: 24px;
             font-weight: 600;
             margin-bottom: 12px;
         }
 
         p {
-            color: $text2ndColor;
+            color: var(--text-secondary, #{$text2ndColor});
             font-size: 15px;
             line-height: 1.5;
             margin-bottom: 32px;
@@ -85,17 +90,17 @@
                 gap: 8px;
 
                 &.btn-cancel {
-                    background: #f5f5f5;
-                    color: $text2ndColor;
+                    background: color-mix(in srgb, var(--text-secondary, #6d6b77) 12%, transparent);
+                    color: var(--text-secondary, #{$text2ndColor});
 
                     &:hover {
-                        background: #e0e0e0;
+                        background: color-mix(in srgb, var(--text-secondary, #6d6b77) 20%, transparent);
                     }
                 }
 
                 &.btn-confirm {
-                    background: $primary-main;
-                    color: white;
+                    background: var(--primary-main, $primary-main);
+                    color: var(--button-color, #fff);
                     box-shadow: 0 4px 12px rgba($primary-main, 0.25);
 
                     &:hover:not(:disabled) {
@@ -119,11 +124,12 @@
                     }
 
                     &.btn-danger {
-                        background: #d32f2f;
+                        background: var(--error-main, #d32f2f);
                         box-shadow: 0 4px 12px rgba(211, 47, 47, 0.25);
 
                         &:hover:not(:disabled) {
-                            background: darken(#d32f2f, 5%);
+                            background: var(--error-main, #d32f2f);
+                            filter: brightness(0.92);
                             box-shadow: 0 6px 16px rgba(211, 47, 47, 0.3);
                         }
                     }

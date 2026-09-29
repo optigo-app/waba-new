@@ -363,7 +363,11 @@ function EditorInner({
     }, [editor, textareaRef]);
 
     const onAddVariableFromToolbar = useCallback(() => {
-        const nextNum = variableKeys.length + 1;
+        const usedNumbers = new Set(
+            variableKeys.map((k) => parseInt(k, 10)).filter((n) => Number.isFinite(n))
+        );
+        let nextNum = 1;
+        while (usedNumbers.has(nextNum)) nextNum += 1;
         editor.update(() => {
             const selection = $getSelection();
             if ($isRangeSelection(selection)) {

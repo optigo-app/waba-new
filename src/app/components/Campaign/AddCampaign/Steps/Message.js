@@ -434,10 +434,12 @@ const Message = ({ onNext, onBack, onMessageConfigured, showError, messageError,
         {/* Left: Form */}
         <Grid size={{ lg: showPreview ? 8 : 12, md: showPreview ? 8 : 12, sm: 12, xs: 12 }} sx={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           {!selectedChannel && (
-            <Box className={styles.infoAlert}>
+            <Box className={`${styles.infoAlert} ${messageError ? styles.errorAlert : ''}`}>
               <Info size={18} className={styles.alertIcon} />
               <Typography variant="body2" className={styles.alertMessage}>
-                Please select a channel to proceed. Templates are channel-specific, so you need to choose a channel before configuring your message.
+                {messageError
+                  ? 'Please select a channel to continue.'
+                  : 'Please select a channel to proceed. Templates are channel-specific, so you need to choose a channel before configuring your message.'}
               </Typography>
             </Box>
           )}
@@ -902,6 +904,12 @@ const Message = ({ onNext, onBack, onMessageConfigured, showError, messageError,
         onClose={() => setSendTestDialogOpen(false)}
         template={template}
         userToken={userToken}
+        wabaPhoneNo={
+          channels?.find((c) => String(c.Id) === String(selectedChannel))?.WabaPhoneNo
+          || channels?.find((c) => String(c.Id) === String(selectedChannel))?.MobileNumber
+          || channels?.find((c) => String(c.Id) === String(selectedChannel))?.mobileNumber
+          || ''
+        }
       />
 
       {/* Mobile Preview Drawer */}

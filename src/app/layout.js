@@ -4,7 +4,7 @@ import { AppRouterCacheProvider } from '@mui/material-nextjs/v16-appRouter';
 import ThemeRegistry from "./providers/ThemeRegistry";
 import SocketProvider from "./providers/SocketProvider";
 import { NotificationProvider } from "./components/NotificationProvider/NotificationProvider";
-import NotificationToast from "./components/NotificationToast/NotificationToast";
+// import NotificationToast from "./components/NotificationToast/NotificationToast"; // TODO: re-enable in-page notifications later
 import AuthHydrator from "./components/AuthHydrator";
 import SessionGate from "./components/SessionGate";
 import AppLayout from "./components/AppLayout";
@@ -64,7 +64,7 @@ export default function RootLayout({ children }) {
               <AppRouterCacheProvider>
                 <ThemeRegistry>
                   <AppLayout>{children}</AppLayout>
-                  <NotificationToast />
+                  {/* <NotificationToast /> */} {/* TODO: re-enable in-page notifications later */}
                 </ThemeRegistry>
               </AppRouterCacheProvider>
             </NotificationProvider>

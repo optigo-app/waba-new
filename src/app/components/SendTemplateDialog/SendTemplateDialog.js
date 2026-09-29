@@ -43,7 +43,7 @@ const phoneInputStyles = {
     },
 };
 
-const SendTemplateDialog = ({ open, onClose, template, userToken }) => {
+const SendTemplateDialog = ({ open, onClose, template, userToken, wabaPhoneNo = '' }) => {
     const [phoneNumber, setPhoneNumber] = useState('');
     const [phoneError, setPhoneError] = useState('');
     const [templateVariables, setTemplateVariables] = useState({});
@@ -601,7 +601,7 @@ const SendTemplateDialog = ({ open, onClose, template, userToken }) => {
 
         // Call the API
         toast.promise(
-            sendTemplate(payload).then((result) => {
+            sendTemplate(payload, wabaPhoneNo).then((result) => {
                 if (result.success) {
                     handleClose();
                     return 'Template sent successfully';

@@ -57,39 +57,61 @@ export default function ChatMessagesArea({
   loadMoreMessages,
 }) {
   const sentinelRef = useRef(null);
+  const wasIntersectingRef = useRef(false);
 
-  // IntersectionObserver-based infinite scroll — more reliable than scroll event in column-reverse
+  // IntersectionObserver-based infinite scroll — more reliable than scroll event in column-reverse.
+  // Trigger only when the sentinel transitions from not-intersecting to intersecting,
+  // so prepending older messages doesn't cause an automatic chain of page loads.
   useEffect(() => {
     const sentinel = sentinelRef.current;
     const container = messagesListRef.current;
     if (!sentinel || !container) return;
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isLoadingMore && !loading) {
+        const isIntersecting = entries[0]?.isIntersecting ?? false;
+        const shouldLoad =
+          isIntersecting &&
+          hasMore &&
+          !isLoadingMore &&
+          !loading &&
+          !wasIntersectingRef.current;
+        if (shouldLoad) {
           loadMoreMessages();
         }
+        wasIntersectingRef.current = isIntersecting;
       },
       { root: container, rootMargin: '300px 0px 0px 0px', threshold: 0 }
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [hasMore, isLoadingMore, loading, loadMoreMessages, conversationId, messages.length]);
+  }, [hasMore, isLoadingMore, loading, loadMoreMessages, conversationId, messages.length, messagesListRef]);
 
   const groupMessagesByDate = useCallback(() => {
+    const getTime = (m) => {
+      const raw = m?.DateTime || m?.sentAt || m?.sent_at || m?.createdAt;
+      const t = raw ? new Date(raw).getTime() : NaN;
+      return Number.isNaN(t) ? -Infinity : t;
+    };
     const grouped = {};
     messages.forEach((msg) => {
-      let date;
-      const rawDate = msg?.DateTime || msg?.sentAt || msg?.sent_at || msg?.createdAt;
-      if (rawDate) {
-        const d = new Date(rawDate);
-        date = d.toISOString().split('T')[0];
-      } else {
-        date = 'Unknown';
-      }
+      const t = getTime(msg);
+      const date = t === -Infinity ? 'Unknown' : new Date(t).toISOString().split('T')[0];
       if (!grouped[date]) grouped[date] = [];
-      grouped[date].push(msg);
+      grouped[date].push({ msg, t });
     });
-    return grouped;
+    /* Render order must be chronological regardless of store insertion order.
+       Socket echoes / optimistic sends can append an older-dated message at
+       the end of the array — in column-reverse that group's DOM position would
+       pin it to the visual bottom until a refresh re-sorts the list. So sort
+       groups newest-first (first DOM child = visual bottom) and messages
+       within each group oldest-first. 'Unknown' goes last (visual top). */
+    return Object.entries(grouped)
+      .sort(([a], [b]) => {
+        if (a === 'Unknown') return 1;
+        if (b === 'Unknown') return -1;
+        return a < b ? 1 : a > b ? -1 : 0;
+      })
+      .map(([date, items]) => [date, items.sort((x, y) => x.t - y.t).map((i) => i.msg)]);
   }, [messages]);
 
   return (
@@ -137,9 +159,9 @@ export default function ChatMessagesArea({
           </div>
         )}
 
-        {Object.entries(groupMessagesByDate()).reverse().map(([date, dateMessages]) => (
+        {groupMessagesByDate().map(([date, dateMessages]) => (
           <div key={`group-${date}`}>
-            {dateMessages.some((m) => m?.DateTime || m?.sentAt || m?.sent_at) && (
+            {date !== 'Unknown' && dateMessages.some((m) => m?.DateTime || m?.sentAt || m?.sent_at) && (
               <div className="message-date-header" key={`header-${date}`}>
                 <span>{formatDateHeader(date)}</span>
               </div>
@@ -149,7 +171,7 @@ export default function ChatMessagesArea({
               const messageId = msg?.id || msg?.Id || msg?.autoid || msg?.MessageId;
               return (
                 <MessageBubble
-                  key={messageId}
+                  key={msg?.tempId || messageId}
                   msg={msg}
                   messageId={messageId}
                   isOutgoing={isOutgoing}
@@ -198,9 +220,9 @@ export default function ChatMessagesArea({
           aria-label="Scroll to bottom"
         >
           <ArrowDown size={20} strokeWidth={2.5} />
-          {unreadCount > 0 && (
+          {/* {unreadCount > 0 && (
             <span className="scroll-to-bottom-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
-          )}
+          )} */}
         </button>
       )}
 

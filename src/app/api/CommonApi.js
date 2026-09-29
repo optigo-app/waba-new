@@ -52,9 +52,9 @@ export const buildApiBody = async ({ mode, f, p = '', userId = '', extraCon = {}
     };
 };
 
-export const callCommonApi = async ({ mode, f, p = '', userId = '', extraCon = {}, signal, wabaid = '' }) => {
+export const callCommonApi = async ({ mode, f, p = '', userId = '', extraCon = {}, signal, wabaid = '', overrides = {} }) => {
     const body = await buildApiBody({ mode, f, p, userId, extraCon });
-    return CommonAPI(body, signal, { wabaid });
+    return CommonAPI(body, signal, { wabaid, overrides });
 };
 
 export const CommonAPI = async (body, signal, headerInit = {}) => {

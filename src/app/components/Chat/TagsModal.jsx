@@ -14,6 +14,7 @@ export default function TagsModal({
   onClose,
   selectedCustomer,
   onTagAdded,
+  onTagAddingChange,
 }) {
   const { triggerRefetch } = useTagsContext();
   const { auth } = useAuth();
@@ -42,6 +43,7 @@ export default function TagsModal({
 
     try {
       setIsSubmitting(true);
+      onTagAddingChange?.(true);
       const response = await addTagsApi(customerId, nextTag, auth?.userId);
       if (response?.rd?.[0]?.stat === 1) {
         toast.success('Tag added successfully');
@@ -57,8 +59,9 @@ export default function TagsModal({
       toast.error('Something went wrong while adding the tag');
     } finally {
       setIsSubmitting(false);
+      onTagAddingChange?.(false);
     }
-  }, [auth?.userId, onClose, onTagAdded, selectedCustomer?.CustomerId, tagInput, triggerRefetch]);
+  }, [auth?.userId, onClose, onTagAdded, onTagAddingChange, selectedCustomer?.CustomerId, tagInput, triggerRefetch]);
 
   return (
     <CustomerModal

@@ -507,17 +507,53 @@
 
 /* ─── Tag filter chips ──────────────────────────────────────────────────── */
 .chat-sidebar-tag-filter {
+  position: relative;
   padding: 8px 14px 6px;
-  border-bottom: 1px solid var(--chat-sidebar-border);
   background: var(--chat-sidebar-bg);
+  min-height: 0;
+  overflow: hidden;
+  transition: border-bottom-color 0.2s ease, padding 0.2s ease, min-height 0.2s ease;
+}
+
+/* While fetching tags for a channel, reserve one chip-row of height and keep
+   the divider so switching between tagged / untagged channels doesn't jump */
+.chat-sidebar-tag-filter.is-loading {
+  min-height: 42px;
+  border-bottom: 1px solid var(--chat-sidebar-border);
+}
+
+.chat-sidebar-tag-filter.has-tags {
+  border-bottom: 1px solid var(--chat-sidebar-border);
+}
+
+.chat-sidebar-tag-filter.no-tags {
+  border-bottom: 1px solid transparent;
+  padding-bottom: 2px;
 }
 
 .tag-filter-scroll {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 6px;
   padding-bottom: 2px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+  scroll-padding-inline: 34px;
+}
+.tag-filter-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Prev/next arrows reuse .tag-scroll-btn (ChatLayout.scss) — desktop only;
+   on mobile the row is swipe-scrolled instead */
+@media (max-width: 768px) {
+  .chat-sidebar-tag-filter .tag-scroll-btn {
+    display: none !important;
+  }
 }
 
 .tag-filter-chip {
@@ -536,9 +572,32 @@
   white-space: nowrap;
   cursor: pointer;
   transition: all 0.15s ease;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-width: 0;
-  max-width: calc(50% - 3px);
+  max-width: 140px;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  animation: tagChipFadeIn 0.25s ease-out;
+}
+
+.tag-filter-chip:focus,
+.tag-filter-chip:active,
+.tag-filter-chip:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+/* Firefox adds an inner dotted border + extra padding on click — kills both the
+   black ring and the size jump */
+.tag-filter-chip::-moz-focus-inner {
+  border: 0;
+  padding: 0;
+}
+
+@keyframes tagChipFadeIn {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .tag-filter-chip:hover {
@@ -548,45 +607,27 @@
 }
 
 .tag-filter-chip.active {
-  background: var(--sidebar-active-bg, #1daa61);
-  color: #fff;
-  border-color: var(--sidebar-active-bg, #1daa61);
+  border-color: var(--primary-light);
+  color: var(--primary-main);
+  background: var(--primary-light-bg);
 }
 
-.tag-filter-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  display: inline-block;
-  flex-shrink: 0;
+.tag-filter-chip.active:hover {
+  background: var(--primary-light);
+}
+
+/* Skeleton placeholder chips keep a fixed chip-like size */
+.tag-filter-skeleton {
+  width: 72px;
+  pointer-events: none;
+  opacity: 0.6;
+  animation: none;
 }
 
 .tag-filter-name {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.tag-filter-more {
-  color: var(--sidebar-active-bg, #1daa61);
-  gap: 4px;
-  border-style: dashed;
-  flex: 0 0 auto;
-  max-width: none;
-}
-
-.tag-filter-more-count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: 9px;
-  background: var(--chat-primary);
-  color: var(--button-color);
-  font-size: 10px;
-  font-weight: 600;
 }
 
 /* ─── Conversation tag chips in list items ────────────────────────────────── */
@@ -621,81 +662,6 @@
   flex-shrink: 0;
 }
 
-/* ─── Tag filter menu popup ──────────────────────────────────────────────── */
-.tag-filter-menu .MuiPaper-root {
-  border-radius: 12px !important;
-  box-shadow: var(--box-shadow) !important;
-  border: 1px solid var(--border-color);
-  overflow: hidden;
-}
-
-.tag-filter-menu .MuiMenuItem-root {
-  font-family: var(--chat-font);
-  font-size: 13px;
-  transition: background 0.15s ease;
-}
-
-.tag-filter-menu .MuiMenuItem-root:hover {
-  background: rgba(29, 170, 97, 0.06);
-}
-
-.tag-filter-menu .MuiMenuItem-root.Mui-selected {
-  background: rgba(29, 170, 97, 0.10);
-}
-
-.tag-filter-menu-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  background: var(--chat-sidebar-bg);
-  border-bottom: 1px solid var(--border-color);
-}
-
-.tag-filter-menu-header input {
-  flex: 1;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  outline: none;
-  font-family: var(--chat-font);
-  font-size: 13px;
-  color: var(--chat-title-color);
-  background: var(--chat-sidebar-bg);
-  min-width: 0;
-  padding: 6px 10px;
-}
-
-.tag-filter-menu-header input:focus {
-  border-color: var(--chat-primary);
-  box-shadow: 0 0 0 2px var(--primary-light-bg);
-}
-
-.tag-filter-menu-header input::placeholder {
-  color: var(--chat-placeholder-color);
-}
-
-.tag-filter-search-clear {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: none;
-  background: var(--bg-subtle);
-  color: var(--text-tertiary);
-  cursor: pointer;
-  transition: background 0.15s ease;
-  padding: 0;
-  flex-shrink: 0;
-}
-
-.tag-filter-search-clear:hover {
-  background: var(--bg-light);
-}
 
 /* Menu height limit */
 .tag-filter-menu .MuiPaper-root {

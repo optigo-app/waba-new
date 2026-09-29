@@ -1,0 +1,52 @@
+@use '../../../globals.scss' as *;
+
+// ── Canvas ────────────────────────────────────────────────────────────────────
+.canvas {
+    flex: 1;
+    position: relative;
+    min-width: 0;
+}
+
+.reactFlow {
+    background: var(--bg-light);
+}
+
+
+
+// React Flow overrides — custom nodes handle their own styling
+:global(.react-flow__node) {
+    font-family: 'Poppins', sans-serif;
+}
+
+:global(.react-flow__handle) {
+    width: 10px;
+    height: 10px;
+    background: var(--primary-main);
+    border: 2px solid #fff;
+    border-radius: 50%;
+}
+
+:global(.react-flow__edge-path) {
+    stroke: var(--primary-main);
+    stroke-width: 2;
+}
+
+:global(.react-flow__controls) {
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+:global(.react-flow__controls-button) {
+    border-bottom: 1px solid var(--sidebar-borderColor);
+    background: var(--bg-paper);
+
+    &:hover {
+        background: var(--primary-light-bg);
+    }
+
+    svg {
+        fill: var(--primary-main);
+    }
+}
+

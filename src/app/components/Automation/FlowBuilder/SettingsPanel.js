@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
     Box,
     Typography,
@@ -28,10 +28,11 @@ import {
     ChevronDown,
     GripVertical,
     Image as ImageIcon,
+    MousePointerClick,
 } from 'lucide-react';
 import { useFlowStore } from '../../../store/flowStore';
 import { filesUploadApi } from '../../../api/filesUploadApi';
-import styles from './FlowBuilder.module.scss';
+import styles from './SettingsPanel.module.scss';
 
 // ── Reorderable Section helpers ─────────────────────────────────────────────────
 
@@ -130,38 +131,60 @@ const SettingsPanel = () => {
     const updateNodeData = useFlowStore((state) => state.updateNodeDataLive);
 
     const activeNode = nodes.find((n) => n.id === selectedNodeId);
+    const activeNodeId = activeNode?.id;
 
-    if (!activeNode) {
-        return null;
-    }
+    // Pending local edits — echo instantly in the panel, flush to the store
+    // after a short idle so the canvas doesn't re-render per keystroke.
+    const [pending, setPending] = useState({});
+    const pendingRef = useRef({});
+    const flushTimer = useRef(null);
+    const flushRef = useRef(null);
 
-    // Real-time update: write directly to store on every field change
-    const updateField = (key, value) => {
-        if (key === 'media' && typeof value === 'object') {
-            const newData = { ...activeNode.data, ...value };
-            updateNodeData(activeNode.id, newData);
-            return;
-        }
-        const newData = { ...activeNode.data, [key]: value };
-        if (activeNode.type === 'goto' && key === 'targetNodeId') {
-            const destNode = nodes.find((n) => n.id === value);
-            if (destNode) {
-                newData.targetNodeLabel = destNode.data.label || `${destNode.id} [${destNode.type}]`;
-            }
-        }
-        updateNodeData(activeNode.id, newData);
+    const flushNow = () => {
+        clearTimeout(flushTimer.current);
+        flushTimer.current = null;
+        const patch = pendingRef.current;
+        if (!activeNodeId || Object.keys(patch).length === 0) return;
+        const node = useFlowStore.getState().nodes.find((n) => n.id === activeNodeId);
+        if (node) updateNodeData(activeNodeId, { ...node.data, ...patch });
+        pendingRef.current = {};
+        setPending({});
     };
 
-    const nodeTypeLabel = activeNode.type.split('_').join(' ').toUpperCase();
-    const formData = activeNode.data || {};
+    // Keep latest flusher in a ref; flush on node switch / unmount
+    useEffect(() => { flushRef.current = flushNow; });
+    useEffect(() => () => flushRef.current?.(), [activeNodeId]);
+
+    const updateField = (key, value) => {
+        let patch;
+        if (key === 'media' && typeof value === 'object') {
+            patch = value;
+        } else {
+            patch = { [key]: value };
+            if (activeNode?.type === 'goto' && key === 'targetNodeId') {
+                const destNode = nodes.find((n) => n.id === value);
+                if (destNode) {
+                    patch.targetNodeLabel = destNode.data.label || `${destNode.id} [${destNode.type}]`;
+                }
+            }
+        }
+        const merged = { ...pendingRef.current, ...patch };
+        pendingRef.current = merged;
+        setPending(merged);
+        clearTimeout(flushTimer.current);
+        flushTimer.current = setTimeout(() => flushRef.current?.(), 250);
+    };
+
+    const nodeTypeLabel = activeNode ? activeNode.type.split('_').join(' ').toUpperCase() : '';
+    const formData = { ...(activeNode?.data || {}), ...pending };
 
     return (
-        <div className={styles.settingsPanel}>
+        <div className={`${styles.settingsPanel} ${activeNode ? '' : styles.settingsPanelHidden}`}>
             <div className={styles.settingsHeader}>
                 <div>
-                    <div className={styles.settingsHeaderLabel}>CONFIGURATION PANEL</div>
+                    <div className={styles.settingsHeaderLabel}>Edit Node</div>
                     <div className={styles.settingsHeaderTitle}>
-                        {nodeTypeLabel} <span className={styles.settingsHeaderId}>({activeNode.id})</span>
+                        {activeNode ? (formData.label || nodeTypeLabel) : 'Nothing selected'}
                     </div>
                 </div>
                 <IconButton size="small" onClick={() => selectNode(null)} className={styles.settingsCloseBtn}>
@@ -169,9 +192,18 @@ const SettingsPanel = () => {
                 </IconButton>
             </div>
 
-            <div className={styles.settingsBody}>
+            <div className={styles.settingsBody} key={activeNodeId || 'empty'}>
+                {!activeNode ? (
+                    <div className={styles.settingsEmpty}>
+                        <MousePointerClick size={28} className={styles.settingsEmptyIcon} />
+                        <Typography className={styles.settingsEmptyText}>
+                            Select a node on the canvas to edit its settings.
+                        </Typography>
+                    </div>
+                ) : (
+                    <>
                 <div className={styles.settingsField}>
-                    <label className={styles.settingsFieldLabel}>Node Label Title</label>
+                    <label className={styles.settingsFieldLabel}>Node Label</label>
                     <TextField
                         fullWidth
                         size="small"
@@ -216,6 +248,8 @@ const SettingsPanel = () => {
                 )}
                 {activeNode.type === 'whatsapp_flow' && (
                     <WhatsAppFlowForm data={formData} updateField={updateField} />
+                )}
+                    </>
                 )}
             </div>
         </div>
@@ -613,7 +647,7 @@ function SendQuestionForm({ data, updateField }) {
                                 className={styles.settingsInput}
                             />
                             <Typography className={styles.settingsFieldHint}>
-                                Time before "No Input Timeout" connection executes. 0 for no timeout.
+                                Time before the No Input Timeout connection executes. 0 for no timeout.
                             </Typography>
                         </div>
                     </ReorderableSection>
@@ -1316,9 +1350,15 @@ function AttachmentUpload({ data, updateField }) {
         setUploadError('');
         setIsUploading(true);
 
+        // Replace spaces with underscores so the uploaded filename is URL-safe
+        const sanitizedName = file.name.replace(/\s+/g, '_');
+        const uploadFile = sanitizedName !== file.name
+            ? new File([file], sanitizedName, { type: file.type })
+            : file;
+
         try {
             const response = await filesUploadApi({
-                attachments: [{ file }],
+                attachments: [{ file: uploadFile }],
                 folderName: 'wababroadcast/automation',
                 uniqueNo: `flow_${Date.now()}_${Math.floor(Math.random() * 1000000)}`,
             });
@@ -1343,7 +1383,7 @@ function AttachmentUpload({ data, updateField }) {
                 updateField('media', {
                     mediaUrl: uploadedUrl,
                     mediaType: apiMediaType,
-                    mediaFileName: fileObj?.fileName || file.name,
+                    mediaFileName: (fileObj?.fileName || sanitizedName).replace(/\s+/g, '_'),
                 });
             } else {
                 console.warn('Upload response structure:', JSON.stringify(response));

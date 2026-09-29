@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, User, MessageSquare, FileText, Send, Megaphone, ArrowLeft } from 'lucide-react';
 import { TextField, FormControlLabel, Checkbox, Button, Typography, Paper, Tooltip } from '@mui/material';
 import dayjs from 'dayjs';
@@ -153,6 +153,16 @@ const AddCampaign = () => {
     }
   }, []);
 
+  const handleMessageConfigured = useCallback((v) => {
+    setMessageConfigured(v);
+    if (v) setMessageError(false);
+  }, []);
+
+  const handleChannelSelect = useCallback((id) => {
+    setSelectedChannelId(id);
+    setMessageError(false);
+  }, []);
+
   const handleRetargetStatusChange = (newStatus) => {
     if (!newStatus) return;
     setRetargetStatus(newStatus);
@@ -179,18 +189,39 @@ const AddCampaign = () => {
   const [recurrenceYearlyMonth, setRecurrenceYearlyMonth] = useState('May');
   const [recurrenceYearlyDay, setRecurrenceYearlyDay] = useState(14);
 
+  // Ref guard so rapid multi-clicks on Next/Back don't fire multiple times
+  const stepNavGuardRef = useRef(0);
+  // Ref guard so double-clicking Save can't fire the API twice
+  const isSavingRef = useRef(false);
+
   const handleNext = () => {
+    const now = Date.now();
+    if (now - stepNavGuardRef.current < 600) return;
+    stepNavGuardRef.current = now;
     if (currentStep < 4) {
       // Validate before proceeding from Message step
-      if (currentStep === 3 && !messageConfigured) {
-        setShowError(true);
-        setMessageError(true);
-        return;
+      if (currentStep === 3) {
+        if (!selectedChannelId) {
+          toast.error('Please select a channel before proceeding.');
+          setShowError(true);
+          setMessageError(true);
+          return;
+        }
+        if (!messageConfigured) {
+          setShowError(true);
+          setMessageError(true);
+          return;
+        }
       }
       setCurrentStep(currentStep + 1);
     }
   };
-  const handleBack = () => { if (currentStep > 1) setCurrentStep(currentStep - 1); };
+  const handleBack = () => {
+    const now = Date.now();
+    if (now - stepNavGuardRef.current < 600) return;
+    stepNavGuardRef.current = now;
+    if (currentStep > 1) setCurrentStep(currentStep - 1);
+  };
 
   const setProcessStep = (message, progress = null) => {
     setSaveProcess({
@@ -202,12 +233,15 @@ const AddCampaign = () => {
   };
 
   const handleSave = async () => {
+    if (isSavingRef.current) return;
+    isSavingRef.current = true;
     setIsSaving(true);
     setProcessStep('Initializing campaign save...', 0);
     try {
       // Check if template has media data issues
       if (templateData?.mediaDataMissing) {
         toast.error('Template has no valid image. Please update the template with a valid image before saving the campaign.');
+        isSavingRef.current = false;
         setIsSaving(false);
         return;
       }
@@ -215,6 +249,7 @@ const AddCampaign = () => {
       // Validate scheduled date is not in the past
       if (campaignType === 'schedule' && scheduledFor && scheduledFor.isBefore(dayjs())) {
         toast.error('Cannot schedule a campaign for a past date/time.');
+        isSavingRef.current = false;
         setIsSaving(false);
         return;
       }
@@ -594,6 +629,7 @@ const AddCampaign = () => {
       console.error('Error saving campaign:', error);
       toast.error('An error occurred while creating the campaign. Please try again.');
     } finally {
+      isSavingRef.current = false;
       setIsSaving(false);
       setSaveProcess({ active: false, title: '', message: '', progress: null });
     }
@@ -759,7 +795,17 @@ const AddCampaign = () => {
             />
           )}
           {currentStep === 3 && (
-            <Message onNext={handleNext} onBack={handleBack} onMessageConfigured={setMessageConfigured} onTemplateData={setTemplateData} onChannelSelect={setSelectedChannelId} channelId={selectedChannelId} showError={showError} messageError={messageError} preSelectedTemplate={templateData} />
+            <Message
+              onNext={handleNext}
+              onBack={handleBack}
+              onMessageConfigured={handleMessageConfigured}
+              onTemplateData={setTemplateData}
+              onChannelSelect={handleChannelSelect}
+              channelId={selectedChannelId}
+              showError={showError}
+              messageError={messageError}
+              preSelectedTemplate={templateData}
+            />
           )}
           {currentStep === 4 && (
             <PreviewSave

@@ -3,13 +3,14 @@
 import { callCommonApi } from './CommonApi';
 import { PROFILE_UPDATE, getHeaders, getApiBaseUrl } from './Config';
 
-export const fetchWabaCategories = async (userId, signal) => {
+export const fetchWabaCategories = async (userId, signal, wabaPhoneNo = '') => {
     try {
         const result = await callCommonApi({
             mode: 'get_waba_category',
             f: 'Profile ( get Whatsapp Category)',
             userId,
             signal,
+            overrides: wabaPhoneNo ? { wabaphoneno: wabaPhoneNo } : {},
         });
 
         if (result?.Status === '200' && Array.isArray(result?.Data?.rd)) {
@@ -28,7 +29,7 @@ export const fetchWabaCategories = async (userId, signal) => {
     }
 };
 
-export const fetchWabaProfile = async ({ userId, accountId, companyCode, signal }) => {
+export const fetchWabaProfile = async ({ userId, accountId, companyCode, wabaPhoneNo = '', signal }) => {
     try {
         const headers = getHeaders();
         const response = await fetch(`${getApiBaseUrl()}/whatsapp/profile/details`, {
@@ -39,6 +40,7 @@ export const fetchWabaProfile = async ({ userId, accountId, companyCode, signal 
                 sv: headers.sv || '0',
                 version: headers.Version || 'v4',
                 yearcode: headers.Yearcode || '',
+                wabaphoneno: wabaPhoneNo || '',
             },
             body: JSON.stringify({
                 appuserid: userId || '',
@@ -129,7 +131,8 @@ export const updateWabaProfile = async ({ profile, logoFile, channel, userId }) 
         formData.append('companycode', channel?.companyCode || '');
         formData.append('appuserid', userId || '');
 
-        const headers = getHeaders();
+        const wabaPhoneNo = channel?.WabaPhoneNo || channel?.wabaPhoneNo || channel?.MobileNumber || channel?.mobileNumber || '';
+        const headers = getHeaders({ overrides: wabaPhoneNo ? { wabaphoneno: wabaPhoneNo, whatsappNumber: wabaPhoneNo } : {} });
         delete headers['Content-Type'];
 
         const response = await fetch(PROFILE_UPDATE(), {
@@ -147,6 +150,26 @@ export const updateWabaProfile = async ({ profile, logoFile, channel, userId }) 
         return data;
     } catch (error) {
         console.error('Error updating WABA profile:', error);
+        throw error;
+    }
+};
+
+export const updateWabaChannel = async ({ userId, accountId, channelTitle, fileUrl, wabaPhoneNo = '' }) => {
+    try {
+        const result = await callCommonApi({
+            mode: 'wa_channel_update',
+            f: 'WHatsapp ( Channel update )',
+            p: JSON.stringify({
+                AccountId: Number(accountId) || 1,
+                ChannelTitle: channelTitle || '',
+                FileUrl: fileUrl || '',
+            }),
+            userId,
+            overrides: wabaPhoneNo ? { wabaphoneno: wabaPhoneNo } : {},
+        });
+        return result;
+    } catch (error) {
+        console.error('Error updating WABA channel:', error);
         throw error;
     }
 };

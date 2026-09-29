@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Octagon } from 'lucide-react';
-import IconButton from '../Common/IconButton';
+import { Tooltip } from '@mui/material';
 import styles from './CampaignGrid.module.scss';
 
 /**
- * Self-contained countdown button that manages its own timer.
+ * Self-contained countdown timer that manages its own interval.
+ * Clicking it stops the pending launch.
  * Does NOT cause parent re-renders - only re-renders itself.
  */
 const CountdownButton = ({ expiry, onStop, row }) => {
@@ -32,23 +32,32 @@ const CountdownButton = ({ expiry, onStop, row }) => {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [expiry, onStop, row]);
+  }, [expiry]);
 
   const handleClick = useCallback(() => {
-    onStop(row);
+    onStop?.(row);
   }, [onStop, row]);
 
   // Don't render if timer already expired
   if (remaining <= 0) return null;
 
+  const digits = String(remaining).split('');
+
   return (
-    <IconButton
-      icon={Octagon}
-      color="error"
-      className={styles.stopButtonPulse}
-      tooltip={`Stop (${remaining}s)`}
-      onClick={handleClick}
-    />
+    <Tooltip title={`Click to stop — fires in ${remaining}s`} arrow>
+      <button
+        type="button"
+        className={styles.countdownChip}
+        onClick={handleClick}
+        aria-label={`Stop launch, fires in ${remaining} seconds`}
+      >
+        <span className={styles.countdownDigits}>
+          {digits.map((d, i) => (
+            <span key={`${i}-${d}`} className={styles.countdownSeconds}>{d}</span>
+          ))}
+        </span>
+      </button>
+    </Tooltip>
   );
 };
 

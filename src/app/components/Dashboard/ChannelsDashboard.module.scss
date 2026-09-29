@@ -10,6 +10,12 @@
     height: 100vh;
     overflow: hidden;
     box-sizing: border-box;
+
+    @media (max-width: 600px) {
+        height: auto;
+        min-height: 100vh;
+        overflow: visible;
+    }
 }
 
 .topBar {
@@ -73,5 +79,9 @@
     min-height: 0;
     display: flex;
     flex-direction: column;
-    overflow-y: auto;
+    overflow: hidden;
+
+    @media (max-width: 600px) {
+        overflow: visible;
+    }
 }

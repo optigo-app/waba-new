@@ -7,6 +7,7 @@ import {
   initializeSocket,
   disconnectSocket,
   isSocketConnected,
+  getSocket,
   addSessionLogoutHandler,
   addMessageHandler,
   addMessageHandlerFromAssigningUser,
@@ -110,6 +111,20 @@ export default function SocketProvider({ children }) {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [auth?.token, isPublicRoute]);
+
+  // Re-register the socket id when the route changes while connected —
+  // /chat registers ChatSocketId, other routes register SocketId
+  useEffect(() => {
+    if (isPublicRoute) return;
+    const socket = getSocket();
+    if (!socket?.connected || !socket?.id) return;
+    const userData = getUserData();
+    const uid = auth?.userId || userData?.userId;
+    const id = auth?.id || userData?.id;
+    if (!uid || !id) return;
+    const socketKey = pathname === '/chat' ? 'ChatSocketId' : 'SocketId';
+    savePlayerId(socket.id, uid, id, socketKey).catch(() => {});
+  }, [pathname, isPublicRoute, auth?.userId, auth?.id]);
 
   useEffect(() => {
     if (isPublicRoute) return;

@@ -1,15 +1,16 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef, useMemo, useDeferredValue, memo } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react';
 import { Avatar, Badge, IconButton, Menu, MenuItem, Tooltip, Skeleton, CircularProgress, Dialog, DialogTitle, List, ListItem, ListItemAvatar, ListItemText, DialogContent } from '@mui/material';
 import {
   Search, Pin, PinOff, Star, Archive, ArchiveRestore,
-  ChevronDown, UserPlus, X, Tag, Check, MessageCircle, Smartphone, ChevronsUpDown, Flag, ArrowLeft,
+  ChevronDown, ChevronLeft, ChevronRight, UserPlus, X, Check, MessageCircle, Smartphone, ChevronsUpDown, Flag, ArrowLeft,
 } from 'lucide-react';
 import {
   getWhatsAppAvatarConfig, getCustomerDisplayName, getCustomerAvatarSeed,
   hasCustomerName, processApiResponse, getMessageStatusIcon, getMessagePreview,
-  getChannelAvatarConfig,
+  getChannelAvatarConfig, getChannelDisplayName, getChannelMobile, getChannelSubName,
+  sortConversations,
 } from './utils/chatUtils';
 import { formatChatTimestamp } from './utils/dateUtils';
 import {
@@ -26,9 +27,9 @@ import {
 import AddCustomerDialog from './AddCustomerDialog';
 import WhatsAppText from './WhatsAppText';
 import ChatPanelHeader from './ChatPanelHeader';
-import ProfileMenu from './ui/ProfileMenu';
 import { useAuthStore } from '../../store/authStore';
 import { useChatStore } from '../../store/chatStore';
+import { useTagsContext } from '../../contexts/TagsContexts';
 import toast from 'react-hot-toast';
 
 const TAB_ITEMS = [
@@ -81,10 +82,12 @@ function ChatSidebar({
   channelId,
   channel,
   onChannelSelect,
+  channelSwitching,
 }) {
   const auth = useAuthStore((s) => s.auth);
   const can = useAuthStore((s) => s.can);
   const userId = auth?.userId || auth?.userid || auth?.appuserid || '';
+  const { refetchTrigger } = useTagsContext();
   const conversations = useChatStore((s) => s.conversations);
   const allConversationsCache = useChatStore((s) => s.allConversationsCache);
   const conversationsByChannel = useChatStore((s) => s.conversationsByChannel);
@@ -100,8 +103,6 @@ function ChatSidebar({
   const [allTags, setAllTags] = useState([]);
   const [tagsLoading, setTagsLoading] = useState(true);
   const [showEmptyAfterDelay, setShowEmptyAfterDelay] = useState(false);
-  const [tagSearchTerm, setTagSearchTerm] = useState('');
-  const [tagMenuAnchor, setTagMenuAnchor] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);
   const [contextMember, setContextMember] = useState(null);
   const [anchorEl, setAnchorEl] = useState(null);
@@ -115,10 +116,11 @@ function ChatSidebar({
   const [channelListLoading, setChannelListLoading] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const listRef = useRef(null);
+  const tagFilterScrollRef = useRef(null);
+  const [canScrollTagsLeft, setCanScrollTagsLeft] = useState(false);
+  const [canScrollTagsRight, setCanScrollTagsRight] = useState(false);
   const itemRefs = useRef({});
   const searchInputRef = useRef(null);
-  const tagSearchInputRef = useRef(null);
-  const tagMenuItemRefs = useRef([]);
 
   // Single ref for all keyboard-handler state to keep listener stable
   const kbRef = useRef({
@@ -137,7 +139,8 @@ function ChatSidebar({
 
     try {
       const normalizedSearch = searchTerm ? searchTerm.replace(/[+\-\s()]/g, '') : searchTerm;
-      const response = await fetchConversationLists(targetPage, 100, userId, normalizedSearch);
+      const currentTagId = selectedTag && selectedTag !== 'All' ? (getTagId(selectedTag) || '') : '';
+      const response = await fetchConversationLists(targetPage, 20, userId, normalizedSearch, currentTagId);
       let rawList = response?.data?.rd || [];
       const rd1List = response?.data?.rd1 || [];
 
@@ -175,11 +178,7 @@ function ChatSidebar({
               prevMap.set(item.Id, item);
             }
           });
-          return Array.from(prevMap.values()).sort((a, b) => {
-            const tA = new Date(a.lastMessageTimestamp || a.DateTime || 0).getTime();
-            const tB = new Date(b.lastMessageTimestamp || b.DateTime || 0).getTime();
-            return tB - tA;
-          });
+          return sortConversations(Array.from(prevMap.values()));
         };
         setConversations((prev) => mergeAndSort(prev));
         if (!searchTerm) {
@@ -188,7 +187,9 @@ function ChatSidebar({
       } else {
         setConversations(list);
         onConversationList?.(list);
-        if (!searchTerm) {
+        // Only update caches when no search and no tag filter —
+        // otherwise we'd overwrite the full list with filtered results
+        if (!searchTerm && (!selectedTag || selectedTag === 'All')) {
           setAllConversationsCache(list);
           if (channelId) {
             setConversationsByChannel(channelId, list);
@@ -205,14 +206,14 @@ function ChatSidebar({
       setLoading(false);
       setIsLoadingMore(false);
     }
-  }, [userId, onConversationList, searchTerm, channelId]);
+  }, [userId, onConversationList, searchTerm, channelId, selectedTag]);
 
   // Reset archived view when switching channels
   useEffect(() => {
     setShowArchived(false);
   }, [channelId]);
 
-  // Handle search term changes: wait for tags first, then load conversations
+  // Handle search term / channel / tag changes: wait for tags first, then load conversations
   useEffect(() => {
     if (!auth?.token || !userId) return;
     if (tagsLoading) return; // tags API first
@@ -222,8 +223,8 @@ function ChatSidebar({
       setShowArchived(false);
     }
 
-    // Check per-channel cache first
-    if (!searchTerm.trim() && channelId) {
+    // Check per-channel cache first (only when no search and no tag filter)
+    if (!searchTerm.trim() && channelId && (selectedTag === 'All' || !selectedTag)) {
       const channelCache = conversationsByChannel[String(channelId)];
       if (channelCache && channelCache.length > 0) {
         setConversations(channelCache);
@@ -235,19 +236,19 @@ function ChatSidebar({
       }
     }
 
-    // Fall back to allConversationsCache when no specific channel
-    if (!searchTerm.trim() && !channelId && allConversationsCache.length > 0) {
+    // Fall back to allConversationsCache when no specific channel and no tag filter
+    if (!searchTerm.trim() && !channelId && (selectedTag === 'All' || !selectedTag) && allConversationsCache.length > 0) {
       setConversations(allConversationsCache);
       onConversationList?.(allConversationsCache);
       setPage(1);
       setHasMore(true);
       setLoading(false);
     } else {
-      // Fetch results for the selected channel or search
+      // Fetch results for the selected channel, search, or tag filter
       loadConversations(1, false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth?.token, userId, searchTerm, tagsLoading, channelId]);
+  }, [auth?.token, userId, searchTerm, tagsLoading, channelId, selectedTag]);
 
   const filtered = useMemo(() => {
     const term = searchTerm.toLowerCase().replace(/[+\-\s()]/g, '');
@@ -263,12 +264,8 @@ function ChatSidebar({
         case 2: return isFavorite;
         default: return true;
       }
-    }).filter((c) => {
-      if (tagsLoading) return true;
-      if (!selectedTag || selectedTag === 'All') return true;
-      return !c.tags || c.tags.length === 0 || c.tags.some((tag) => String(getTagId(tag)) === String(getTagId(selectedTag)));
     });
-  }, [conversations, searchTerm, tabValue, selectedTag, tagsLoading]);
+  }, [conversations, searchTerm, tabValue]);
 
   const archivedConversations = useMemo(
     () => filtered.filter((c) => c.IsArchived === 1),
@@ -282,14 +279,39 @@ function ChatSidebar({
 
   const displayedConversations = showArchived ? archivedConversations : activeConversations;
 
-  const deferredTagSearch = useDeferredValue(tagSearchTerm);
+  const checkTagFilterScroll = useCallback(() => {
+    const el = tagFilterScrollRef.current;
+    if (!el) return;
+    setCanScrollTagsLeft(el.scrollLeft > 0);
+    setCanScrollTagsRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 1);
+  }, []);
 
-  const filteredTagsForMenu = useMemo(() => {
-    const list = Array.isArray(allTags) ? allTags : [];
-    const q = String(deferredTagSearch || '').trim().toLowerCase();
-    if (!q) return list;
-    return list.filter((t) => String(t?.TagName || '').toLowerCase().includes(q));
-  }, [allTags, deferredTagSearch]);
+  const scrollTagRow = useCallback((direction) => {
+    const el = tagFilterScrollRef.current;
+    if (el) el.scrollBy({ left: direction === 'left' ? -160 : 160, behavior: 'smooth' });
+  }, []);
+
+  // Track scroll edges for prev/next buttons + mouse-wheel horizontal scroll
+  useEffect(() => {
+    const el = tagFilterScrollRef.current;
+    if (!el) return;
+    checkTagFilterScroll();
+    const onWheel = (e) => {
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+        e.preventDefault();
+        el.scrollLeft += e.deltaY;
+      }
+    };
+    el.addEventListener('scroll', checkTagFilterScroll, { passive: true });
+    el.addEventListener('wheel', onWheel, { passive: false });
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(checkTagFilterScroll) : null;
+    observer?.observe(el);
+    return () => {
+      el.removeEventListener('scroll', checkTagFilterScroll);
+      el.removeEventListener('wheel', onWheel);
+      observer?.disconnect();
+    };
+  }, [checkTagFilterScroll, allTags, tagsLoading]);
 
   // Sync all keyboard-relevant state into a single ref (cheap, no re-renders)
   useEffect(() => {
@@ -392,16 +414,23 @@ function ChatSidebar({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Fetch all tags for filtering
+  // Fetch all tags for filtering (re-fetch when a tag is added via TagsContext or channel changes)
   useEffect(() => {
     if (!auth?.userId) return;
     setTagsLoading(true);
+    setAllTags([]);
     const controller = new AbortController();
     (async () => {
       try {
         const resp = await fetchAllTags(auth.userId, controller.signal);
         if (resp?.rd) {
-          setAllTags(resp.rd);
+          // Sort latest tags first (by Id descending)
+          const sorted = [...resp.rd].sort((a, b) => {
+            const idA = Number(a?.TagId ?? a?.Id ?? a?.id ?? 0);
+            const idB = Number(b?.TagId ?? b?.Id ?? b?.id ?? 0);
+            return idB - idA;
+          });
+          setAllTags(sorted);
         }
       } catch (err) {
         if (err.name !== 'AbortError' && err.message !== 'AbortError') {
@@ -412,7 +441,7 @@ function ChatSidebar({
       }
     })();
     return () => controller.abort();
-  }, [auth?.userId]);
+  }, [auth?.userId, refetchTrigger, channelId]);
 
   // Delay showing 'No conversations found' to prevent flash during loading
   useEffect(() => {
@@ -539,7 +568,8 @@ function ChatSidebar({
     if (!auth?.userId) return;
     try {
       const normalizedSearch = searchTerm ? searchTerm.replace(/[+\-\s()]/g, '') : searchTerm;
-      const res = await fetchConversationLists(1, 100, auth.userId, normalizedSearch);
+      const currentTagId = selectedTag && selectedTag !== 'All' ? (getTagId(selectedTag) || '') : '';
+      const res = await fetchConversationLists(1, 20, auth.userId, normalizedSearch, currentTagId);
       const rawRd = res?.data?.rd || [];
       const rawRd1 = res?.data?.rd1 || [];
       let rawList = rawRd;
@@ -631,7 +661,8 @@ function ChatSidebar({
           );
         } else {
           // For other actions, refresh conversation list to reflect change
-          const res = await fetchConversationLists(1, 100, appuserId, '');
+          const currentTagId = selectedTag && selectedTag !== 'All' ? (getTagId(selectedTag) || '') : '';
+          const res = await fetchConversationLists(1, 20, appuserId, '', currentTagId);
           const rawRd = res?.data?.rd || [];
           const rawRd1 = res?.data?.rd1 || [];
           let rawList = rawRd;
@@ -683,10 +714,9 @@ function ChatSidebar({
                 onClick={handleOpenChannelDialog}
                 aria-label="Switch channel"
               >
-                <ChevronsUpDown size={18} />
+                <Smartphone size={18} />
               </IconButton>
             )}
-            <ProfileMenu variant="icon" size={18} />
           </>
         }
       />
@@ -729,8 +759,18 @@ function ChatSidebar({
       </div>
 
       {/* Tag filter — 'All' always visible, skeleton chips while loading */}
-      <div className="chat-sidebar-tag-filter">
-        <div className="tag-filter-scroll">
+      <div className={`chat-sidebar-tag-filter ${tagsLoading ? 'is-loading' : allTags?.length > 0 ? 'has-tags' : 'no-tags'}`}>
+        {canScrollTagsLeft && (
+          <button
+            type="button"
+            className="tag-scroll-btn left"
+            onClick={() => scrollTagRow('left')}
+            aria-label="Scroll tags left"
+          >
+            <ChevronLeft size={16} />
+          </button>
+        )}
+        <div className="tag-filter-scroll" ref={tagFilterScrollRef}>
           {!tagsLoading && allTags?.length > 0 && (
             <button
               type="button"
@@ -743,22 +783,22 @@ function ChatSidebar({
 
           {tagsLoading && (
             <>
-              <span className="tag-filter-chip" style={{ pointerEvents: 'none', opacity: 0.6 }}>
+              <span className="tag-filter-chip tag-filter-skeleton">
                 <Skeleton variant="rounded" width="100%" height={16} sx={{ borderRadius: 99 }} />
               </span>
-              <span className="tag-filter-chip" style={{ pointerEvents: 'none', opacity: 0.6 }}>
+              <span className="tag-filter-chip tag-filter-skeleton">
                 <Skeleton variant="rounded" width="100%" height={16} sx={{ borderRadius: 99 }} />
               </span>
-              <span className="tag-filter-chip" style={{ pointerEvents: 'none', opacity: 0.6 }}>
+              <span className="tag-filter-chip tag-filter-skeleton">
                 <Skeleton variant="rounded" width="100%" height={16} sx={{ borderRadius: 99 }} />
               </span>
-              <span className="tag-filter-chip" style={{ pointerEvents: 'none', opacity: 0.6 }}>
+              <span className="tag-filter-chip tag-filter-skeleton">
                 <Skeleton variant="rounded" width="100%" height={16} sx={{ borderRadius: 99 }} />
               </span>
             </>
           )}
 
-          {!tagsLoading && allTags?.slice(0, 3).map((tag) => {
+          {!tagsLoading && allTags?.map((tag) => {
             const isActive = selectedTag !== 'All' && String(getTagId(selectedTag)) === String(getTagId(tag));
             return (
               <button
@@ -774,175 +814,23 @@ function ChatSidebar({
                 }}
                 title={tag.TagName}
               >
-                <span
-                  className="tag-filter-dot"
-                  style={{ backgroundColor: tag.color || 'var(--primary-main)' }}
-                />
                 <span className="tag-filter-name">{tag.TagName}</span>
               </button>
             );
           })}
 
-          {!tagsLoading && allTags?.length > 3 && (
-            <button
-              type="button"
-              className="tag-filter-chip tag-filter-more"
-              onClick={(e) => setTagMenuAnchor(e.currentTarget)}
-              title={`${allTags.length - 3} more tags`}
-            >
-              <Tag size={14} />
-              <span>More</span>
-              <span className="tag-filter-more-count">{allTags.length - 3}</span>
-            </button>
-          )}
         </div>
-      </div>
-
-      {/* Tag filter menu */}
-      <Menu
-        className="tag-filter-menu"
-        anchorEl={tagMenuAnchor}
-        open={Boolean(tagMenuAnchor)}
-        onClose={() => {
-          setTagMenuAnchor(null);
-          setTagSearchTerm('');
-        }}
-        disableAutoFocusItem
-        slotProps={{
-          paper: {
-            elevation: 0,
-            sx: {
-              minWidth: 260,
-              maxHeight: 420,
-              borderRadius: 3,
-              boxShadow: 'var(--box-shadow)',
-              border: '1px solid var(--border-color)',
-              overflow: 'hidden',
-            },
-          },
-        }}
-      >
-        {/* Sticky search header */}
-        <div className="tag-filter-menu-header">
-          <Search size={14} color="var(--text-tertiary)" style={{ flexShrink: 0 }} />
-          <input
-            ref={tagSearchInputRef}
-            type="text"
-            placeholder="Search tags..."
-            value={tagSearchTerm}
-            onChange={(e) => setTagSearchTerm(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                e.stopPropagation();
-                const first = tagMenuItemRefs.current[0];
-                if (first) first.focus();
-              } else if (e.key === 'Escape') {
-                e.stopPropagation();
-                setTagMenuAnchor(null);
-                setTagSearchTerm('');
-              }
-            }}
-            className="tag-filter-search-input"
-            autoFocus
-          />
-          {tagSearchTerm && (
-            <button
-              type="button"
-              className="tag-filter-search-clear"
-              onClick={() => {
-                setTagSearchTerm('');
-                tagSearchInputRef.current?.focus();
-              }}
-              tabIndex={-1}
-            >
-              <X size={14} />
-            </button>
-          )}
-        </div>
-
-        {/* All / Clear filter */}
-        <MenuItem
-          ref={(el) => { tagMenuItemRefs.current[0] = el; }}
-          selected={selectedTag === 'All'}
-          onClick={() => {
-            onTagSelect?.('All');
-            setTagMenuAnchor(null);
-            setTagSearchTerm('');
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'ArrowUp') {
-              e.preventDefault();
-              e.stopPropagation();
-              tagSearchInputRef.current?.focus();
-            }
-          }}
-          sx={{ py: 1.2, display: 'flex', alignItems: 'center', gap: 1.5 }}
-        >
-          <span style={{ width: 20, display: 'flex', justifyContent: 'center' }}>
-            {selectedTag === 'All' && <Check size={16} color="var(--primary-main)" strokeWidth={2.5} />}
-          </span>
-          <span style={{ fontSize: 14, fontWeight: selectedTag === 'All' ? 600 : 500, color: 'var(--text-secondary)' }}>
-            All conversations
-          </span>
-        </MenuItem>
-
-        {/* Tag list */}
-        {filteredTagsForMenu.map((tag, idx) => {
-          const isActive = selectedTag !== 'All' && String(getTagId(selectedTag)) === String(getTagId(tag));
-          const refIndex = idx + 1;
-          return (
-            <MenuItem
-              key={getTagId(tag)}
-              ref={(el) => { tagMenuItemRefs.current[refIndex] = el; }}
-              selected={isActive}
-              onClick={() => {
-                if (isActive) {
-                  onTagSelect?.('All');
-                } else {
-                  onTagSelect?.(tag);
-                }
-                setTagMenuAnchor(null);
-                setTagSearchTerm('');
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'ArrowUp' && refIndex === 0) {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  tagSearchInputRef.current?.focus();
-                }
-              }}
-              sx={{ py: 1.2, display: 'flex', alignItems: 'center', gap: 1.5 }}
-            >
-              <span style={{ width: 20, display: 'flex', justifyContent: 'center' }}>
-                {isActive && <Check size={16} color="var(--primary-main)" strokeWidth={2.5} />}
-              </span>
-              <span
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: '50%',
-                  background: tag.color || 'var(--primary-main)',
-                  display: 'inline-block',
-                  flexShrink: 0,
-                }}
-              />
-              <span style={{ fontSize: 14, fontWeight: isActive ? 600 : 500, overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>
-                {tag.TagName}
-              </span>
-              {isActive && (
-                <span style={{ fontSize: 11, color: 'var(--primary-main)', fontWeight: 600 }}>Active</span>
-              )}
-            </MenuItem>
-          );
-        })}
-
-        {filteredTagsForMenu.length === 0 && (
-          <MenuItem disabled sx={{ opacity: 0.6, justifyContent: 'center', py: 2 }}>
-            <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>No tags found</span>
-          </MenuItem>
+        {canScrollTagsRight && (
+          <button
+            type="button"
+            className="tag-scroll-btn right"
+            onClick={() => scrollTagRow('right')}
+            aria-label="Scroll tags right"
+          >
+            <ChevronRight size={16} />
+          </button>
         )}
-      </Menu>
+      </div>
 
       {/* List */}
       {!can(15) ? (
@@ -953,7 +841,7 @@ function ChatSidebar({
         </div>
       ) : (
         <div className="chat-sidebar-list">
-          {loading && (
+          {(loading || channelSwitching) && (
             <ul>
               {Array.from({ length: 13 }).map((_, i) => (
                 <li key={`skel-${i}`} className="chat-sidebar-skeleton">
@@ -976,16 +864,16 @@ function ChatSidebar({
             </ul>
           )}
 
-          {showEmptyAfterDelay && !showArchived && (
+          {showEmptyAfterDelay && !showArchived && !channelSwitching && (
             <div className="chat-empty">No conversations found</div>
           )}
 
-          {showEmptyAfterDelay && showArchived && archivedConversations.length === 0 && (
+          {showEmptyAfterDelay && showArchived && archivedConversations.length === 0 && !channelSwitching && (
             <div className="chat-empty">No archived conversations</div>
           )}
 
-          {/* WhatsApp-style Archived entry (only in main view, not searching) */}
-          {!showArchived && !searchTerm.trim() && archivedConversations.length > 0 && (
+          {/* WhatsApp-style Archived entry (only in main view, not searching, not switching) */}
+          {!showArchived && !searchTerm.trim() && archivedConversations.length > 0 && !channelSwitching && (
             <div
               className="archived-entry"
               onClick={() => setShowArchived(true)}
@@ -1018,6 +906,7 @@ function ChatSidebar({
             </div>
           )}
 
+          {!channelSwitching && (
           <ul
             ref={listRef}
             onScroll={() => {
@@ -1181,6 +1070,7 @@ function ChatSidebar({
               </li>
             )}
           </ul>
+          )}
         </div>
       )}
 
@@ -1330,13 +1220,20 @@ function ChatSidebar({
                     <ListItemText
                       primary={
                         <span style={{ fontWeight: 600, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: 6 }}>
-                          {ch.WhatsappName || 'WhatsApp Channel'}
+                          {getChannelDisplayName(ch)}
                           {isSelected && <Check size={16} style={{ color: 'var(--chat-primary, #25d366)' }} />}
                         </span>
                       }
                       secondary={
-                        <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                          {ch.MobileNumber || ch.WabaPhoneNo}
+                        <span style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                          {getChannelSubName(ch) && (
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', opacity: 0.85, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {getChannelSubName(ch)}
+                            </span>
+                          )}
+                          <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                            {getChannelMobile(ch)}
+                          </span>
                         </span>
                       }
                     />

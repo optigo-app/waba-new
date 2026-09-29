@@ -2,22 +2,14 @@
 
 import { useState, useRef, memo, useEffect, useMemo } from 'react';
 import { Avatar, Skeleton, Tooltip, Box, Typography } from '@mui/material';
-import { MoreVertical, ChevronDown, Paperclip, Download, AlertCircle, Clock3, Check, CheckCheck, Play, Pause } from 'lucide-react';
+import { MoreVertical, ChevronDown, Paperclip, Download, AlertCircle, Clock3, Check, CheckCheck, Play, Pause, FileText, User, Phone, MessageCircle, MapPin } from 'lucide-react';
 import DynamicTemplate from './DynamicTemplate';
 import QuickReactionMenu from './QuickReactionMenu';
-import { Emoji } from 'emoji-picker-react';
-import { parseTemplateData } from './utils/chatUtils';
+import CustomerModal from './ui/CustomerModal';
+import { parseTemplateData, parseInteractiveData, parseContactData, parseLocationData, getInitials } from './utils/chatUtils';
 import WhatsAppText from './WhatsAppText';
 import { extractTimeFromISO } from './utils/dateUtils';
 import { getStaticUrl } from '../../utils/globalFunc';
-
-const charToUnified = (char) => {
-  if (!char) return null;
-  return Array.from(char)
-    .map((c) => c.codePointAt(0).toString(16))
-    .filter((hex) => hex !== 'fe0f')
-    .join('-');
-};
 
 const imageDimsCache = new Map();
 const MAX_DIMS_CACHE_SIZE = 200;
@@ -170,9 +162,17 @@ const MessageBubble = memo(function MessageBubble({
     observer.observe(el);
     return () => observer.disconnect();
   }, [mediaIdToFetch, requestMediaFetch]);
-  const replyData = msg?.ContextType === 2 ? msg?.ReplyContext || msg?.replyTo : null;
+  const replyData = msg?.ContextType === 2
+    ? msg?.ReplyContext || msg?.replyTo ||
+      (msg?.ReplyContextMsg
+        ? { text: msg.ReplyContextMsg, sender: (msg?.Direction ?? msg?.direction) === 0 ? 'You' : 'Customer' }
+        : null)
+    : null;
   const isPickerOpen = reactionPickerMessageId === messageId;
   const isBlinking = blinkMessageId === messageId;
+  const interactiveData = useMemo(() => parseInteractiveData(msg), [msg]);
+  const contactData = useMemo(() => parseContactData(msg), [msg]);
+  const locationData = useMemo(() => parseLocationData(msg), [msg]);
 
   const mentionLabel = (() => {
     const text = msg?.content || msg?.message || msg?.text || msg?.Message || '';
@@ -181,6 +181,25 @@ const MessageBubble = memo(function MessageBubble({
     if (lower.includes('@all')) return '@all';
     return null;
   })();
+
+  // Merge API ReactionEmojis + real-time local reactions into one list
+  const reactionList = (() => {
+    const raw = msg?.ReactionEmojis || msg?.reactionEmojis;
+    let api = [];
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) api = parsed;
+      } catch { /* ignore */ }
+    }
+    const realtimeEmoji = messageReactions?.[messageId];
+    const merged = [...api];
+    if (realtimeEmoji && !merged.some((r) => (r?.Reaction || r?.reaction) === realtimeEmoji)) {
+      merged.push({ Reaction: realtimeEmoji, Direction: 1 });
+    }
+    return merged;
+  })();
+  const hasReaction = reactionList.some((r) => r?.Reaction || r?.reaction);
 
   const handleMouseEnter = () => {
     setHovered(true);
@@ -193,7 +212,7 @@ const MessageBubble = memo(function MessageBubble({
   return (
     <div
       ref={messageRef}
-      className={`message-item ${isOutgoing ? 'user-message' : 'customer-message'} ${isBlinking ? 'blink-message' : ''} ${messageReactions[messageId] ? 'has-reaction' : ''}`}
+      className={`message-item ${isOutgoing ? 'user-message' : 'customer-message'} ${isBlinking ? 'blink-message' : ''} ${hasReaction ? 'has-reaction' : ''}`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       data-message-id={messageId}
@@ -254,28 +273,66 @@ const MessageBubble = memo(function MessageBubble({
               style={{ cursor: msg?.ContextId ? 'pointer' : 'default', opacity: msg?.ContextId ? 1 : 0.7 }}
               onClick={() => msg?.ContextId && scrollToMessage?.(msg.ContextId)}
             >
-              <div className="reply-indicator-line" />
               <div className="reply-indicator-content">
                 <div className="reply-indicator-sender">
                   {replyData.sender || replyData.Sender || 'Customer'}
                 </div>
                 <div className="reply-indicator-text">
-                  {(replyData.text || replyData.Text || replyData.ReplyContextMsg || '').length > 50
-                    ? `${(replyData.text || replyData.Text || replyData.ReplyContextMsg || '').substring(0, 50)}...`
-                    : (replyData.text || replyData.Text || replyData.ReplyContextMsg || '')}
+                  {replyData.text || replyData.Text || replyData.ReplyContextMsg || ''}
                 </div>
               </div>
             </div>
           )}
 
+          {/* Interactive message header (image / video / document / text) */}
+          {interactiveData.isInteractive && interactiveData.headerType && (
+            <div className="interactive-header">
+              {interactiveData.headerType === 'image' && interactiveData.headerUrl && (
+                <img
+                  src={interactiveData.headerUrl}
+                  alt=""
+                  className="interactive-header-img"
+                  onClick={() =>
+                    setMediaViewer({
+                      open: true,
+                      src: interactiveData.headerUrl,
+                      filename: 'image',
+                      type: 'image',
+                    })
+                  }
+                />
+              )}
+              {interactiveData.headerType === 'video' && interactiveData.headerUrl && (
+                <video src={interactiveData.headerUrl} controls className="interactive-header-video" />
+              )}
+              {interactiveData.headerType === 'document' && interactiveData.headerUrl && (
+                <a
+                  href={interactiveData.headerUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="interactive-header-doc"
+                >
+                  <FileText size={18} />
+                  <span>View Document</span>
+                </a>
+              )}
+              {interactiveData.headerType === 'text' && interactiveData.headerText && (
+                <div className="interactive-header-text">
+                  <WhatsAppText text={interactiveData.headerText} onLinkClick={onExternalLinkClick} />
+                </div>
+              )}
+            </div>
+          )}
+
           {(() => {
-            if (msgType === 'template') return null;
+            if (msgType === 'template' || contactData.isContact || locationData.isLocation) return null;
 
             const isMediaMsg = msgType?.toLowerCase() === 'image' || msgType?.toLowerCase() === 'video' || msgType?.toLowerCase() === 'document' || isAudio || msg?.documentUrl || msg?.DocumentUrl || msg?.fileName || msg?.MediaUrl;
             const captionText = isMediaMsg
               ? (msg?.Message || msg?.message || msg?.text || '')
-              : (msg?.content || msg?.message || msg?.text || msg?.Message || '');
-            const isJustFilename = isMediaMsg && captionText === (msg?.fileName || msg?.content || '');
+              : (interactiveData.replyTitle || msg?.content || msg?.message || msg?.text || msg?.Message || '');
+            const fileNameText = msg?.fileName || msg?.MediaName || msg?.mediaName || '';
+            const isJustFilename = isMediaMsg && !!fileNameText && captionText === fileNameText;
             const hasCaption = !!captionText && !isJustFilename;
 
             // Pre-compute dims from stored message fields so skeleton matches real media size
@@ -292,6 +349,9 @@ const MessageBubble = memo(function MessageBubble({
               : videoDims;
 
             const captionMediaWidth = (() => {
+              if (msgType?.toLowerCase() === 'sticker') {
+                return 160;
+              }
               if (msgType?.toLowerCase() === 'image' || msg?.imageUrl) {
                 return preImageDims ? preImageDims.width : 260;
               }
@@ -307,6 +367,9 @@ const MessageBubble = memo(function MessageBubble({
             const mediaStyle = hasCaption
               ? { width: captionMediaWidth, minHeight: 'auto' }
               : (() => {
+                if (msgType?.toLowerCase() === 'sticker') {
+                  return { width: 160, minHeight: 'auto' };
+                }
                 if (msgType?.toLowerCase() === 'image' || msg?.imageUrl) {
                   return preImageDims ? { width: preImageDims.width, minHeight: 'auto' } : { width: 260, minHeight: 'auto' };
                 }
@@ -371,6 +434,29 @@ const MessageBubble = memo(function MessageBubble({
                       />
                     </div>
                   </>
+                ) : msgType?.toLowerCase() === 'sticker' ? (
+                  <div className="message-sticker" style={{ position: 'relative', minHeight: showSkeleton ? 160 : 'auto' }}>
+                    {showSkeleton && (
+                      <Skeleton
+                        variant="rectangular"
+                        width="100%"
+                        height="100%"
+                        sx={{ borderRadius: '8px', position: 'absolute', inset: 0, zIndex: 1 }}
+                      />
+                    )}
+                    <img
+                      src={imageSrc}
+                      alt="sticker"
+                      style={{ width: '100%', height: 'auto', display: 'block', opacity: (isMediaLoaded || hasDirectFileUrl) ? 1 : 0, transition: 'opacity 0.3s ease', position: 'relative', zIndex: 2 }}
+                      onLoad={() => setLoadedMedia((prev) => ({ ...prev, [messageId]: true }))}
+                      onError={() => {
+                        // Keep skeleton while src is still a raw media ID
+                        if (imageSrc && /^(https?:|blob:|data:)/i.test(imageSrc)) {
+                          setLoadedMedia((prev) => ({ ...prev, [messageId]: true }));
+                        }
+                      }}
+                    />
+                  </div>
                 ) : msgType?.toLowerCase() === 'video' || (msg?.mediaUrl && msg?.mediaUrl.match(/\.(mp4|webm|ogg|mov)$/i)) || (msg?.MediaUrl && msg?.MediaUrl.match(/\.(mp4|webm|ogg|mov)$/i)) ? (
                   <div
                     className="message-video-wrapper"
@@ -513,10 +599,45 @@ const MessageBubble = memo(function MessageBubble({
             );
           })()}
 
+          {/* Interactive buttons / list CTA */}
+          {interactiveData.isInteractive && (interactiveData.buttons.length > 0 || interactiveData.listButtonText) && (
+            <div className="interactive-buttons">
+              {interactiveData.buttons.map((b, i) => (
+                <button key={b.id || i} type="button" className="interactive-btn">
+                  {b.title}
+                </button>
+              ))}
+              {interactiveData.listButtonText && (
+                <button type="button" className="interactive-btn">
+                  {interactiveData.listButtonText}
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Contact card — WhatsApp style */}
+          {contactData.isContact && (
+            <ContactCard contacts={contactData.contacts} />
+          )}
+
+          {/* Location card — WhatsApp style map preview */}
+          {locationData.isLocation && (
+            <LocationCard location={locationData} onExternalLinkClick={onExternalLinkClick} />
+          )}
+
           {/* Template card */}
           {(() => {
+            if (msgType !== 'template') return null;
             const tData = parseTemplateData(msg);
-            if (!tData.isTemplate) return null;
+            if (!tData.isTemplate) {
+              return (
+                <div className="whatsapp-template">
+                  <div className="template-body">
+                    {msg?.Message || msg?.message || 'Template message'}
+                  </div>
+                </div>
+              );
+            }
             return (
               <DynamicTemplate
                 templateName={tData.templateName}
@@ -539,46 +660,23 @@ const MessageBubble = memo(function MessageBubble({
             <MessageStatusIcon msg={msg} />
           </div>
 
-          {/* Reaction display — merge API ReactionEmojis + real-time messageReactions */}
-          {(() => {
-            const apiReactions = (() => {
-              const raw = msg?.ReactionEmojis || msg?.reactionEmojis;
-              if (!raw) return [];
-              try {
-                const parsed = JSON.parse(raw);
-                return Array.isArray(parsed) ? parsed : [];
-              } catch {
-                return [];
-              }
-            })();
-
-            const realtimeEmoji = messageReactions?.[messageId];
-            const allReactions = [...apiReactions];
-            if (realtimeEmoji) {
-              // Overwrite or append real-time reaction from current user (Direction: 1)
-              const existing = allReactions.find((r) => r.Reaction === realtimeEmoji);
-              if (!existing) {
-                allReactions.push({ Reaction: realtimeEmoji, Direction: 1 });
-              }
-            }
-
-            if (allReactions.length === 0) return null;
-
-            return (
-              <div className="message-reaction-badge">
-                {allReactions.map((r, idx) => {
-                  const emoji = r.Reaction || r.reaction;
-                  if (!emoji) return null;
-                  const unified = charToUnified(emoji);
-                  return (
-                    <span key={`${emoji}-${idx}`} className="message-reaction-emoji">
-                      {unified ? <Emoji unified={unified} size={18} emojiStyle="apple" /> : emoji}
-                    </span>
-                  );
-                })}
-              </div>
-            );
-          })()}
+          {/* Reaction badge — API ReactionEmojis merged with real-time reactions */}
+          {hasReaction && (
+            <div className="message-reaction-badge">
+              {reactionList.map((r, idx) => {
+                const emoji = r.Reaction || r.reaction;
+                if (!emoji) return null;
+                /* Render the raw emoji glyph — dataset/CDN lookups (e.g. ❤️)
+                   silently render nothing, so the native char is the safe
+                   fallback that always displays */
+                return (
+                  <span key={`${emoji}-${idx}`} className="message-reaction-emoji">
+                    {emoji}
+                  </span>
+                );
+              })}
+            </div>
+          )}
         </div>
         {msg?.SenderInfo && (
           <div className="message-sender-info-label">
@@ -752,6 +850,133 @@ function BrokenMediaCard({ msg, setMediaViewer, mediaCache }) {
   );
 }
 
+/* Location Card — embedded map preview, click opens Google Maps */
+function LocationCard({ location, onExternalLinkClick }) {
+  const { latitude, longitude, name, address, hasCoords } = location;
+  const mapsUrl = hasCoords ? `https://www.google.com/maps?q=${latitude},${longitude}` : null;
+  const embedUrl = hasCoords ? `https://maps.google.com/maps?q=${latitude},${longitude}&z=16&output=embed` : null;
+
+  const openMaps = () => {
+    if (!mapsUrl) return;
+    if (onExternalLinkClick) onExternalLinkClick(mapsUrl);
+    else window.open(mapsUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  return (
+    <div
+      className={`location-card${mapsUrl ? ' clickable' : ''}`}
+      onClick={openMaps}
+      role={mapsUrl ? 'link' : undefined}
+      title={mapsUrl ? 'Open in Google Maps' : undefined}
+    >
+      <div className="location-card-map">
+        {embedUrl ? (
+          <iframe
+            src={embedUrl}
+            title="Shared location map"
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            tabIndex={-1}
+          />
+        ) : (
+          <div className="location-card-map-fallback">
+            <MapPin size={42} fill="currentColor" />
+          </div>
+        )}
+      </div>
+      {(name || address || !hasCoords) && (
+        <div className="location-card-info">
+          <span className="location-card-name">{name || 'Location'}</span>
+          {address && <span className="location-card-address">{address}</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* Contact Card — WhatsApp style: 1 contact row in bubble, "View all" opens dialog */
+function ContactCard({ contacts }) {
+  const [showAll, setShowAll] = useState(false);
+  if (!contacts?.length) return null;
+
+  const firstContact = contacts[0];
+  const firstPhone = String(
+    contacts.flatMap((c) => c.phones || []).find((p) => p?.trim?.()) || ''
+  );
+  const dial = firstPhone.replace(/[^\d+]/g, '');
+
+  const renderRow = (c, i, showCallBtn = false) => {
+    const phone = String(c.phones?.[0] || '');
+    const contactDial = phone.replace(/[^\d+]/g, '');
+    return (
+      <div key={i} className="contact-card-row">
+        <div className="contact-card-avatar">
+          {c.name ? (
+            <span className="contact-card-initials">{getInitials(c.name)}</span>
+          ) : (
+            <User size={24} fill="currentColor" />
+          )}
+        </div>
+        <div className="contact-card-info">
+          {c.name && <span className="contact-card-name">{c.name}</span>}
+          {c.phones.map((p, j) => (
+            <span key={j} className="contact-card-phone">{p}</span>
+          ))}
+        </div>
+        {showCallBtn && contactDial && (
+          <button
+            type="button"
+            className="contact-card-call-btn"
+            onClick={() => (window.location.href = `tel:${contactDial}`)}
+            title={`Call ${phone}`}
+          >
+            <Phone size={18} />
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <>
+      <div className="contact-card">
+        {renderRow(firstContact, 0)}
+        {contacts.length > 1 && (
+          <button
+            type="button"
+            className="contact-card-view-all"
+            onClick={() => setShowAll(true)}
+          >
+            View all {contacts.length} contacts
+          </button>
+        )}
+        {dial && (
+          <div className="contact-card-actions">
+            <button
+              type="button"
+              className="contact-card-action"
+              onClick={() => (window.location.href = `tel:${dial}`)}
+            >
+              <Phone size={16} />
+              Call
+            </button>
+          </div>
+        )}
+      </div>
+      <CustomerModal
+        open={showAll}
+        onClose={() => setShowAll(false)}
+        title={`${contacts.length} contacts`}
+        maxWidth="xs"
+      >
+        <div className="contact-card-dialog-list">
+          {contacts.map((c, i) => renderRow(c, i, true))}
+        </div>
+      </CustomerModal>
+    </>
+  );
+}
+
 /* Upload progress overlay */
 function UploadProgressOverlay({ percent, size = 48 }) {
   const safe = Math.max(0, Math.min(100, Number(percent) || 0));
@@ -817,7 +1042,7 @@ function MessageStatusIcon({ msg }) {
         placement="top"
       >
         <span className="message-status" style={{ color: 'var(--error-main)', display: 'inline-flex', alignItems: 'center' }}>
-          <AlertCircle size={14} />
+          <AlertCircle size={16} strokeWidth={2.2} />
         </span>
       </Tooltip>
     );
@@ -826,15 +1051,15 @@ function MessageStatusIcon({ msg }) {
   if (status === 0 || msg?.isUploading || msg?.status === 'pending' || msg?.Status === 'pending') {
     return (
       <span className="message-status" style={{ color: 'var(--text-tertiary)', display: 'inline-flex', alignItems: 'center' }}>
-        <Clock3 size={15} />
+        <Clock3 size={17} strokeWidth={2.2} />
       </span>
     );
   }
 
   if (status === 3) {
     return (
-      <span className="message-status" style={{ color: 'var(--chat-primary, #25d366)', display: 'inline-flex', alignItems: 'center' }}>
-        <CheckCheck size={15} />
+      <span className="message-status" style={{ color: 'var(--wa-read-tick, #53bdeb)', display: 'inline-flex', alignItems: 'center' }}>
+        <CheckCheck size={17} strokeWidth={2.2} />
       </span>
     );
   }
@@ -842,7 +1067,7 @@ function MessageStatusIcon({ msg }) {
   if (status === 2) {
     return (
       <span className="message-status" style={{ color: 'var(--text-tertiary)', display: 'inline-flex', alignItems: 'center' }}>
-        <CheckCheck size={15} />
+        <CheckCheck size={17} strokeWidth={2.2} />
       </span>
     );
   }
@@ -850,7 +1075,7 @@ function MessageStatusIcon({ msg }) {
   if (status === 1) {
     return (
       <span className="message-status" style={{ color: 'var(--text-tertiary)', display: 'inline-flex', alignItems: 'center' }}>
-        <Check size={15} />
+        <Check size={17} strokeWidth={2.2} />
       </span>
     );
   }

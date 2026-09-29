@@ -1,16 +1,33 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Box, Typography, Button, Paper } from '@mui/material';
+import { Box, Typography, Button, Paper, Tooltip } from '@mui/material';
 import { FileText, Wallet, Building2, Star } from 'lucide-react';
 import { Whatsapp } from '../../assests/svg';
+
+// WCAG AA compliant metadata color — darker than --text-tertiary
+const META_COLOR = 'var(--text-secondary)';
+const META_LABEL_COLOR = '#475569';
+
+// Returns the URL only when it's a usable http(s) image URL — '' for junk values
+const getValidImageUrl = (url) => {
+    if (!url || typeof url !== 'string') return '';
+    const trimmed = url.trim();
+    if (!trimmed || trimmed === '-' || /^(null|undefined|n\/a)$/i.test(trimmed)) return '';
+    try {
+        const parsed = new URL(trimmed);
+        return (parsed.protocol === 'http:' || parsed.protocol === 'https:') ? trimmed : '';
+    } catch {
+        return '';
+    }
+};
 
 const ChannelCard = ({ channel, onWalletOpen, onTemplatesClick, onBusinessProfileClick }) => {
     const progressPercent = channel.progressPercent || 0;
     const [activeAction, setActiveAction] = useState('templates');
-    const [hoveredAction, setHoveredAction] = useState(null);
-    const [imgError, setImgError] = useState(false);
-    const hasProfilePic = Boolean(channel.profilePictureUrl) && !imgError;
+    const [failedUrl, setFailedUrl] = useState('');
+    const profilePicUrl = getValidImageUrl(channel.profilePictureUrl);
+    const hasProfilePic = Boolean(profilePicUrl) && failedUrl !== profilePicUrl;
 
     return (
         <Paper
@@ -25,43 +42,14 @@ const ChannelCard = ({ channel, onWalletOpen, onTemplatesClick, onBusinessProfil
                 gap: '1.25rem',
                 overflow: 'hidden',
                 position: 'relative',
-                transition: 'box-shadow 0.2s ease, border-color 0.2s ease',
-                ...(channel.isDefault ? {
-                    '&::before': {
-                        content: '""',
-                        position: 'absolute',
-                        top: '-80px',
-                        right: '-80px',
-                        width: '200px',
-                        height: '200px',
-                        borderRadius: '50%',
-                        background: 'radial-gradient(circle, rgba(29,170,97,0.15) 0%, rgba(29,170,97,0.06) 40%, transparent 70%)',
-                        pointerEvents: 'none',
-                        zIndex: 0,
-                        transition: 'background 0.2s ease',
-                    },
-                    'html[data-theme="dark"] &::before': {
-                        background: 'radial-gradient(circle, rgba(29,170,97,0.20) 0%, rgba(29,170,97,0.09) 40%, transparent 70%)',
-                    },
-                    '&:hover': {
-                        boxShadow: 'var(--box-shadow)',
-                        borderColor: 'var(--primary-light)',
-                        '&::before': {
-                            background: 'radial-gradient(circle, rgba(29,170,97,0.22) 0%, rgba(29,170,97,0.10) 40%, transparent 70%)',
-                        },
-                    },
-                    'html[data-theme="dark"] &:hover::before': {
-                        background: 'radial-gradient(circle, rgba(29,170,97,0.28) 0%, rgba(29,170,97,0.13) 40%, transparent 70%)',
-                    },
-                    '& > *': {
-                        position: 'relative',
-                        zIndex: 1,
-                    },
-                } : {
-                    '&:hover': {
-                        boxShadow: 'var(--box-shadow)',
-                        borderColor: 'var(--primary-light)',
-                    },
+                transition: 'box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease',
+                '&:hover': {
+                    boxShadow: 'var(--box-shadow)',
+                    borderColor: 'var(--primary-light)',
+                },
+                ...(channel.isDefault && {
+                    background: 'color-mix(in srgb, var(--primary-light-bg) 40%, var(--bg-paper))',
+                    borderColor: 'color-mix(in srgb, var(--primary-main) 20%, transparent)',
                 }),
             }}
         >
@@ -86,10 +74,10 @@ const ChannelCard = ({ channel, onWalletOpen, onTemplatesClick, onBusinessProfil
                     >
                         {hasProfilePic ? (
                             <img
-                                src={channel.profilePictureUrl}
-                                alt={channel.whatsappName || channel.companyCode}
+                                src={profilePicUrl}
+                                alt={channel.channelTitle || channel.whatsappName || channel.companyCode}
                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                onError={() => setImgError(true)}
+                                onError={() => setFailedUrl(profilePicUrl)}
                             />
                         ) : (
                             <Whatsapp width={28} height={28} fill="var(--primary-main)" />
@@ -106,7 +94,7 @@ const ChannelCard = ({ channel, onWalletOpen, onTemplatesClick, onBusinessProfil
                                     fontFamily: 'Poppins, sans-serif',
                                 }}
                             >
-                                {channel.whatsappName || channel.companyCode}
+                                {channel.channelTitle || channel.whatsappName || channel.companyCode}
                             </Typography>
                             {channel.isDefault && (
                                 <Box
@@ -134,25 +122,28 @@ const ChannelCard = ({ channel, onWalletOpen, onTemplatesClick, onBusinessProfil
                                 </Box>
                             )}
                         </Box>
+                        {channel.channelTitle && channel.whatsappName && (
+                            <Typography
+                                sx={{
+                                    fontSize: '0.7rem',
+                                    color: META_COLOR,
+                                    fontWeight: 500,
+                                    fontFamily: 'Poppins, sans-serif',
+                                    lineHeight: 1.2,
+                                }}
+                            >
+                                {channel.whatsappName}
+                            </Typography>
+                        )}
                         <Typography
                             sx={{
                                 fontSize: '0.75rem',
-                                color: 'var(--text-tertiary)',
+                                color: META_COLOR,
                                 fontWeight: 500,
                                 fontFamily: 'Poppins, sans-serif',
                             }}
                         >
                             Mobile: {channel.mobileNumber}
-                        </Typography>
-                        <Typography
-                            sx={{
-                                fontSize: '0.75rem',
-                                color: 'var(--text-tertiary)',
-                                fontWeight: 500,
-                                fontFamily: 'Poppins, sans-serif',
-                            }}
-                        >
-                            WABA ID: {channel.wabaId}
                         </Typography>
                     </Box>
                 </Box>
@@ -160,7 +151,7 @@ const ChannelCard = ({ channel, onWalletOpen, onTemplatesClick, onBusinessProfil
                     <Typography
                         sx={{
                             fontSize: '0.68rem',
-                            color: 'var(--text-tertiary)',
+                            color: META_COLOR,
                             fontWeight: 600,
                             textTransform: 'uppercase',
                             letterSpacing: '0.05em',
@@ -199,7 +190,7 @@ const ChannelCard = ({ channel, onWalletOpen, onTemplatesClick, onBusinessProfil
                     <Typography
                         sx={{
                             fontSize: '0.72rem',
-                            color: 'var(--text-tertiary)',
+                            color: META_COLOR,
                             fontWeight: 500,
                             fontFamily: 'Poppins, sans-serif',
                         }}
@@ -209,7 +200,7 @@ const ChannelCard = ({ channel, onWalletOpen, onTemplatesClick, onBusinessProfil
                     <Typography
                         sx={{
                             fontSize: '0.72rem',
-                            color: 'var(--text-tertiary)',
+                            color: META_COLOR,
                             fontWeight: 600,
                             fontFamily: 'Poppins, sans-serif',
                         }}
@@ -222,7 +213,7 @@ const ChannelCard = ({ channel, onWalletOpen, onTemplatesClick, onBusinessProfil
                         width: '100%',
                         height: '8px',
                         borderRadius: '99px',
-                        backgroundColor: 'var(--bg-light)',
+                        backgroundColor: 'color-mix(in srgb, var(--text-secondary) 18%, transparent)',
                         overflow: 'hidden',
                     }}
                 >
@@ -240,7 +231,7 @@ const ChannelCard = ({ channel, onWalletOpen, onTemplatesClick, onBusinessProfil
                     <Typography
                         sx={{
                             fontSize: '0.72rem',
-                            color: 'var(--text-tertiary)',
+                            color: META_COLOR,
                             fontWeight: 500,
                             fontFamily: 'Poppins, sans-serif',
                         }}
@@ -250,7 +241,7 @@ const ChannelCard = ({ channel, onWalletOpen, onTemplatesClick, onBusinessProfil
                     <Typography
                         sx={{
                             fontSize: '0.72rem',
-                            color: 'var(--text-tertiary)',
+                            color: META_COLOR,
                             fontWeight: 500,
                             fontFamily: 'Poppins, sans-serif',
                         }}
@@ -261,105 +252,111 @@ const ChannelCard = ({ channel, onWalletOpen, onTemplatesClick, onBusinessProfil
             </Box>
 
             {/* Actions */}
-            <Box 
-                sx={{ 
-                    display: 'flex', 
-                    gap: '0.5rem', 
-                    width: '100%', 
-                    pt: '0.25rem', 
+            <Box
+                sx={{
+                    display: 'flex',
+                    gap: '0.5rem',
+                    width: '100%',
+                    pt: '0.25rem',
                     alignItems: 'center',
                 }}
-                onMouseLeave={() => setHoveredAction(null)}
             >
-                {[
-                    { 
-                        key: 'templates', 
-                        label: 'Templates', 
-                        icon: <FileText size={16} />, 
-                        isPrimary: true,
-                        onClick: () => { setActiveAction('templates'); onTemplatesClick(); },
-                    },
-                    { 
-                        key: 'businessProfile', 
-                        label: 'Business Profile', 
-                        icon: <Building2 size={16} />, 
-                        isPrimary: false,
-                        onClick: () => { setActiveAction('businessProfile'); onBusinessProfileClick(); },
-                    },
-                    { 
-                        key: 'wallet', 
-                        label: 'Wallet Log', 
-                        icon: <Wallet size={16} />, 
-                        isPrimary: false,
-                        onClick: () => { setActiveAction('wallet'); onWalletOpen(); },
-                    },
-                ].map((action) => {
-                    const isExpanded = hoveredAction === action.key || activeAction === action.key;
-                    const isActive = activeAction === action.key;
-                    return (
-                        <Button
-                            key={action.key}
-                            variant="outlined"
-                            disableElevation
-                            onClick={action.onClick}
-                            onMouseEnter={() => setHoveredAction(action.key)}
-                            sx={{
-                                textTransform: 'none',
-                                borderRadius: '12px',
-                                fontFamily: 'Poppins, sans-serif',
-                                fontWeight: 600,
-                                fontSize: '0.8rem',
-                                height: '36px',
-                                py: 0,
-                                px: '10px',
-                                minWidth: '40px',
-                                flex: isExpanded ? '1 1 0%' : '0 0 40px',
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                background: isActive ? 'var(--primary-main)' : 'transparent',
-                                color: isActive ? 'var(--button-color)' : 'var(--text-primary)',
-                                borderColor: isActive ? 'var(--primary-main)' : 'var(--border-color)',
+                {/* Primary action — Templates (full width, prominent) */}
+                <Button
+                    variant="contained"
+                    disableElevation
+                    onClick={() => { setActiveAction('templates'); onTemplatesClick(); }}
+                    startIcon={<FileText size={16} />}
+                    sx={{
+                        textTransform: 'none',
+                        borderRadius: '12px',
+                        fontFamily: 'Poppins, sans-serif',
+                        fontWeight: 600,
+                        fontSize: '0.8rem',
+                        height: '40px',
+                        py: 0,
+                        px: '14px',
+                        minWidth: '40px',
+                        flex: '1 1 auto',
+                        whiteSpace: 'nowrap',
+                        background: 'var(--primary-main)',
+                        color: 'var(--button-color)',
+                        boxShadow: 'none',
+                        '&:hover': {
+                            background: 'var(--primary-main)',
+                            boxShadow: '0 2px 8px rgba(29, 170, 97, 0.25)',
+                        },
+                        '& .MuiButton-startIcon': {
+                            margin: 0,
+                            marginRight: '6px',
+                        },
+                    }}
+                >
+                    Templates
+                </Button>
+
+                {/* Secondary icon actions — 40x40 touch targets with tooltips */}
+                <Tooltip title="Business Profile" arrow>
+                    <Button
+                        variant="outlined"
+                        disableElevation
+                        onClick={() => { setActiveAction('businessProfile'); onBusinessProfileClick(); }}
+                        sx={{
+                            textTransform: 'none',
+                            borderRadius: '12px',
+                            fontFamily: 'Poppins, sans-serif',
+                            fontWeight: 600,
+                            minWidth: '40px',
+                            width: '40px',
+                            height: '40px',
+                            p: 0,
+                            flex: '0 0 40px',
+                            background: activeAction === 'businessProfile' ? 'var(--primary-light-bg)' : 'transparent',
+                            color: activeAction === 'businessProfile' ? 'var(--primary-main)' : 'var(--text-secondary)',
+                            borderColor: 'var(--border-color)',
+                            boxShadow: 'none',
+                            '&:hover': {
+                                background: 'var(--primary-light-bg)',
+                                borderColor: 'var(--primary-main)',
+                                color: 'var(--primary-main)',
                                 boxShadow: 'none',
-                                transition: 'flex 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s ease, color 0.2s ease, border-color 0.2s ease',
-                                '&:hover': {
-                                    background: isActive ? 'var(--primary-main)' : 'var(--primary-light-bg)',
-                                    borderColor: 'var(--primary-main)',
-                                    color: isActive ? 'var(--button-color)' : 'var(--primary-main)',
-                                    boxShadow: 'none',
-                                },
-                                '& .MuiButton-startIcon': {
-                                    margin: 0,
-                                    marginRight: 0,
-                                    transition: 'margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                },
-                            }}
-                        >
-                            <Box
-                                component="span"
-                                sx={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    overflow: 'hidden',
-                                }}
-                            >
-                                {action.icon}
-                                <Box
-                                    component="span"
-                                    sx={{
-                                        maxWidth: isExpanded ? '200px' : 0,
-                                        opacity: isExpanded ? 1 : 0,
-                                        marginLeft: isExpanded ? '8px' : 0,
-                                        overflow: 'hidden',
-                                        whiteSpace: 'nowrap',
-                                        transition: 'max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease 0.05s, margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                    }}
-                                >
-                                    {action.label}
-                                </Box>
-                            </Box>
-                        </Button>
-                    );
-                })}
+                            },
+                        }}
+                    >
+                        <Building2 size={18} />
+                    </Button>
+                </Tooltip>
+
+                <Tooltip title="Wallet Log" arrow>
+                    <Button
+                        variant="outlined"
+                        disableElevation
+                        onClick={() => { setActiveAction('wallet'); onWalletOpen(); }}
+                        sx={{
+                            textTransform: 'none',
+                            borderRadius: '12px',
+                            fontFamily: 'Poppins, sans-serif',
+                            fontWeight: 600,
+                            minWidth: '40px',
+                            width: '40px',
+                            height: '40px',
+                            p: 0,
+                            flex: '0 0 40px',
+                            background: activeAction === 'wallet' ? 'var(--primary-light-bg)' : 'transparent',
+                            color: activeAction === 'wallet' ? 'var(--primary-main)' : 'var(--text-secondary)',
+                            borderColor: 'var(--border-color)',
+                            boxShadow: 'none',
+                            '&:hover': {
+                                background: 'var(--primary-light-bg)',
+                                borderColor: 'var(--primary-main)',
+                                color: 'var(--primary-main)',
+                                boxShadow: 'none',
+                            },
+                        }}
+                    >
+                        <Wallet size={18} />
+                    </Button>
+                </Tooltip>
             </Box>
         </Paper>
     );

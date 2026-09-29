@@ -6,13 +6,15 @@ import { callCommonApi } from "./CommonApi";
  * @param {number} campaignId - Campaign ID
  * @param {number} templateId - Template ID
  * @param {number} chatMsgStatus - Chat message status filter
+ * @param {number|string} accountId - Channel/Account ID
  */
-export const fetchTemplateMessages = async (userId, campaignId, templateId, chatMsgStatus) => {
+export const fetchTemplateMessages = async (userId, campaignId, templateId, chatMsgStatus, accountId) => {
     try {
         const p = {
             CampaignId: campaignId ?? '',
             TemplateId: templateId ?? '',
-            ChatMsgStatus: chatMsgStatus ?? ''
+            ChatMsgStatus: chatMsgStatus ?? '',
+            AccountId: accountId !== undefined && accountId !== '' ? Number(accountId) : ''
         };
 
         const body = {

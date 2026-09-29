@@ -7,6 +7,7 @@ import FilterBar from '../Common/FilterBar/FilterBar';
 import IconButton from '../Common/IconButton';
 import Pagination from '../Common/Pagination/Pagination';
 import CountdownButton from './CountdownButton';
+import CampaignDetailDrawer from './CampaignDetailDrawer';
 import { fetchCampaignLists } from '../../api/CampaignList';
 import { deleteCampaign } from '../../api/DeleteCampaign';
 import { getCampaignTimers, setCampaignTimers, setCampaignDraft } from '../../utils/storage';
@@ -21,6 +22,7 @@ import { formatDate } from '../../utils/globalFunc';
 import ConfirmationModal from '../ConfirmationModal/ConfirmationModal';
 import ConfettiCanvas from '../Dashboard/ConfettiCanvas';
 import { playCelebrationSound } from '../../utils/celebrationSound';
+import { playTick, playLaunchSound, unlockCountdownAudio } from '../../utils/sounds';
 import toast from 'react-hot-toast';
 
 // ── Stable helpers ────────────────────────────────────────────────────────────
@@ -74,7 +76,6 @@ const ActionMenuItem = ({ icon: Icon, label, description, color, onClick, disabl
       '&:hover': disabled ? {} : {
         backgroundColor: `rgba(${color}, 0.06)`,
         transform: 'translateX(3px)',
-        boxShadow: `inset 3px 0 0 rgb(${color})`,
         '& .menu-item-icon': {
           transform: 'scale(1.12) rotate(-3deg)',
           backgroundColor: `rgba(${color}, 0.22)`,
@@ -186,7 +187,7 @@ const buildColumns = (onAnalytics, onDuplicate, onDownload, onLaunch, onStop, on
       renderCell: (params) => {
         const isPending = Number(params.row.Status) === 1;
         return (
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', pl: 1 }}>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', pl: 1 }} onClick={(e) => e.stopPropagation()}>
             {(Number(params.row.Type) === 1 && Number(params.row.Status) === 1) && (
               (() => {
                 const timers = getActiveTimers();
@@ -245,7 +246,7 @@ const buildColumns = (onAnalytics, onDuplicate, onDownload, onLaunch, onStop, on
         return (
           <Typography
             variant="body2"
-            onClick={() => { if (!isPending) onAnalytics(p.row); }}
+            onClick={(e) => { e.stopPropagation(); if (!isPending) onAnalytics(p.row); }}
             sx={{
               fontWeight: 600,
               color: 'var(--title-color)',
@@ -373,6 +374,7 @@ const CampaignGrid = () => {
   const [cardRowsPerPage, setCardRowsPerPage] = useState(15);
   const [selectedChannel, setSelectedChannel] = useState('');
   const [contextMenu, setContextMenu] = useState(null); // { x, y, row } for right-click
+  const [detailCampaign, setDetailCampaign] = useState(null); // row for detail drawer
   const closeContextMenu = useCallback(() => setContextMenu(null), []);
   const { channels } = useWallet();
   const campaignsRef = useRef([]);
@@ -495,8 +497,11 @@ const CampaignGrid = () => {
           return next;
         });
         expiredIds.forEach((id) => {
+          playLaunchSound();
           triggerSendBulkRef.current(Number(id));
         });
+      } else if (Object.keys(timers).length > 0) {
+        playTick();
       }
     }, 1000);
 
@@ -615,11 +620,13 @@ const CampaignGrid = () => {
 
   const handleLaunchConfirm = () => {
     if (campaignToLaunch) {
+      unlockCountdownAudio();
+      playTick();
       setActiveTimers(prev => ({
         ...prev,
         [campaignToLaunch.Id]: Date.now() + 30000
       }));
-      toast.success(`Campaign "${campaignToLaunch.Name}" launched. You have 30 seconds to stop it.`);
+      toast.success(`Campaign "${campaignToLaunch.Name}" will fire in 30 seconds. Click the timer to stop it.`);
       setLaunchConfirmOpen(false);
       setCampaignToLaunch(null);
     }
@@ -920,6 +927,7 @@ const CampaignGrid = () => {
                 disableRowSelectionOnClick
                 disableColumnMenu
                 disableColumnFilter
+                onRowClick={(params) => setDetailCampaign(params.row)}
                 getRowClassName={getRowClassNameMemo}
                 slotProps={rowSlotProps}
                 sx={{
@@ -938,6 +946,7 @@ const CampaignGrid = () => {
                     alignItems: 'center',
                     padding: '0 12px',
                   },
+                  '& .MuiDataGrid-row': { cursor: 'pointer' },
                   '& .MuiDataGrid-cell:focus, & .MuiDataGrid-cell:focus-within': { outline: 'none' },
                   '& .MuiDataGrid-columnHeader:focus, & .MuiDataGrid-columnHeader:focus-within': { outline: 'none' },
                 }}
@@ -952,6 +961,7 @@ const CampaignGrid = () => {
                   <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={campaign.Id}>
                     <Card
                       className={activeTimers[String(campaign.Id)] ? styles.stoppingCard : ''}
+                      onClick={() => setDetailCampaign(campaign)}
                       sx={{
                         height: '100%',
                         borderRadius: '16px',
@@ -962,6 +972,7 @@ const CampaignGrid = () => {
                         borderColor: 'var(--border-color)',
                         boxShadow: 'var(--box-shadow)',
                         transition: 'box-shadow 0.3s ease, transform 0.25s ease',
+                        cursor: 'pointer',
                         '&:hover': {
                           boxShadow: 'var(--paper-shadow)',
                           transform: 'translateY(-3px)',
@@ -976,7 +987,7 @@ const CampaignGrid = () => {
                           const isPending = Number(campaign.Status) === 1;
                           return (
                             <Typography
-                              onClick={() => { if (!isPending) handlers.onAnalytics(campaign); }}
+                              onClick={(e) => { e.stopPropagation(); if (!isPending) handlers.onAnalytics(campaign); }}
                               sx={{
                                 fontFamily: 'Poppins, sans-serif',
                                 fontWeight: 600,
@@ -993,7 +1004,7 @@ const CampaignGrid = () => {
                             </Typography>
                           );
                         })()}
-                        <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                        <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }} onClick={(e) => e.stopPropagation()}>
                           {(() => {
                             const statusLabel = campaign.Status === 1 ? 'Pending' : campaign.Status === 2 ? 'Active' : campaign.Status === 3 ? 'Completed' : campaign.Status === 4 ? 'Failed' : String(campaign.Status || '');
                             const statusCfg = getStatusConfig(statusLabel);
@@ -1064,7 +1075,7 @@ const CampaignGrid = () => {
                         {formatDate(campaign.EntryDate) || '—'}
                       </Typography>
 
-                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }} onClick={(e) => e.stopPropagation()}>
                         {(() => {
                           const timers = activeTimers;
                           const hasActiveTimer = Object.keys(timers).length > 0;
@@ -1162,6 +1173,17 @@ const CampaignGrid = () => {
         anchorPos={contextMenu ? { x: contextMenu.x, y: contextMenu.y } : { x: 0, y: 0 }}
         open={Boolean(contextMenu)}
         onClose={closeContextMenu}
+      />
+
+      {/* Campaign detail drawer */}
+      <CampaignDetailDrawer
+        open={Boolean(detailCampaign)}
+        onClose={() => setDetailCampaign(null)}
+        campaign={detailCampaign}
+        onReport={() => { const row = detailCampaign; setDetailCampaign(null); handlers.onAnalytics(row); }}
+        onClone={() => { const row = detailCampaign; setDetailCampaign(null); handlers.onDuplicate(row); }}
+        onEdit={() => { const row = detailCampaign; setDetailCampaign(null); handlers.onEdit(row); }}
+        onDelete={() => { const row = detailCampaign; setDetailCampaign(null); handlers.onDelete(row); }}
       />
     </div>
   );

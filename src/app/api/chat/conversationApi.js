@@ -5,10 +5,8 @@ import { MESSAGEAPIURL, MESSAGEAPIURLBULK, MEDIARETRIEVED, READAPI, TEMPLATE_MD_
 import { getUserData } from '../../utils/storage';
 import { useChatStore } from '../../store/chatStore';
 
-/* Read the selected channel ID from the store so every API auto-includes AccountId */
 const getAccountId = () => useChatStore.getState().selectedChannelId || '';
 
-/* Read the selected channel's WhatsApp phone number from the store (multi-channel support) */
 const getChannelPhoneNo = () => {
   const ch = useChatStore.getState().selectedChannel;
   return ch?.WabaPhoneNo || ch?.MobileNumber || '';
@@ -46,12 +44,15 @@ export const fetchChannels = async (userId, signal, page = 1, pageSize = 100, se
   }
 };
 
-export const fetchConversationLists = async (page = 1, pageSize = 20, userId, search = '') => {
+export const fetchConversationLists = async (page = 1, pageSize = 20, userId, search = '', tagId = '') => {
   try {
     const payload = { Page: page, PageSize: pageSize, SearchTerm: search };
     const accountId = getAccountId();
     if (accountId) {
       payload.AccountId = accountId;
+    }
+    if (tagId) {
+      payload.TagId = tagId;
     }
     const response = await callCommonApi({
       mode: 'wa_list_conv',
@@ -763,6 +764,8 @@ export const readMessage = async (conversationId, userId, messageId = '', isTypi
       IsTyping: Boolean(isTyping),
       UserId: String(userId),
     };
+    const accountId = getAccountId();
+    if (accountId) body.AccountId = Number(accountId);
     if (messageId) {
       body.MessageId = String(messageId);
     }

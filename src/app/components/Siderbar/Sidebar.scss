@@ -39,6 +39,26 @@
         width: 70px;
         padding: 10px 0px 10px 0px;
 
+        .sidebar_main {
+            ul {
+                scrollbar-width: none;
+                -ms-overflow-style: none;
+
+                &::-webkit-scrollbar {
+                    display: none;
+                }
+            }
+        }
+
+        .sidebar_main_tags {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+
+            &::-webkit-scrollbar {
+                display: none;
+            }
+        }
+
         .agentic-chat-header {
             justify-content: center;
 

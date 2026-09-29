@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   Check, CheckCheck, Clock3, AlertCircle,
-  Image, Video, FileText, File, MessageCircle,
+  Image, Video, FileText, File, MessageCircle, MapPin, Sticker, User,
 } from 'lucide-react';
 import { formatChatTimestamp } from './dateUtils';
 
@@ -15,16 +15,35 @@ const hashString = (value) => {
   return Math.abs(hash);
 };
 
+const firstLetter = (str) => (str.match(/[a-zA-Z]/) || [])[0] || '';
+const lettersOnly = (str) => (str.match(/[a-zA-Z]+/g) || []).join('');
+
 export const getInitials = (name) => {
   const cleaned = String(name ?? '').trim();
   if (!cleaned) return '?';
 
+  // Pure number (e.g. "917579163438") → last 2 digits
   const numeric = cleaned.replace(/\D/g, '');
-  if (numeric && numeric.length >= 2) return numeric.slice(-2);
+  if (numeric && !/\D/.test(cleaned)) {
+    return numeric.slice(-2);
+  }
 
   const parts = cleaned.split(/\s+/).filter(Boolean);
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return `${parts[0][0] ?? ''}${parts[1][0] ?? ''}`.toUpperCase();
+  // Ignore tokens that contain no letters (parentheses, symbols, etc.)
+  const letterParts = parts.filter((p) => /[a-zA-Z]/.test(p));
+
+  // 2+ letter words → first letter of first two words (e.g. "Shivam ( Optigoapps )" → "SO")
+  if (letterParts.length >= 2) {
+    return `${firstLetter(letterParts[0])}${firstLetter(letterParts[1])}`.toUpperCase();
+  }
+
+  // Single letter word → first 2 letters of that word (e.g. "(Doe)" → "DO")
+  if (letterParts.length === 1) {
+    return lettersOnly(letterParts[0]).slice(0, 2).toUpperCase();
+  }
+
+  // No letters at all — fallback to first 2 chars
+  return cleaned.slice(0, 2).toUpperCase();
 };
 
 export const getSoftAvatarColors = (seed) => {
@@ -114,9 +133,30 @@ export const getWhatsAppAvatarConfig = (name, size = 40) => {
   };
 };
 
+/* Channel display name — ChannelTitle first, fall back to WhatsappName */
+export const getChannelDisplayName = (channel) => {
+  const title = String(channel?.ChannelTitle || channel?.channelTitle || '').trim();
+  if (title) return title;
+  return String(channel?.WhatsappName || channel?.whatsappName || 'WhatsApp Channel').trim();
+};
+
+/* Channel WhatsappName — only when different from the display name */
+export const getChannelSubName = (channel) => {
+  const title = String(channel?.ChannelTitle || channel?.channelTitle || '').trim();
+  const waName = String(channel?.WhatsappName || channel?.whatsappName || '').trim();
+  if (!title || !waName) return '';
+  if (title.toLowerCase() === waName.toLowerCase()) return '';
+  return waName;
+};
+
+/* Channel mobile number */
+export const getChannelMobile = (channel) => {
+  return channel?.MobileNumber || channel?.WabaPhoneNo || '';
+};
+
 /* Channel avatar — uses initials (e.g. "Optigo Waba" → "OW") + unique soft colors */
 export const getChannelAvatarConfig = (channel, size = 42) => {
-  const name = String(channel?.WhatsappName || channel?.whatsappName || '').trim();
+  const name = getChannelDisplayName(channel);
   const { bg, fg } = getSoftAvatarColors(name || 'unknown');
 
   return {
@@ -135,15 +175,28 @@ export const getMessagePreview = (msg) => {
         : type === 'document' ? 'Document'
           : type === 'file' ? 'File'
             : type === 'template' ? (msg?.Message ? `Template: ${msg.Message}` : 'Template')
-              : 'New message';
+              : type === 'location' ? 'Location'
+                : type === 'sticker' ? 'Sticker'
+                  : type === 'interactive' ? (getInteractiveReplyTitle(msg) || 'Interactive message')
+                    : type === 'contacts' || type === 'contact'
+                      ? (() => {
+                          const c = parseContactData(msg);
+                          const n = c.contacts?.length || 0;
+                          return n > 1 ? `${n} contacts` : 'Contact';
+                        })()
+                      : 'New message';
 
-  const showIcon = type === 'image' || type === 'video' || type === 'document' || type === 'file' || type === 'template';
+  const showIcon = type === 'image' || type === 'video' || type === 'document' || type === 'file' || type === 'template' || type === 'location' || type === 'sticker' || type === 'interactive' || type === 'contacts' || type === 'contact';
   const Icon = type === 'image' ? Image
     : type === 'video' ? Video
       : type === 'document' ? FileText
         : type === 'file' ? File
           : type === 'template' ? MessageCircle
-            : null;
+            : type === 'location' ? MapPin
+              : type === 'sticker' ? Sticker
+                : type === 'interactive' ? MessageCircle
+                  : type === 'contacts' || type === 'contact' ? User
+                    : null;
 
   if (!text) {
     return { text: '', node: '' };
@@ -214,21 +267,18 @@ export const processApiResponse = (apiData) => {
 };
 
 export const parseTemplateData = (message) => {
-  if (!message || (message.MessageType !== 'template' && message.type !== 'template') || (!message.MessageBody && !message.messageBody)) {
+  if (!message || (message.MessageType !== 'template' && message.type !== 'template')) {
     return { isTemplate: false };
   }
+  const raw = message.MetaData || message.metaData || message.MessageBody || message.messageBody;
+  if (!raw) return { isTemplate: false };
   try {
-    const raw = message.MessageBody || message.messageBody;
     const body = typeof raw === 'string' ? JSON.parse(raw) : raw;
-
-    // Skip failed/outgoing-failed template sends (e.g. status 404, success false)
     if (body?.status === 404 || body?.success === false || body?.error) {
       return { isTemplate: false };
     }
-
-    const template = body?.payload?.template;
+    const template = body?.payload?.template || (body?.name ? body : null);
     if (!template) return { isTemplate: false };
-
     const params = {};
     const bodyComponent = template.components?.find((c) => c.type === 'body');
     if (bodyComponent?.parameters) {
@@ -238,7 +288,6 @@ export const parseTemplateData = (message) => {
         }
       });
     }
-
     return {
       isTemplate: true,
       templateName: template.name,
@@ -252,13 +301,106 @@ export const parseTemplateData = (message) => {
   }
 };
 
-/**
- * Extract up to N unique template names per conversation,
- * sorted by message date within each conversation (latest first).
- * @param {Array} conversations - Preloaded conversations with ChatMessages
- * @param {number} perConversationLimit - Max templates per conversation (default 10)
- * @returns {Array} - Array of unique template names across all conversations
- */
+export const parseInteractiveData = (message) => {
+  if (!message || (message.MessageType !== 'interactive' && message.type !== 'interactive')) {
+    return { isInteractive: false };
+  }
+  const raw = message.MetaData || message.metaData;
+  if (!raw) return { isInteractive: false };
+  try {
+    const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    const header = data?.header || null;
+    const headerUrl = header?.image?.link || header?.video?.link || header?.document?.link || '';
+    const buttons = (data?.action?.buttons || [])
+      .map((b) => ({ id: b?.reply?.id ?? b?.id ?? '', title: b?.reply?.title ?? b?.title ?? '' }))
+      .filter((b) => b.title);
+    return {
+      isInteractive: true,
+      interactiveType: data?.type || '',
+      replyTitle: data?.button_reply?.title || data?.list_reply?.title || '',
+      headerType: header?.type || '',
+      headerUrl,
+      headerText: header?.type === 'text' ? (header?.text || '') : '',
+      bodyText: data?.body?.text || '',
+      footerText: data?.footer?.text || '',
+      buttons,
+      listButtonText: data?.action?.button || '',
+      sections: data?.action?.sections || [],
+    };
+  } catch {
+    return { isInteractive: false };
+  }
+};
+
+export const getInteractiveReplyTitle = (message) => {
+  const raw = message?.MetaData || message?.metaData;
+  if (!raw) return '';
+  try {
+    const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    return data?.button_reply?.title || data?.list_reply?.title || '';
+  } catch {
+    return '';
+  }
+};
+
+export const parseContactData = (message) => {
+  const msgType = message?.MessageType || message?.type || '';
+  if (!message || !['contacts', 'contact'].includes(msgType.toLowerCase())) {
+    return { isContact: false };
+  }
+  const contacts = [];
+  const raw = message.MetaData || message.metaData;
+  if (raw) {
+    try {
+      const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      const list = Array.isArray(data) ? data : (data?.contacts || data?.Contacts || []);
+      list.forEach((c) => {
+        const name =
+          c?.name?.formatted_name || c?.Name?.Formatted_Name ||
+          [c?.name?.first_name, c?.name?.last_name].filter(Boolean).join(' ') ||
+          c?.formatted_name || c?.Formatted_Name || '';
+        const phoneEntries = c?.phones || c?.Phones || (c?.phone || c?.Phone ? [c] : []);
+        const phones = phoneEntries
+          .map((p) => p?.phone || p?.Phone || p?.wa_id || '')
+          .filter(Boolean);
+        if (name || phones.length) contacts.push({ name, phones });
+      });
+    } catch { /* fall through to Message fallback */ }
+  }
+  // Fallback: Message carries the plain phone number when MetaData is empty
+  if (contacts.length === 0) {
+    const text = message.Message || message.content || message.text || '';
+    if (text) contacts.push({ name: '', phones: [text] });
+  }
+  return contacts.length ? { isContact: true, contacts } : { isContact: false };
+};
+
+export const parseLocationData = (message) => {
+  const msgType = message?.MessageType || message?.type || '';
+  if (!message || msgType.toLowerCase() !== 'location') {
+    return { isLocation: false };
+  }
+  let lat;
+  let lng;
+  let name = '';
+  let address = '';
+  const raw = message.MetaData || message.metaData;
+  if (raw) {
+    try {
+      const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      const loc = data?.location || data?.Location || data || {};
+      lat = loc?.latitude ?? loc?.Latitude ?? loc?.lat;
+      lng = loc?.longitude ?? loc?.Longitude ?? loc?.lng ?? loc?.long;
+      name = loc?.name || loc?.Name || '';
+      address = loc?.address || loc?.Address || '';
+    } catch { /* fall through */ }
+  }
+  const latitude = parseFloat(lat);
+  const longitude = parseFloat(lng);
+  const hasCoords = Number.isFinite(latitude) && Number.isFinite(longitude);
+  return { isLocation: true, hasCoords, latitude, longitude, name, address };
+};
+
 export const extractTopTemplates = (conversations = [], perConversationLimit = 10) => {
   if (!Array.isArray(conversations)) return [];
 
@@ -363,17 +505,19 @@ export const getMessageStatusIcon = (member) => {
 
   const status = typeof member?.lastMessageStatus === 'number' ? member.lastMessageStatus : -1;
 
+  const iconProps = { size: 16, strokeWidth: 2.2, style: { marginRight: 5 } };
+
   switch (status) {
     case 0:
-      return React.createElement(Clock3, { size: 14, style: { marginRight: 5, color: 'var(--text-tertiary)' } });
+      return React.createElement(Clock3, { ...iconProps, style: { ...iconProps.style, color: 'var(--text-tertiary)' } });
     case 1:
-      return React.createElement(Check, { size: 15, style: { marginRight: 5, color: 'var(--text-tertiary)' } });
+      return React.createElement(Check, { ...iconProps, style: { ...iconProps.style, color: 'var(--text-tertiary)' } });
     case 2:
-      return React.createElement(CheckCheck, { size: 15, style: { marginRight: 5, color: 'var(--text-tertiary)' } });
+      return React.createElement(CheckCheck, { ...iconProps, style: { ...iconProps.style, color: 'var(--text-tertiary)' } });
     case 3:
-      return React.createElement(CheckCheck, { size: 15, style: { marginRight: 5, color: 'var(--chat-primary, #25d366)' } });
+      return React.createElement(CheckCheck, { ...iconProps, style: { ...iconProps.style, color: 'var(--wa-read-tick, #53bdeb)' } });
     case 4:
-      return React.createElement(AlertCircle, { size: 14, style: { marginRight: 5, color: 'var(--error-main)' } });
+      return React.createElement(AlertCircle, { ...iconProps, style: { ...iconProps.style, color: 'var(--error-main)' } });
     default:
       return null;
   }
@@ -441,3 +585,14 @@ export const renderLinks = (text = '', { onLinkClick } = {}) => {
 
   return parts.length > 0 ? parts : text;
 };
+
+// WhatsApp-style ordering: pinned conversations always on top, then latest first
+export const sortConversations = (list) =>
+  [...list].sort((a, b) => {
+    const pA = Number(a?.IsPin) === 1 ? 1 : 0;
+    const pB = Number(b?.IsPin) === 1 ? 1 : 0;
+    if (pA !== pB) return pB - pA;
+    const tA = new Date(a?.lastMessageTimestamp || a?.DateTime || 0).getTime();
+    const tB = new Date(b?.lastMessageTimestamp || b?.DateTime || 0).getTime();
+    return tB - tA;
+  });

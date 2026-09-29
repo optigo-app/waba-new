@@ -535,6 +535,19 @@
     margin: 0;
 }
 
+.errorAlert {
+    background: var(--error-light-bg, #fef2f2);
+    border: 1px solid var(--error-main, #ef4444);
+
+    .alertIcon {
+        color: var(--error-main, #ef4444);
+    }
+
+    .alertMessage {
+        color: var(--error-main, #ef4444);
+    }
+}
+
 .checkboxLabel {
     margin: 0;
     font-family: $font-family;

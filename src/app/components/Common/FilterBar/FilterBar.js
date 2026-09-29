@@ -130,45 +130,6 @@ const FilterBar = ({
         </Box>
     );
 
-    const channelEl = channelOptions.length > 0 && (
-        <FormControl size="small" sx={{ minWidth: { xs: 120, sm: 160 } }}>
-            <Select
-                value={selectedChannel}
-                onChange={(e) => onChannelChange(e.target.value)}
-                displayEmpty
-                renderValue={(value) => {
-                    if (!value) return 'All Channels';
-                    const ch = channelOptions.find((c) => c.value === value);
-                    return ch ? ch.label : 'All Channels';
-                }}
-                sx={{
-                    borderRadius: '10px',
-                    fontFamily: 'Poppins, sans-serif',
-                    fontSize: '0.82rem',
-                    color: 'var(--text-primary)',
-                    '& .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--border-color)' },
-                    '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--border-strong)' },
-                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--primary-main)' },
-                }}
-            >
-                <MenuItem value="" sx={{ fontFamily: 'Poppins, sans-serif', fontSize: '0.82rem' }}>All Channels</MenuItem>
-                {channelOptions.map((ch) => (
-                    <MenuItem key={ch.value} value={ch.value} sx={{ fontFamily: 'Poppins, sans-serif', fontSize: '0.82rem' }}>
-                        {ch.label} {ch.MobileNumber && ch.MobileNumber !== '-' ? `(${ch.MobileNumber})` : ''}
-                    </MenuItem>
-                ))}
-            </Select>
-        </FormControl>
-    );
-
-    const filtersEl = (
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.6, alignItems: 'center', width: { xs: '100%', sm: 'auto' } }}>
-            {channelEl}
-            {sortEl}
-            {chipsEl}
-        </Box>
-    );
-
     return (
         <Box
             sx={{
@@ -184,10 +145,8 @@ const FilterBar = ({
                 flexShrink: 0,
             }}
         >
-            {/* Search: always visible */}
             {searchEl}
 
-            {/* Desktop: inline sort + chips */}
             <Box sx={{
                 display: { xs: 'none', sm: 'flex' },
                 alignItems: 'center',
@@ -199,7 +158,6 @@ const FilterBar = ({
                 '&::-webkit-scrollbar': { height: '3px' },
                 '&::-webkit-scrollbar-thumb': { background: 'var(--text-placeholder)', borderRadius: '99px' },
             }}>
-                {channelEl}
                 {sortEl}
                 <Box sx={{
                     display: { xs: 'none', md: 'flex' },

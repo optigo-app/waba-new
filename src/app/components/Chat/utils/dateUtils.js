@@ -1,3 +1,10 @@
+/* Server & socket `DateTime` values carry IST wall-clock serialized with 'Z'
+   (e.g. "2026-09-29T14:32:39.113Z" = 2:32 PM IST). Optimistic outgoing
+   messages must stamp the same frame — a real UTC ISO string would sort
+   ~5.5h behind incoming socket messages until the next API reload. */
+export const nowAsServerIST = () =>
+  new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString();
+
 export function formatChatTimestamp(input) {
   const date = new Date(input);
   const now = new Date();

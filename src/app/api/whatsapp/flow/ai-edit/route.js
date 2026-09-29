@@ -1,4 +1,4 @@
-import { editFlowFromDescription } from '@/app/services/aiFlowProvider';
+import { editFlowFromDescription, resolveProvider } from '@/app/services/aiFlowProvider';
 import { NextResponse } from 'next/server';
 
 export async function POST(request) {
@@ -19,7 +19,8 @@ export async function POST(request) {
             );
         }
 
-        const flow = await editFlowFromDescription(currentFlow, instruction.trim());
+        const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || '';
+        const flow = await editFlowFromDescription(currentFlow, instruction.trim(), undefined, resolveProvider(host));
 
         return NextResponse.json(flow);
     } catch (error) {

@@ -873,7 +873,6 @@ const CreateTemplatePage = () => {
         return [...new Set(identifiers)];
     }, [builderData.body]);
 
-    // Map each variable identifier to a sequential number for Meta API
     const variableMetaMap = useMemo(() => {
         const map = {};
         variableKeys.forEach((id, idx) => {
@@ -882,7 +881,6 @@ const CreateTemplatePage = () => {
         return map;
     }, [variableKeys]);
 
-    // Auto-create sample value entries for any newly discovered variables
     useEffect(() => {
         if (variableKeys.length === 0) return;
         setVariableValues((prev) => {
@@ -898,7 +896,6 @@ const CreateTemplatePage = () => {
         });
     }, [variableKeys]);
 
-    // Emoji picker handler – the Lexical editor inserts the emoji itself; this just closes the picker.
     const handleEmojiSelect = () => {
         setEmojiPickerOpen(false);
     };
@@ -921,10 +918,6 @@ const CreateTemplatePage = () => {
             variableValues[k]?.trim() ? variableValues[k] : `{{${k}}}`
         ), [builderData.body, variableValues]);
 
-    const currentPreviewTime = useMemo(
-        () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), []
-    );
-
     const previewDocumentLabel = useMemo(() => {
         if (builderData.headerType !== 'Media' || headerMedia.mediaType !== 'document') return '';
         if (headerMedia.file?.name) return headerMedia.file.name;
@@ -936,13 +929,6 @@ const CreateTemplatePage = () => {
         }
         return '';
     }, [builderData.headerType, headerMedia.mediaType, headerMedia.file, headerMedia.mediaUrl]);
-
-    const hasPreviewMessage =
-        Boolean(previewImageUrl) || Boolean(previewVideoUrl) || Boolean(previewDocumentLabel) ||
-        Boolean(builderData.headerType === 'Text' && builderData.headerText?.trim()) ||
-        Boolean(previewBody.trim()) || Boolean(builderData.footer?.trim()) ||
-        builderData.buttons.length > 0 ||
-        (builderData.templateType === 'Carousel' && carouselCards.length > 0);
 
     const validateButtonFields = (button, { cardIndex = null } = {}) => {
         const scopePrefix = cardIndex !== null ? `Card ${cardIndex + 1}: ` : '';
@@ -1006,10 +992,8 @@ const CreateTemplatePage = () => {
             .slice(0, 512)}`;
         const uploadUniqueNo = `${Date.now()}_${Math.floor(100000 + Math.random() * 900000)}`;
 
-        // Track URLs to remove from server when images are replaced
         const urlsToRemove = [];
 
-        // Meta rules
         const rawBody = (builderData.body || '').replace(/\\n/g, '\n').trim();
 
         const safeName = templateDetails.templateName
@@ -1025,15 +1009,12 @@ const CreateTemplatePage = () => {
                     const c = carouselCards[i];
                     if (c.header.file) {
                         backgroundUploadFiles.push(c.header.file);
-                        // If user uploaded a new file, mark the old URL for removal
-                        // Only remove URLs from own server, not WhatsApp CDN URLs
                         if (c.header.mediaUrl && c.header.mediaUrl !== c.header.existingHandle && isOwnServerUrl(c.header.mediaUrl)) {
                             urlsToRemove.push(c.header.mediaUrl);
                         }
                     }
                 }
 
-                // Remove old images from server before uploading new ones
                 if (urlsToRemove.length > 0) {
                     setProcessStep('Removing old images from server...', 20);
                     try {
@@ -1043,7 +1024,6 @@ const CreateTemplatePage = () => {
                     }
                 }
 
-                // sequential uploads
                 const cardComponents = [];
                 try {
                     setProcessStep('Uploading carousel media to WhatsApp...', 30);
@@ -1129,8 +1109,6 @@ const CreateTemplatePage = () => {
                         if (headerMedia.file) {
                             backgroundUploadFiles.push(headerMedia.file);
 
-                            // If user uploaded a new file, remove the old image from server
-                            // Only remove URLs from own server, not WhatsApp CDN URLs
                             if (headerMedia.mediaUrl && headerMedia.mediaUrl !== headerMedia.existingHandle && isOwnServerUrl(headerMedia.mediaUrl)) {
                                 setProcessStep('Removing old image from server...', 25);
                                 try {
@@ -1140,7 +1118,6 @@ const CreateTemplatePage = () => {
                                 }
                             }
 
-                            // New file picked — upload to Meta
                             try {
                                 setProcessStep('Uploading header media to WhatsApp...', 40);
                                 setIsUploading(true);
@@ -1155,7 +1132,6 @@ const CreateTemplatePage = () => {
                             }
                             setIsUploading(false);
                         } else {
-                            // No new file — reuse existing handle from original template
                             mediaHandle = headerMedia.existingHandle;
                         }
 
@@ -1339,13 +1315,12 @@ const CreateTemplatePage = () => {
                 </Box>
             </Box>
 
-            {isEditLoading && (
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 8 }}>
+            {isEditLoading ? (
+                <Box className={styles.detailsWrapper} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 8, minHeight: 320 }}>
                     <CircularProgress size={32} />
                     <Typography sx={{ ml: 2, color: 'text.secondary' }}>Loading template...</Typography>
                 </Box>
-            )}
-
+            ) : (
             <Box className={`${step === 2 ? styles.builderWrapper : styles.detailsWrapper}`}>
 
                 {/* ── Step 1: Template Details ── */}
@@ -1684,6 +1659,7 @@ const CreateTemplatePage = () => {
                     progress={saveProcess.progress}
                 />
             </Box>
+            )}
         </Box>
     );
 };

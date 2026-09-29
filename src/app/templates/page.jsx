@@ -160,6 +160,16 @@ const TemplatesPage = () => {
     const [selectedWhatsappNo, setSelectedWhatsappNo] = useState(whatsappNo);
     const [showInsufficientBalanceDialog, setShowInsufficientBalanceDialog] = useState(false);
 
+    const selectedWabaPhoneNo = useMemo(() => {
+        if (!walletChannels || walletChannels.length === 0) return '';
+        const ch = walletChannels.find((c) =>
+            String(c.Id) === String(selectedChannelId) ||
+            c.mobileNumber === selectedWhatsappNo ||
+            c.MobileNumber === selectedWhatsappNo
+        );
+        return ch?.WabaPhoneNo || ch?.wabaPhoneNo || '';
+    }, [walletChannels, selectedChannelId, selectedWhatsappNo]);
+
     const channelOptions = useMemo(() => {
         if (!walletChannels || walletChannels.length === 0) return [];
         return walletChannels.map((ch) => ({ value: ch.mobileNumber || '', label: ch.whatsappName || ch.companyCode || ch.mobileNumber || `Channel ${ch.Id}` }));
@@ -533,6 +543,7 @@ const TemplatesPage = () => {
                     onClose={() => setOpenSendDialog(false)}
                     template={selectedTemplateForSend}
                     userToken={userToken}
+                    wabaPhoneNo={selectedWabaPhoneNo}
                 />
             </Suspense>
 

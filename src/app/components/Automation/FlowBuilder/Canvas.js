@@ -6,7 +6,7 @@ import 'reactflow/dist/style.css';
 import { Sparkles } from 'lucide-react';
 import { useFlowStore } from '../../../store/flowStore';
 import { customNodeTypes, getDefaultNodeData } from './CustomNodes';
-import styles from './FlowBuilder.module.scss';
+import styles from './Canvas.module.scss';
 
 const edgeOptions = {
     type: 'smoothstep',

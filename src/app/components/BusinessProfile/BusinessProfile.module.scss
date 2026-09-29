@@ -1,21 +1,12 @@
 @use '../../globals.scss' as *;
 
-// ── Color Tokens ───────────────────────────────────────────────────────────────
-$primary-main: #1daa61;
-$primary-emerald: #25D366;
-$titleColor: #444050;
-$secondaryColor: #7d7f85;
-$border-color: #e4e8ee;
-$bg-light: #f8f9fa;
-$font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-
 // ── Dialog Header ──
 .dialogHeader {
     display: flex !important;
     justify-content: space-between;
     align-items: center;
     padding: 20px 24px !important;
-    border-bottom: 1px solid $border-color;
+    border-bottom: 1px solid var(--border-color);
 }
 
 .dialogHeaderLeft {
@@ -37,7 +28,7 @@ $font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-ser
     gap: 6px;
     padding: 5px 12px;
     border-radius: 8px;
-    background: #eef1f5;
+    background: color-mix(in srgb, var(--text-secondary) 12%, transparent);
     max-width: 260px;
 }
 
@@ -45,7 +36,7 @@ $font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-ser
     font-family: $font-family !important;
     font-size: 0.78rem !important;
     font-weight: 600 !important;
-    color: #1f2c33 !important;
+    color: var(--text-primary) !important;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -56,12 +47,16 @@ $font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-ser
     padding: 0 !important;
 }
 
+.pickerContent {
+    padding: 24px 28px 36px !important;
+}
+
 .pageHeaderIcon {
     width: 36px;
     height: 36px;
     border-radius: 12px;
-    background: rgba($primary-main, 0.1);
-    color: $primary-main;
+    background: var(--primary-light-bg);
+    color: var(--primary-main);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -72,7 +67,7 @@ $font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-ser
     font-family: $font-family !important;
     font-weight: 600 !important;
     font-size: 1.15rem !important;
-    color: $titleColor;
+    color: var(--titleColor);
     line-height: 1.2 !important;
     margin: 0 !important;
 }
@@ -80,7 +75,7 @@ $font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-ser
 .pageSubtitle {
     font-family: $font-family !important;
     font-size: 0.85rem !important;
-    color: $secondaryColor;
+    color: var(--secondary-color);
     line-height: 1.3 !important;
     margin: 0 !important;
 }
@@ -129,13 +124,13 @@ $font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-ser
 }
 
 .logoAvatar {
-    border: 3px solid #e4e8ee !important;
+    border: 3px solid var(--border-color) !important;
     object-fit: cover;
 }
 
 .logoPlaceholder {
-    background: #f1f5f9 !important;
-    border: 3px solid #e4e8ee !important;
+    background: color-mix(in srgb, var(--text-secondary) 10%, transparent) !important;
+    border: 3px solid var(--border-color) !important;
 }
 
 .logoEditBadge {
@@ -145,11 +140,11 @@ $font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-ser
     width: 30px;
     height: 30px;
     border-radius: 50%;
-    background: $primary-main;
+    background: var(--primary-main);
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 2px solid #fff;
+    border: 2px solid var(--bg-paper);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     opacity: 0.85;
     transition: opacity 0.2s ease;
@@ -160,21 +155,23 @@ $font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-ser
     position: absolute;
     top: 0;
     right: 0;
-    background: #fff !important;
-    border: 1px solid $border-color !important;
+    background: var(--bg-paper) !important;
+    border: 1px solid var(--border-color) !important;
     border-radius: 10px !important;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+    color: var(--text-secondary) !important;
 
     &:hover {
-        background: #fef2f2 !important;
-        border-color: #fca5a5 !important;
+        background: var(--error-light-bg) !important;
+        border-color: var(--error-main) !important;
+        color: var(--error-main) !important;
     }
 }
 
 .logoHint {
     font-family: $font-family !important;
     font-size: 0.78rem !important;
-    color: #a0a0a0;
+    color: var(--text-tertiary);
     text-align: center;
     line-height: 1.4;
 }
@@ -193,41 +190,41 @@ $font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-ser
     font-family: $font-family !important;
     font-size: 0.9rem !important;
     font-weight: 600 !important;
-    color: $titleColor;
+    color: var(--titleColor);
     margin-bottom: 8px;
 }
 
 .textField {
     :global(.MuiOutlinedInput-root) {
-        background: #fff;
+        background: var(--bg-paper);
         border-radius: 10px;
         transition: all 0.2s ease;
 
         &:hover {
-            border-color: #c8c8c8;
+            border-color: var(--text-tertiary);
         }
 
         &.Mui-focused {
-            border-color: $primary-main;
-            box-shadow: 0 0 0 3px rgba(29, 170, 97, 0.1);
+            border-color: var(--primary-main);
+            box-shadow: 0 0 0 3px var(--primary-light-bg);
         }
     }
 
     :global(.MuiInputBase-input) {
         font-size: 0.9rem;
         font-family: $font-family;
-        color: $titleColor;
+        color: var(--text-primary);
     }
 
     :global(.MuiInputBase-input::placeholder) {
-        color: #9a9ca2;
+        color: var(--text-tertiary);
         opacity: 1;
     }
 
     :global(textarea) {
         font-size: 0.9rem;
         font-family: $font-family;
-        color: $titleColor;
+        color: var(--text-primary);
         line-height: 1.6;
     }
 }
@@ -242,20 +239,20 @@ $font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-ser
 }
 
 .websiteAddIconBtn {
-    color: $primary-main !important;
-    border: 1px solid $border-color !important;
+    color: var(--primary-main) !important;
+    border: 1px solid var(--border-color) !important;
     border-radius: 8px !important;
     flex-shrink: 0;
     padding: 6px !important;
 
     &:hover {
-        background: rgba($primary-main, 0.06) !important;
-        border-color: $primary-main !important;
+        background: var(--primary-light-bg) !important;
+        border-color: var(--primary-main) !important;
     }
 
     &:disabled {
-        color: #cbd5e1 !important;
-        border-color: $border-color !important;
+        color: var(--text-tertiary) !important;
+        border-color: var(--border-color) !important;
     }
 }
 
@@ -272,15 +269,15 @@ $font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-ser
 }
 
 .websiteRemoveBtn {
-    color: #ef4444 !important;
-    border: 1px solid $border-color !important;
+    color: var(--error-main) !important;
+    border: 1px solid var(--border-color) !important;
     border-radius: 8px !important;
     flex-shrink: 0;
     margin-top: 4px;
 
     &:hover {
-        background: rgba(239, 68, 68, 0.06) !important;
-        border-color: #fca5a5 !important;
+        background: var(--error-light-bg) !important;
+        border-color: var(--error-main) !important;
     }
 }
 
@@ -290,8 +287,12 @@ $font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-ser
     justify-content: flex-end;
     gap: 12px;
     margin-top: 32px;
-    padding-top: 24px;
-    border-top: 1px solid #f0f0f0;
+    padding: 16px 0 8px;
+    border-top: 1px solid var(--border-color);
+    position: sticky;
+    bottom: 0;
+    background: var(--bg-paper);
+    z-index: 10;
 }
 
 .updateBtn {
@@ -299,17 +300,17 @@ $font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-ser
     font-family: $font-family !important;
     font-weight: 600 !important;
     font-size: 0.9rem !important;
-    background: $primary-main !important;
-    color: #fff !important;
+    background: var(--primary-main) !important;
+    color: var(--button-color) !important;
     border: none !important;
     border-radius: 16px !important;
     padding: 10px 30px !important;
-    box-shadow: 0 4px 12px rgba(29, 170, 97, 0.25);
+    box-shadow: 0 4px 12px rgba($primary-main, 0.25);
     transition: all 0.3s ease;
 
     &:hover {
-        background: #1a9a57 !important;
-        box-shadow: 0 6px 16px rgba(29, 170, 97, 0.3);
+        filter: brightness(0.93);
+        box-shadow: 0 6px 16px rgba($primary-main, 0.3);
         transform: translateY(-1px);
     }
 
@@ -318,7 +319,7 @@ $font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-ser
     }
 
     &:disabled {
-        background: #b0d8c4 !important;
+        background: color-mix(in srgb, var(--primary-main) 40%, var(--bg-paper)) !important;
         box-shadow: none;
         transform: none;
     }
@@ -331,14 +332,14 @@ $font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-ser
     font-size: 0.9rem !important;
     border-radius: 16px !important;
     padding: 10px 22px !important;
-    border-color: #e4e8ee !important;
-    color: #7d7f85 !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-secondary) !important;
     transition: all 0.2s ease;
 
     &:hover {
-        border-color: #ef4444 !important;
-        color: #ef4444 !important;
-        background: rgba(239, 68, 68, 0.04) !important;
+        border-color: var(--error-main) !important;
+        color: var(--error-main) !important;
+        background: var(--error-light-bg) !important;
     }
 }
 

@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
-import { useMediaQuery } from '@mui/material';
+import { useMediaQuery, CircularProgress } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import { getCustomerDisplayName, getCustomerAvatarSeed, getWhatsAppAvatarConfig } from './utils/chatUtils';
-import { fetchConversationView, sendChatText, sendChatMedia, sendReplyMessage, sendForwardMessage, fetchCustomerTags, fetchAgentLists, uploadChatMedia, deleteAssignedTags, sendMessageReaction, readMessage } from '../../api/chat/conversationApi';
+import { getCustomerDisplayName, getCustomerAvatarSeed, getWhatsAppAvatarConfig, getInteractiveReplyTitle } from './utils/chatUtils';
+import { nowAsServerIST } from './utils/dateUtils';
+import { fetchConversationView, sendChatText, sendChatMedia, sendReplyMessage, sendForwardMessage, fetchCustomerTags, fetchAgentLists, uploadChatMedia, deleteAssignedTags, sendMessageReaction, readMessage, saveMediaUrl } from '../../api/chat/conversationApi';
 import { filesUploadApi } from '../../api/filesUploadApi';
 import { generateMediaFolderName } from '../../utils/generateMediaFolderName';
 import { getStaticUrl } from '../../utils/globalFunc';
@@ -24,6 +25,59 @@ import RedirectionModal from './RedirectionModal';
 import toast from 'react-hot-toast';
 
 const EMPTY_MESSAGES = [];
+const INITIAL_PAGE_SIZE = 50; // messages loaded on conversation open / refresh
+
+/* Media upload constraints + helpers (module scope — stable for hook deps) */
+const ALLOWED_EXTS = ['.pdf', '.doc', '.docx', '.txt', '.ppt', '.pptx', '.xls', '.xlsx'/* , '.aac', '.amr', '.mp3', '.m4a', '.ogg' */];
+const MAX_FILE_SIZE = 16 * 1024 * 1024; // 16 MB
+const MAX_FILES_COUNT = 10;
+
+const isFileAllowed = (file) => {
+  if (file.type.startsWith('image/') || file.type.startsWith('video/') /* || file.type.startsWith('audio/') */) return true;
+  const allowedMime = [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'text/plain',
+    /* 'audio/aac',
+    'audio/amr',
+    'audio/mpeg',
+    'audio/mp4',
+    'audio/ogg', */
+  ];
+  if (allowedMime.includes(file.type)) return true;
+  const name = file.name.toLowerCase();
+  return ALLOWED_EXTS.some((ext) => name.endsWith(ext));
+};
+
+// Read image/video dimensions from a File object
+const getMediaDimensions = (file) => {
+  return new Promise((resolve) => {
+    if (file.type.startsWith('image/')) {
+      const img = new Image();
+      img.onload = () => {
+        resolve({ width: img.naturalWidth, height: img.naturalHeight });
+        URL.revokeObjectURL(img.src);
+      };
+      img.onerror = () => resolve(null);
+      img.src = URL.createObjectURL(file);
+    } else if (file.type.startsWith('video/')) {
+      const video = document.createElement('video');
+      video.onloadedmetadata = () => {
+        resolve({ width: video.videoWidth, height: video.videoHeight });
+        URL.revokeObjectURL(video.src);
+      };
+      video.onerror = () => resolve(null);
+      video.src = URL.createObjectURL(file);
+    } else {
+      resolve(null);
+    }
+  });
+};
 
 export default function ChatConversation({
   selectedCustomer,
@@ -37,12 +91,14 @@ export default function ChatConversation({
   onToggleDetailsPanel,
   pendingDropFiles,
   onClearPendingDropFiles,
+  channelSwitching,
 }) {
   const [loading, setLoading] = useState(false);
   const [hasFetched, setHasFetched] = useState(false);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [tagModalOpen, setTagModalOpen] = useState(false);
+  const [tagAdding, setTagAdding] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [mediaViewer, setMediaViewer] = useState({ open: false, src: '', filename: '', type: '', mediaItems: null, initialIndex: 0 });
   const [tagsList, setTagsList] = useState([]);
@@ -125,6 +181,13 @@ export default function ChatConversation({
   const tagsScrollRef = useRef(null);
   const dragCounterRef = useRef(0);
   const fetchingMediaRef = useRef(new Set());
+  /* Scroll anchoring state — isNearBottomRef mirrors the handleScroll check;
+     forceScrollToBottomRef requests a hard pin after an outgoing message */
+  const isNearBottomRef = useRef(true);
+  const forceScrollToBottomRef = useRef(false);
+  /* Set by the sidebar drop-files effect — the switch-load's preview clear
+     skips once for that conversation so dropped files aren't wiped */
+  const dropFilesAppliedRef = useRef(null);
   const { auth } = useAuth();
 
   const conversationId = selectedCustomer?.ConversationId ?? selectedCustomer?.Id ?? selectedCustomer?.autoid;
@@ -145,7 +208,9 @@ export default function ChatConversation({
   const abortControllerRef = useRef(null);
   const latestRequestRef = useRef(0);
   const onConversationReadRef = useRef(onConversationRead);
-  onConversationReadRef.current = onConversationRead;
+  useEffect(() => {
+    onConversationReadRef.current = onConversationRead;
+  }, [onConversationRead]);
 
   // Unified effect for conversation switching with debouncing
   useEffect(() => {
@@ -163,17 +228,20 @@ export default function ChatConversation({
       return;
     }
 
-    // Clear media preview immediately on conversation switch so that
-    // a sidebar drop-files effect (which fires after this effect) can
-    // safely repopulate it without being wiped by the async load() below.
-    setMediaPreview([]);
-    setHasFetched(false);
-
     // Debounce to prevent rapid clicks / StrictMode double-fire
     debounceTimerRef.current = setTimeout(() => {
       const controller = new AbortController();
       abortControllerRef.current = controller;
       const requestId = ++latestRequestRef.current;
+
+      /* Clear the composer preview on switch — skipped when the sidebar
+         drop-files effect already repopulated it for this conversation */
+      if (dropFilesAppliedRef.current === conversationId) {
+        dropFilesAppliedRef.current = null;
+      } else {
+        setMediaPreview([]);
+      }
+      setHasFetched(false);
 
       const cacheKey = String(conversationId);
       const cached = messagesCacheRef.current.get(cacheKey);
@@ -191,6 +259,8 @@ export default function ChatConversation({
         // Pre-populate media cache from persistent service instead of clearing
         setMediaCache(preloadCacheIntoState());
         setUnreadCount(0);
+        isNearBottomRef.current = true;
+        forceScrollToBottomRef.current = false;
         setForwardMessage(null);
         setReactionPickerMessageId(null);
         setMessageReactions({});
@@ -212,7 +282,7 @@ export default function ChatConversation({
         }
 
         try {
-          const response = await fetchConversationView(conversationId, 1, 30, auth?.userId, controller.signal);
+          const response = await fetchConversationView(conversationId, 1, INITIAL_PAGE_SIZE, auth?.userId, controller.signal);
           if (controller.signal.aborted) return;
 
           let list = response?.data?.rd || [];
@@ -250,7 +320,7 @@ export default function ChatConversation({
               return tA - tB;
             });
             setMessages(merged);
-            setHasMore(response?.hasMore ?? (list.length === 30));
+            setHasMore(response?.hasMore ?? (list.length === INITIAL_PAGE_SIZE));
             setPage(1);
             setHasFetched(true);
             // Cache messages for quick restore on conversation switch
@@ -310,7 +380,7 @@ export default function ChatConversation({
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [conversationId, auth?.userId, selectedCustomer?.autoid]);
+  }, [conversationId, auth?.userId, selectedCustomer?.autoid, selectedCustomer?.CustomerId, setMessages]);
 
   // In column-reverse mode, new messages naturally appear at the bottom.
   // No manual scroll management needed.
@@ -322,10 +392,20 @@ export default function ChatConversation({
     }
   }, [conversationId]);
 
-  // Call readMessage API when conversation is opened (no MessageId, IsTyping false)
+  // Call readMessage API when conversation is opened (no MessageId, IsTyping false).
+  // Response msgCount is the server's authoritative read count — reconcile the
+  // channel badge with it (optimistic clear already subtracted local unread).
   useEffect(() => {
     if (!conversationId || !auth?.userId) return;
-    readMessage(conversationId, auth.userId, '', false).catch(() => {});
+    readMessage(conversationId, auth.userId, '', false)
+      .then((res) => {
+        const n = res?.msgCount ?? res?.MsgCount;
+        if (n !== undefined && n !== null) {
+          const accountId = res?.AccountId ?? res?.accountId ?? useChatStore.getState().selectedChannelId;
+          useChatStore.getState().applyChannelReadCount(accountId, n, conversationId);
+        }
+      })
+      .catch(() => {});
   }, [conversationId, auth?.userId]);
 
   // Call readMessage API when a new socket message arrives in the open conversation (with MessageId, IsTyping false)
@@ -374,40 +454,13 @@ export default function ChatConversation({
     typingTimerRef.current = setTimeout(() => {
       typingActiveRef.current = false;
     }, 2000);
-  }, [conversationId, auth?.userId]);
+  }, [conversationId, auth]);
 
   useEffect(() => {
     return () => {
       if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
     };
   }, []);
-
-  // Media preview helpers (must be before handleSend)
-  const ALLOWED_EXTS = ['.pdf', '.doc', '.docx', '.txt', '.ppt', '.pptx', '.xls', '.xlsx'/* , '.aac', '.amr', '.mp3', '.m4a', '.ogg' */];
-  const isFileAllowed = (file) => {
-    if (file.type.startsWith('image/') || file.type.startsWith('video/') /* || file.type.startsWith('audio/') */) return true;
-    const allowedMime = [
-      'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'application/vnd.ms-powerpoint',
-      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-      'application/vnd.ms-excel',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'text/plain',
-      /* 'audio/aac',
-      'audio/amr',
-      'audio/mpeg',
-      'audio/mp4',
-      'audio/ogg', */
-    ];
-    if (allowedMime.includes(file.type)) return true;
-    const name = file.name.toLowerCase();
-    return ALLOWED_EXTS.some((ext) => name.endsWith(ext));
-  };
-
-  const MAX_FILE_SIZE = 16 * 1024 * 1024; // 16 MB
-  const MAX_FILES_COUNT = 10;
 
   const addMediaFiles = useCallback((files) => {
     if (!files?.length) return;
@@ -457,7 +510,7 @@ export default function ChatConversation({
       return { file, previewUrl, type, name: file.name, size: file.size };
     });
     setMediaPreview((prev) => [...prev, ...newPreviews]);
-  }, [mediaPreview.length]);
+  }, [mediaPreview]);
 
   const removeMediaPreview = useCallback((index) => {
     setMediaPreview((prev) => prev.filter((_, i) => i !== index));
@@ -468,36 +521,14 @@ export default function ChatConversation({
     setSelectedPreviewIndex(0);
   }, []);
 
-  // Read image/video dimensions from a File object
-  const getMediaDimensions = (file) => {
-    return new Promise((resolve) => {
-      if (file.type.startsWith('image/')) {
-        const img = new Image();
-        img.onload = () => {
-          resolve({ width: img.naturalWidth, height: img.naturalHeight });
-          URL.revokeObjectURL(img.src);
-        };
-        img.onerror = () => resolve(null);
-        img.src = URL.createObjectURL(file);
-      } else if (file.type.startsWith('video/')) {
-        const video = document.createElement('video');
-        video.onloadedmetadata = () => {
-          resolve({ width: video.videoWidth, height: video.videoHeight });
-          URL.revokeObjectURL(video.src);
-        };
-        video.onerror = () => resolve(null);
-        video.src = URL.createObjectURL(file);
-      } else {
-        resolve(null);
-      }
-    });
-  };
-
   const handleSend = useCallback(async () => {
     if ((!input.trim() && mediaPreview.length === 0) || !selectedCustomer || !auth?.userId) return;
     const text = input.trim();
     setInput('');
     setSending(true);
+    /* A message the user just sent must always land in view — the layout
+       effect below consumes this flag once the optimistic message commits */
+    forceScrollToBottomRef.current = true;
 
     const isReply = !!replyToMessage;
 
@@ -510,6 +541,7 @@ export default function ChatConversation({
 
       for (const preview of previewsToSend) {
         const tempId = `temp-media-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        const istNow = nowAsServerIST();
         setMessages((prev) => [
           ...prev,
           {
@@ -521,14 +553,24 @@ export default function ChatConversation({
             type: preview.type,
             mediaUrl: preview.previewUrl,
             direction: 1,
-            sentAt: new Date().toISOString(),
-            Date: new Date().toISOString().split('T')[0],
+            sentAt: istNow,
+            DateTime: istNow,
+            Date: istNow.split('T')[0],
             status: 'pending',
             isUploading: true,
             percent: 0,
             ...(isReply && { ContextType: 2, ReplyContext: replyToMessage }),
           },
         ]);
+
+        // Push to conversation-list preview instantly
+        useChatStore.getState().pushOutgoingToConversation(conversationId, {
+          MessageType: preview.type,
+          Message: text || '',
+          DateTime: istNow,
+          Direction: 1,
+          Status: 0,
+        });
 
         let metaMediaId = null;
         let serverUrl = null;
@@ -613,6 +655,11 @@ export default function ChatConversation({
             )
           );
 
+          // Persist server file URL against the message (wa_save_media_url) so reloads have FileUrl
+          if (serverUrl && mediaMsgId) {
+            await saveMediaUrl({ fileUrl: serverUrl, messageId: mediaMsgId, userId: auth.userId });
+          }
+
           // If still pending, check status after delay
           if (mediaApiStatus === 'pending' && mediaMsgId) {
             setTimeout(async () => {
@@ -659,17 +706,20 @@ export default function ChatConversation({
 
     // Text-only send
     const tempId = `temp-${Date.now()}`;
+    const istNow = nowAsServerIST();
 
     // Optimistic UI update
     setMessages((prev) => [
       ...prev,
       {
         id: tempId,
+        tempId: tempId,
         content: text,
         message: text,
         direction: 1,
-        sentAt: new Date().toISOString(),
-        Date: new Date().toISOString().split('T')[0],
+        sentAt: istNow,
+        DateTime: istNow,
+        Date: istNow.split('T')[0],
         status: 'pending',
         ...(isReply && {
           ContextType: 2,
@@ -677,6 +727,15 @@ export default function ChatConversation({
         }),
       },
     ]);
+
+    // Push to conversation-list preview instantly — socket/API updates it after
+    useChatStore.getState().pushOutgoingToConversation(conversationId, {
+      MessageType: 'text',
+      Message: text,
+      DateTime: istNow,
+      Direction: 1,
+      Status: 0,
+    });
 
     try {
       let response;
@@ -757,7 +816,57 @@ export default function ChatConversation({
       setSending(false);
       if (isReply) setReplyToMessage(null);
     }
-  }, [input, selectedCustomer, auth?.userId, replyToMessage, mediaPreview, clearMediaPreview]);
+  }, [input, selectedCustomer, auth, replyToMessage, mediaPreview, clearMediaPreview, conversationId, setMessages]);
+
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Manual refresh — refetch latest messages and merge with realtime store state
+  const handleRefreshMessages = useCallback(async () => {
+    if (!conversationId || !auth?.userId || refreshing) return;
+    setRefreshing(true);
+    try {
+      const response = await fetchConversationView(conversationId, 1, INITIAL_PAGE_SIZE, auth.userId, undefined);
+      let list = response?.data?.rd || [];
+      list = [...list].sort((a, b) => {
+        const getTime = (m) => new Date(m?.DateTime || m?.sentAt || m?.sent_at || 0).getTime();
+        return getTime(a) - getTime(b);
+      });
+
+      const FileUrlCache = {};
+      list.forEach((msg) => {
+        const FileUrl = msg?.FileUrl;
+        const mediaId = msg?.mediaUrl || msg?.MediaUrl || msg?.mediaId;
+        if (FileUrl && mediaId && typeof mediaId === 'string' && !mediaId.startsWith('http')) {
+          FileUrlCache[mediaId] = FileUrl;
+        }
+      });
+      if (Object.keys(FileUrlCache).length > 0) {
+        setCachedMediaUrls(FileUrlCache);
+        setMediaCache((prev) => ({ ...prev, ...FileUrlCache }));
+      }
+
+      const existing = useChatStore.getState().messagesByConversationId[conversationId] || [];
+      const apiIds = new Set(list.map((m) => String(m.id ?? m.Id ?? m.autoid ?? m.MessageId)));
+      const extras = existing.filter((m) => {
+        const id = String(m.id ?? m.Id ?? m.autoid ?? m.MessageId);
+        return id && !apiIds.has(id);
+      });
+      const merged = extras.length > 0 ? [...list, ...extras] : list;
+      merged.sort((a, b) => {
+        const tA = new Date(a?.DateTime || a?.sentAt || 0).getTime();
+        const tB = new Date(b?.DateTime || b?.sentAt || 0).getTime();
+        return tA - tB;
+      });
+      setMessages(merged);
+      setHasMore(response?.hasMore ?? (list.length === INITIAL_PAGE_SIZE));
+      setPage(1);
+      setHasFetched(true);
+    } catch (e) {
+      console.error('Refresh messages failed:', e);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [conversationId, auth, refreshing, setMessages]);
 
   const handleExternalLinkClick = useCallback((url) => {
     setRedirectModal({ open: true, url });
@@ -768,7 +877,12 @@ export default function ChatConversation({
     setReplyToMessage({
       id: messageId,
       sender: message?.direction === 1 || message?.Direction === 1 ? 'You' : getCustomerDisplayName(selectedCustomer) || 'Customer',
-      text: message?.Message || message?.content || message?.text || 'Media',
+      text: getInteractiveReplyTitle(message) || message?.Message || message?.content || message?.text || (() => {
+        const t = (message?.MessageType || message?.type || '').toLowerCase();
+        if (t === 'location') return 'Location';
+        if (t === 'sticker') return 'Sticker';
+        return 'Media';
+      })(),
       original: message,
     });
   }, [selectedCustomer]);
@@ -825,7 +939,7 @@ export default function ChatConversation({
     } finally {
       setForwardMessage(null);
     }
-  }, [forwardMessage, auth?.userId]);
+  }, [forwardMessage, auth]);
 
   const handleDeleteTag = useCallback(async (tag) => {
     if (!tag?.Id || !selectedCustomer?.CustomerId || !auth?.userId) return;
@@ -849,7 +963,7 @@ export default function ChatConversation({
       console.error('Delete tag error:', error);
       toast.error('Failed to remove tag');
     }
-  }, [selectedCustomer?.CustomerId, auth?.userId]);
+  }, [selectedCustomer, auth]);
 
   const handleFileUpload = useCallback(
     (e) => {
@@ -867,15 +981,35 @@ export default function ChatConversation({
     // waMessageId for WhatsApp API — must be the wamid, not internal DB Id
     const waMessageId = msg?.MessageId || msg?.id || msg?.Id || msgId;
 
-    setMessageReactions((prev) => ({ ...prev, [msgId]: emoji }));
+    setMessageReactions((prev) => ({ ...prev, [msgId]: emoji, [waMessageId]: emoji }));
     setReactionPickerMessageId(null);
 
-    // Real-time socket broadcast
+    // Persist on the message object — survives re-renders / conversation
+    // switches and renders for socket echoes regardless of id casing
+    try {
+      useChatStore.getState().handleSocketReaction({
+        ConversationId: conversationId,
+        Id: msg?.Id ?? msg?.id,
+        MessageId: waMessageId,
+        messageId: msgId,
+        emoji,
+        Direction: 1,
+      });
+    } catch { /* ignore */ }
+
+    // Real-time socket broadcast — send both casings + the wamid so the
+    // server (and other clients' stores) can match the target message
     emitReaction({
       conversationId,
+      ConversationId: conversationId,
       messageId: msgId,
+      MessageId: waMessageId,
+      Id: msg?.Id ?? msg?.id,
       emoji,
+      Emoji: emoji,
       userId: auth?.userId,
+      UserId: auth?.userId,
+      Direction: 1,
     });
 
     // Send reaction via WhatsApp API
@@ -894,10 +1028,28 @@ export default function ChatConversation({
   useEffect(() => {
     const removeHandler = addMessageReactionHandler((data) => {
       if (!data) return;
-      const { messageId, emoji } = data;
-      if (messageId && emoji) {
-        setMessageReactions((prev) => ({ ...prev, [messageId]: emoji }));
-      }
+      const emoji = data?.emoji ?? data?.Emoji ?? data?.Reaction ?? data?.reaction?.emoji;
+      const ids = [
+        data?.messageId,
+        data?.MessageId,
+        data?.Id,
+        data?.id,
+        data?.autoid,
+        data?.reaction?.message_id,
+      ]
+        .filter((v) => v !== undefined && v !== null && v !== '')
+        .map(String);
+      if (!ids.length) return;
+      setMessageReactions((prev) => {
+        const next = { ...prev };
+        ids.forEach((id) => {
+          if (emoji) next[id] = emoji;
+          /* '' = explicit reaction removal; undefined (e.g. a full message
+             row re-emit) leaves the local optimistic state untouched */
+          else if (emoji === '') delete next[id];
+        });
+        return next;
+      });
     });
     return () => removeHandler();
   }, []);
@@ -919,10 +1071,12 @@ export default function ChatConversation({
   const handleScroll = useCallback(() => {
     const container = messagesListRef.current;
     if (!container) return;
-    const { scrollTop, scrollHeight, clientHeight } = container;
-    // In column-reverse, scrollTop=0 is the bottom (newest messages).
-    // scrollTop increases as user scrolls UP towards older messages.
-    const isNearBottom = scrollTop < 150;
+    const { scrollTop } = container;
+    // In column-reverse, scrollTop=0 is the bottom (newest messages) and moves
+    // away from 0 as the user scrolls up — negative in Chrome/Safari/Firefox,
+    // positive in some engines — so |scrollTop| is the distance from bottom.
+    const isNearBottom = Math.abs(scrollTop) < 150;
+    isNearBottomRef.current = isNearBottom;
     setShowScrollToBottom(!isNearBottom);
     if (isNearBottom) {
       setUnreadCount(0);
@@ -932,29 +1086,58 @@ export default function ChatConversation({
 
   // Ref to track scroll position that needs restoration after prepending older messages
   const scrollRestoreRef = useRef(null);
-  // Track whether new items were actually added in the last loadMoreMessages call
-  const addedCountRef = useRef(0);
 
   // Restore scroll position synchronously after DOM updates (before browser paint)
   // This prevents the visual jump to bottom when older messages are prepended
   useLayoutEffect(() => {
     if (!scrollRestoreRef.current || !messagesListRef.current) return;
-    // Only restore if new items were actually added
-    if (addedCountRef.current === 0) {
-      scrollRestoreRef.current = null;
-      return;
-    }
+    // Always run restore if a snapshot was captured. If nothing was actually
+    // added (e.g. all returned messages were duplicates), heightDiff will be 0
+    // and scrollTop stays unchanged — so this is safe.
     const { prevScrollHeight, prevScrollTop } = scrollRestoreRef.current;
     const container = messagesListRef.current;
     const newScrollHeight = container.scrollHeight;
     const heightDiff = newScrollHeight - prevScrollHeight;
-    // In column-reverse, scrollTop increases as user scrolls up.
-    // Prepending older messages adds height at the visual top, so we must
-    // increase scrollTop by the added height to keep the same visual position.
-    container.scrollTop = prevScrollTop + heightDiff;
+    // In column-reverse, scrollTop moves away from 0 as the user scrolls up
+    // (negative in most engines). Prepending older messages adds height at the
+    // visual top, so extend scrollTop in the direction it already points to
+    // keep the same visual position. Math.sign(0)=0 keeps a bottom-anchored
+    // view pinned at the bottom.
+    container.scrollTop = prevScrollTop + heightDiff * Math.sign(prevScrollTop);
     scrollRestoreRef.current = null;
-    addedCountRef.current = 0;
   }, [messages.length]);
+
+  /* Pin the view to the newest message after DOM commits:
+     - forceScrollToBottomRef is set by handleSend — a message the user just
+       sent must always land in view, even if they had scrolled up.
+     - isNearBottomRef follows incoming socket messages only while the user is
+       already at the bottom, so reading older history is never interrupted.
+     Declared after the pagination scroll-restore effect so prepend restores
+     run first (isNearBottomRef is false while reading history anyway). */
+  useLayoutEffect(() => {
+    const container = messagesListRef.current;
+    if (!container) return;
+    if (forceScrollToBottomRef.current) {
+      forceScrollToBottomRef.current = false;
+      isNearBottomRef.current = true;
+      container.scrollTop = 0;
+      /* Re-pin on the next frames — media/images can finish sizing after this
+         commit and would otherwise leave the newest bubble below the fold */
+      const repin = () => {
+        const c = messagesListRef.current;
+        if (c) c.scrollTop = 0;
+      };
+      const raf = requestAnimationFrame(repin);
+      const timer = setTimeout(repin, 250);
+      return () => {
+        cancelAnimationFrame(raf);
+        clearTimeout(timer);
+      };
+    }
+    if (isNearBottomRef.current) {
+      container.scrollTop = 0;
+    }
+  }, [messages]);
 
   // Ref-based guard to prevent double loadMoreMessages calls from IntersectionObserver + onScroll
   const isLoadingMoreRef = useRef(false);
@@ -972,7 +1155,6 @@ export default function ChatConversation({
       prevScrollHeight: container?.scrollHeight || 0,
       prevScrollTop: container?.scrollTop || 0,
     };
-    addedCountRef.current = 0;
 
     try {
       const response = await fetchConversationView(conversationId, nextPage, 30, auth?.userId, undefined);
@@ -981,6 +1163,18 @@ export default function ChatConversation({
         const getTime = (m) => new Date(m?.DateTime || m?.sentAt || m?.sent_at || 0).getTime();
         return getTime(a) - getTime(b);
       });
+
+      // Compute likely new count from current store snapshot *before* the state update
+      // is batched; reading inside the updater is not synchronous in React 19.
+      const currentMessages = useChatStore.getState().messagesByConversationId[conversationId] || [];
+      const currentIds = new Set(
+        currentMessages.map((m) => String(m.id || m.Id || m.autoid || m.MessageId || ''))
+      );
+      const newItems = list.filter((m) => {
+        const id = m.id || m.Id || m.autoid || m.MessageId;
+        return id && !currentIds.has(String(id));
+      });
+      const newCount = newItems.length;
 
       if (list.length > 0) {
         // Pre-populate media cache with FileUrl for newly loaded older messages
@@ -997,28 +1191,29 @@ export default function ChatConversation({
           setMediaCache((prev) => ({ ...prev, ...FileUrlCache }));
         }
 
-        let newCount = 0;
         setMessages((prev) => {
-          const existingIds = new Set(prev.map((m) => m.id || m.Id || m.autoid));
-          const newItems = list.filter((m) => {
-            const id = m.id || m.Id || m.autoid;
-            if (!existingIds.has(id)) {
-              newCount++;
-              return true;
-            }
-            return false;
+          // Recompute inside updater to avoid double-adding if messages changed
+          // between the snapshot above and this state commit.
+          const existingIds = new Set(
+            prev.map((m) => String(m.id || m.Id || m.autoid || m.MessageId || ''))
+          );
+          const items = list.filter((m) => {
+            const id = m.id || m.Id || m.autoid || m.MessageId;
+            return id && !existingIds.has(String(id));
           });
-          return [...newItems, ...prev];
+          return [...items, ...prev];
         });
-        addedCountRef.current = newCount;
         // Scroll position is restored by useLayoutEffect watching messages.length
       } else {
         // No new items — clear restore ref so useLayoutEffect doesn't fire
         scrollRestoreRef.current = null;
       }
 
-      setHasMore(response?.hasMore ?? (list.length === 30));
-      setPage(nextPage);
+      const effectiveHasMore = response?.hasMore ?? (list.length === 30);
+      setHasMore(newCount > 0 ? effectiveHasMore : false);
+      if (list.length > 0) {
+        setPage(nextPage);
+      }
     } catch (err) {
       scrollRestoreRef.current = null;
       console.error('Failed to load older messages:', err);
@@ -1026,7 +1221,7 @@ export default function ChatConversation({
       isLoadingMoreRef.current = false;
       setIsLoadingMore(false);
     }
-  }, [hasMore, conversationId, auth?.userId, page]);
+  }, [hasMore, conversationId, auth, page, setMessages]);
 
   // Drag & drop handlers (counter-based to avoid child-element flicker)
   const handleDragEnter = useCallback((e) => {
@@ -1068,8 +1263,8 @@ export default function ChatConversation({
     const container = messagesListRef.current;
     if (!container) return;
     const { scrollTop } = container;
-    // In column-reverse, scrollTop > 150 means user scrolled up (away from bottom)
-    const isNearBottom = scrollTop < 150;
+    // |scrollTop| > 150 means user scrolled up (away from bottom) — see handleScroll
+    const isNearBottom = Math.abs(scrollTop) < 150;
     if (!isNearBottom && messages.length > lastMessageCountRef.current) {
       const newMessages = messages.length - lastMessageCountRef.current;
       setUnreadCount((prev) => prev + newMessages);
@@ -1110,11 +1305,15 @@ export default function ChatConversation({
 
   // Process files dropped on a sidebar conversation item
   useEffect(() => {
-    if (pendingDropFiles?.length) {
+    if (!pendingDropFiles?.length) return;
+    /* Mark the target conversation before the switch-load's preview clear
+       runs so files dropped onto a chat survive into the composer */
+    dropFilesAppliedRef.current = conversationId;
+    queueMicrotask(() => {
       addMediaFiles(pendingDropFiles);
       onClearPendingDropFiles?.();
-    }
-  }, [pendingDropFiles, addMediaFiles, onClearPendingDropFiles]);
+    });
+  }, [pendingDropFiles, addMediaFiles, onClearPendingDropFiles, conversationId]);
 
   // Lazy media fetch — called by MessageBubble when media enters viewport
   const requestMediaFetch = useCallback(async (mediaId) => {
@@ -1146,9 +1345,19 @@ export default function ChatConversation({
     return (
       <div className="chat-conversation empty-state">
         <div className="chat-empty-center">
-          <img src={getStaticUrl('/waba_logo.png')} alt="Logo" className="chat-empty-logo" />
-          <h2 className="chat-empty-title">Welcome to WABA-Chat</h2>
-          <p className="chat-empty-subtitle">Select a conversation to start chatting</p>
+          {channelSwitching ? (
+            <>
+              <CircularProgress size={44} thickness={3.5} sx={{ color: 'var(--chat-primary, #25d366)' }} />
+              <h2 className="chat-empty-title">Switching channel...</h2>
+              <p className="chat-empty-subtitle">Loading conversations for the new channel</p>
+            </>
+          ) : (
+            <>
+              <img src={getStaticUrl('/waba_logo.png')} alt="Logo" className="chat-empty-logo" />
+              <h2 className="chat-empty-title">Welcome to WABA-Chat</h2>
+              <p className="chat-empty-subtitle">Select a conversation to start chatting</p>
+            </>
+          )}
         </div>
       </div>
     );
@@ -1168,6 +1377,7 @@ export default function ChatConversation({
         onBack={onBack}
         tagsList={tagsList}
         setTagModalOpen={setTagModalOpen}
+        tagAdding={tagAdding}
         tagsMenuAnchorEl={tagsMenuAnchorEl}
         setTagsMenuAnchorEl={setTagsMenuAnchorEl}
         canScrollLeft={canScrollLeft}
@@ -1181,6 +1391,8 @@ export default function ChatConversation({
         auth={auth}
         onToggleDetails={handleDetailsClick}
         onDeleteTag={handleDeleteTag}
+        onRefresh={handleRefreshMessages}
+        refreshing={refreshing}
       />
 
       <ChatMessagesArea
@@ -1267,6 +1479,7 @@ export default function ChatConversation({
         open={tagModalOpen}
         onClose={() => setTagModalOpen(false)}
         selectedCustomer={selectedCustomer}
+        onTagAddingChange={setTagAdding}
         onTagAdded={async () => {
           onConversationRead?.(true);
           // Re-fetch tags so new one reflects immediately

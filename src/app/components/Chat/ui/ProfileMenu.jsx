@@ -9,6 +9,7 @@ import { useAuth } from '../../../hooks/useAuth';
 import { disconnectSocket, broadcastLogout } from '../../../socket';
 import { logoutApi } from '../../../api/LogoutConfig';
 import { getWhatsAppAvatarConfig } from '../../../utils/globalFunc';
+import ConfirmationModal from '../../ConfirmationModal/ConfirmationModal';
 
 /**
  * Reusable profile menu — same menu used in the main Sidebar.
@@ -20,6 +21,8 @@ export default function ProfileMenu({ variant = 'icon', size = 18, collapsed = f
   const { auth, logout, setIsSyncing } = useAuth();
   const { mode, setMode } = useThemeMode();
   const [anchorEl, setAnchorEl] = useState(null);
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const open = Boolean(anchorEl);
 
   const handleOpen = (e) => setAnchorEl(e.currentTarget);
@@ -41,8 +44,13 @@ export default function ProfileMenu({ variant = 'icon', size = 18, collapsed = f
     handleClose();
   };
 
-  const handleLogout = async () => {
+  const handleLogoutClick = () => {
     handleClose();
+    setLogoutConfirmOpen(true);
+  };
+
+  const handleLogout = async () => {
+    setLoggingOut(true);
     try {
       await logoutApi({ UserId: auth?.id }, auth?.whatsappNumber);
     } catch {
@@ -226,7 +234,7 @@ export default function ProfileMenu({ variant = 'icon', size = 18, collapsed = f
         <Divider sx={{ my: 0.5 }} />
 
         <MenuItem
-          onClick={handleLogout}
+          onClick={handleLogoutClick}
           sx={{
             borderRadius: 1,
             gap: 1.5,
@@ -238,6 +246,18 @@ export default function ProfileMenu({ variant = 'icon', size = 18, collapsed = f
           Logout
         </MenuItem>
       </Menu>
+
+      <ConfirmationModal
+        isOpen={logoutConfirmOpen}
+        onClose={() => !loggingOut && setLogoutConfirmOpen(false)}
+        onConfirm={handleLogout}
+        title="Log out?"
+        description="Are you sure you want to log out of your account?"
+        icon={LogOut}
+        isDanger
+        confirmLabel="Logout"
+        isLoading={loggingOut}
+      />
     </>
   );
 }

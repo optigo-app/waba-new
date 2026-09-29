@@ -15,7 +15,7 @@ const parseMessages = (raw) => {
   return [];
 };
 
-export const fetchPreloadChat = async (userId, page = 1, pageSize = 100, accountId = '') => {
+export const fetchPreloadChat = async (userId, page = 1, pageSize = 20, accountId = '') => {
   try {
     const payload = { Page: page, PageSize: pageSize };
     if (accountId) payload.AccountId = Number(accountId);

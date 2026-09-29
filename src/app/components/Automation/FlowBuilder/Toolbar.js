@@ -23,12 +23,15 @@ import {
     Wand2,
     Check,
     Circle,
+    PanelLeft,
+    Crosshair,
 } from 'lucide-react';
+import { useReactFlow } from 'reactflow';
 import { useFlowStore } from '../../../store/flowStore';
 import { useShallow } from 'zustand/react/shallow';
 import { useWallet } from '../../../contexts/WalletContext';
 import ConfirmationModal from '../../ConfirmationModal/ConfirmationModal';
-import styles from './FlowBuilder.module.scss';
+import styles from './Toolbar.module.scss';
 
 const Toolbar = () => {
     const setView = useFlowStore((state) => state.setView);
@@ -36,7 +39,6 @@ const Toolbar = () => {
     const flowDescription = useFlowStore((state) => state.flowDescription);
     const triggerKeyword = useFlowStore((state) => state.triggerKeyword);
     const triggerMode = useFlowStore((state) => state.triggerMode);
-    const isActive = useFlowStore((state) => state.isActive);
     const nodesCount = useFlowStore((state) => state.nodes.length);
     const triggerNodeKeywords = useFlowStore(useShallow((state) => {
         const triggerNode = state.nodes.find((n) => n.type === 'keyword_trigger');
@@ -47,7 +49,6 @@ const Toolbar = () => {
     const setFlowDescription = useFlowStore((state) => state.setFlowDescription);
     const setTriggerKeyword = useFlowStore((state) => state.setTriggerKeyword);
     const setTriggerMode = useFlowStore((state) => state.setTriggerMode);
-    const setIsActive = useFlowStore((state) => state.setIsActive);
     const saveCurrentFlow = useFlowStore((state) => state.saveCurrentFlow);
     const setIsSimulatorOpen = useFlowStore((state) => state.setIsSimulatorOpen);
     const undo = useFlowStore((state) => state.undo);
@@ -57,6 +58,12 @@ const Toolbar = () => {
     const showAiModal = useFlowStore((state) => state.showAiModal);
     const setShowAiModal = useFlowStore((state) => state.setShowAiModal);
     const autoFixFlowErrors = useFlowStore((state) => state.autoFixFlowErrors);
+    const showNodePalette = useFlowStore((state) => state.showNodePalette);
+    const setShowNodePalette = useFlowStore((state) => state.setShowNodePalette);
+    const selectNode = useFlowStore((state) => state.selectNode);
+    const setErrorNodeIds = useFlowStore((state) => state.setErrorNodeIds);
+
+    const { setCenter } = useReactFlow();
 
     const aiEnabled = process.env.NEXT_PUBLIC_ENABLE_AI_FLOW === 'true';
 
@@ -68,6 +75,7 @@ const Toolbar = () => {
     const [selectedChannelId, setSelectedChannelId] = useState('');
     const [channelError, setChannelError] = useState('');
     const [saveErrors, setSaveErrors] = useState([]);
+    const [isSaving, setIsSaving] = useState(false);
     const [showTitlePrompt, setShowTitlePrompt] = useState(false);
     const [titleInput, setTitleInput] = useState('');
     const [triggerError, setTriggerError] = useState('');
@@ -212,19 +220,37 @@ const Toolbar = () => {
         await doSave(selectedChannelId);
     };
 
+    // Jump to the node that caused a save error — highlights it, opens its
+    // settings panel, and pans the canvas so it's in view.
+    const jumpToNode = (nodeId) => {
+        const node = useFlowStore.getState().nodes.find((n) => n.id === nodeId);
+        if (!node) return;
+        setSaveErrors([]);
+        selectNode(nodeId);
+        setCenter(node.position.x + 140, node.position.y + 80, { zoom: 1.1, duration: 450 });
+    };
+
     const doSave = async (accountId) => {
-        const result = await saveCurrentFlow(accountId);
-        if (result?.success) {
-            if (result.errors?.length > 0) {
-                setSaveErrors(result.errors);
+        setIsSaving(true);
+        try {
+            const result = await saveCurrentFlow(accountId);
+            if (result?.success) {
+                if (result.errors?.length > 0) {
+                    setSaveErrors(result.errors);
+                    setErrorNodeIds(result.errors.map((e) => e.nodeId).filter(Boolean));
+                } else {
+                    setErrorNodeIds([]);
+                    setShowSaveSchema(true);
+                }
             } else {
-                setShowSaveSchema(true);
+                const errorList = result?.errors?.length > 0
+                    ? result.errors
+                    : [{ nodeId: null, message: result?.error || 'Save failed unexpectedly.' }];
+                setSaveErrors(errorList);
+                setErrorNodeIds(errorList.map((e) => e.nodeId).filter(Boolean));
             }
-        } else {
-            const errorList = result?.errors?.length > 0
-                ? result.errors
-                : [{ nodeId: null, message: result?.error || 'Save failed unexpectedly.' }];
-            setSaveErrors(errorList);
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -242,15 +268,22 @@ const Toolbar = () => {
         const fixes = autoFixFlowErrors();
         if (fixes && fixes.length > 0) {
             setSaveErrors([]);
-            const result = await saveCurrentFlow(selectedChannelId || '');
-            if (result?.success) {
-                setShowSaveSchema(true);
-                setView('list');
-            } else {
-                const errorList = result?.errors?.length > 0
-                    ? result.errors
-                    : [{ nodeId: null, message: result?.error || 'Save failed after auto-fix. Please fix manually.' }];
-                setSaveErrors(errorList);
+            setIsSaving(true);
+            try {
+                const result = await saveCurrentFlow(selectedChannelId || '');
+                if (result?.success) {
+                    setErrorNodeIds([]);
+                    setShowSaveSchema(true);
+                    setView('list');
+                } else {
+                    const errorList = result?.errors?.length > 0
+                        ? result.errors
+                        : [{ nodeId: null, message: result?.error || 'Save failed after auto-fix. Please fix manually.' }];
+                    setSaveErrors(errorList);
+                    setErrorNodeIds(errorList.map((e) => e.nodeId).filter(Boolean));
+                }
+            } finally {
+                setIsSaving(false);
             }
         } else {
             setSaveErrors((prev) => [...prev, { nodeId: null, message: 'Auto-fix could not resolve the issues. Please fix them manually.' }]);
@@ -270,6 +303,14 @@ const Toolbar = () => {
                     >
                         Flows
                     </Button>
+                    <IconButton
+                        size="small"
+                        onClick={() => setShowNodePalette(!showNodePalette)}
+                        className={`${styles.toolbarPaletteBtn} ${showNodePalette ? styles.toolbarPaletteBtnActive : ''}`}
+                        title={showNodePalette ? 'Hide node panel' : 'Show node panel'}
+                    >
+                        <PanelLeft size={16} />
+                    </IconButton>
                     <div className={styles.toolbarDivider} />
                     <div className={styles.toolbarUndoRedo}>
                         <IconButton
@@ -327,7 +368,7 @@ const Toolbar = () => {
                     </div>
                 </Box>
 
-                {/* Right: Info, Status button, Simulator, Save */}
+                {/* Right: Info, Simulator, Save */}
                 <Box className={styles.toolbarRight}>
                     <div className={styles.toolbarInfoWrap}>
                         <IconButton
@@ -374,15 +415,6 @@ const Toolbar = () => {
                     <Button
                         size="small"
                         variant="outlined"
-                        onClick={() => setIsActive(!isActive)}
-                        className={`${styles.toolbarStatusBtn} ${isActive ? styles.toolbarStatusActive : styles.toolbarStatusDraft}`}
-                    >
-                        {isActive ? 'ACTIVE' : 'DRAFT'}
-                    </Button>
-
-                    <Button
-                        size="small"
-                        variant="outlined"
                         startIcon={<Smartphone size={14} />}
                         onClick={() => setIsSimulatorOpen(true)}
                         className={styles.toolbarSimulatorBtn}
@@ -409,9 +441,10 @@ const Toolbar = () => {
                         variant="contained"
                         startIcon={<Save size={14} />}
                         onClick={handleSaveClick}
+                        disabled={isSaving}
                         className="buttonClassname"
                     >
-                        Save Flow
+                        {isSaving ? 'Saving...' : 'Save Flow'}
                     </Button>
                 </Box>
             </div>
@@ -420,27 +453,29 @@ const Toolbar = () => {
             {showConfig && (
                 <div className={styles.configPopover}>
                     <div className={styles.configPopoverHeader}>
-                        <span>Flow Trigger Criteria</span>
+                        <span>Flow Settings</span>
                         <IconButton size="small" onClick={() => setShowConfig(false)}>
                             <X size={16} />
                         </IconButton>
                     </div>
                     <div className={styles.configPopoverBody}>
                         <div className={styles.settingsField}>
-                            <label className={styles.settingsFieldLabel}>Flow Action Name</label>
+                            <label className={styles.settingsFieldLabel}>Flow Name</label>
                             <TextField
                                 fullWidth size="small"
                                 value={flowName}
                                 onChange={(e) => setFlowName(e.target.value.replace(/\s+/g, '_'))}
+                                placeholder="e.g. Welcome_Bot"
                                 className={styles.settingsInput}
                             />
                         </div>
                         <div className={styles.settingsField}>
-                            <label className={styles.settingsFieldLabel}>Brief Summary</label>
+                            <label className={styles.settingsFieldLabel}>Description <span className={styles.settingsFieldOptional}>(optional)</span></label>
                             <TextField
                                 fullWidth size="small"
                                 value={flowDescription}
                                 onChange={(e) => setFlowDescription(e.target.value)}
+                                placeholder="What does this flow do?"
                                 className={styles.settingsInput}
                             />
                         </div>
@@ -452,19 +487,19 @@ const Toolbar = () => {
                                 onChange={(e) => setTriggerMode(e.target.value)}
                                 className={styles.settingsInput}
                             >
-                                <MenuItem value="contains">Contains (e.g. "hi there")</MenuItem>
-                                <MenuItem value="exact">Exact (e.g. "hi" only)</MenuItem>
-                                <MenuItem value="instant">Instant Auto-Start (No Trigger)</MenuItem>
+                                <MenuItem value="contains">Contains — message includes the keyword</MenuItem>
+                                <MenuItem value="exact">Exact match — message equals the keyword</MenuItem>
+                                <MenuItem value="instant">Instant — starts on every new chat</MenuItem>
                             </TextField>
                         </div>
                         {triggerMode !== 'instant' && (
                             <div className={styles.settingsField}>
-                                <label className={styles.settingsFieldLabel}>Primary Keyword</label>
+                                <label className={styles.settingsFieldLabel}>Trigger Keyword</label>
                                 <TextField
                                     fullWidth size="small"
                                     value={triggerKeyword}
                                     onChange={(e) => handleTriggerChange(e.target.value)}
-                                    placeholder="e.g. hi, info, track"
+                                    placeholder="e.g. hi, menu, help"
                                     className={styles.settingsInput}
                                     sx={{ '& input': { fontFamily: 'monospace' } }}
                                     error={!!triggerError}
@@ -545,11 +580,11 @@ const Toolbar = () => {
                             </div>
                         )}
                         <Button
-                            fullWidth variant="contained" size="small"
+                            fullWidth variant="contained" size="medium"
                             onClick={() => setShowConfig(false)}
                             className="buttonClassname"
                         >
-                            Done Updating
+                            Done
                         </Button>
                     </div>
                 </div>
@@ -842,24 +877,39 @@ const Toolbar = () => {
             <Modal open={saveErrors.length > 0} onClose={() => setSaveErrors([])}>
                 <div className={`${styles.saveModal} ${styles.saveErrorModal}`}>
                     <div className={styles.saveModalHeader}>
-                        <span className={styles.saveModalHeaderText}>Flow Errors — Backend Not Saved</span>
+                        <span className={styles.saveModalHeaderText}>Almost there — a few things to fix</span>
                         <IconButton size="small" onClick={() => setSaveErrors([])} className={styles.saveModalCloseBtn}>
                             <X size={18} />
                         </IconButton>
                     </div>
                     <div className={styles.saveErrorBody}>
                         <div className={styles.saveErrorBanner}>
-                            The backend JSON was not uploaded because
-                            the following errors must be fixed first:
+                            Your flow couldn&apos;t be saved yet. Fix {saveErrors.length === 1 ? 'this' : `these ${saveErrors.length} things`} and hit <strong>Save Flow</strong> again.
                         </div>
                         <ul className={styles.saveErrorList}>
-                            {saveErrors.map((err, i) => (
-                                <li key={i} className={styles.saveErrorItem}>
-                                    {err.nodeId && <span className={styles.saveErrorNode}>[{err.nodeId}]</span>}
-                                    <span>{err.message}</span>
-                                </li>
-                            ))}
+                            {saveErrors.map((err, i) => {
+                                const nodeLabel = err.nodeId
+                                    ? useFlowStore.getState().nodes.find((n) => n.id === err.nodeId)?.data?.label
+                                    : null;
+                                return (
+                                    <li
+                                        key={i}
+                                        className={`${styles.saveErrorItem} ${err.nodeId ? styles.saveErrorItemLink : ''}`}
+                                        onClick={() => err.nodeId && jumpToNode(err.nodeId)}
+                                        title={err.nodeId ? 'Click to locate this node on the canvas' : undefined}
+                                    >
+                                        {err.nodeId && <span className={styles.saveErrorNode}>{nodeLabel || err.nodeId}</span>}
+                                        <span className={styles.saveErrorText}>{err.message}</span>
+                                        {err.nodeId && <Crosshair size={14} className={styles.saveErrorLocate} />}
+                                    </li>
+                                );
+                            })}
                         </ul>
+                        {saveErrors.some((e) => e.nodeId) && (
+                            <p className={styles.saveErrorHint}>
+                                Click an issue to jump straight to that node on the canvas.
+                            </p>
+                        )}
                         <div className={styles.saveErrorActions}>
                             <Button
                                 variant="contained"
@@ -868,16 +918,37 @@ const Toolbar = () => {
                                 onClick={handleAutoFix}
                                 className="buttonClassname"
                             >
-                                AI Fix & Save
+                                Fix with AI
                             </Button>
                             <Button
                                 variant="outlined"
                                 size="small"
                                 onClick={() => setSaveErrors([])}
                             >
-                                Fix Manually
+                                I&apos;ll fix it myself
                             </Button>
                         </div>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Saving loader modal — non-dismissable while the request runs */}
+            <Modal open={isSaving} onClose={() => { }}>
+                <div className={styles.saveModal}>
+                    <div className={styles.saveModalHeader}>
+                        <span className={styles.saveModalHeaderText}>Saving Flow</span>
+                    </div>
+                    <div className={styles.saveSuccessBody}>
+                        <div className={styles.saveSuccessIconWrap}>
+                            <svg className={styles.saveLoadingSvg} viewBox="0 0 52 52">
+                                <circle className={styles.saveLoadingTrack} cx="26" cy="26" r="24" fill="none" />
+                                <circle className={styles.saveLoadingRing} cx="26" cy="26" r="24" fill="none" />
+                            </svg>
+                        </div>
+                        <h3 className={styles.saveSuccessTitle}>Saving your flow...</h3>
+                        <p className={styles.saveSuccessDesc}>
+                            Please wait while we save &quot;{flowName || 'Untitled Flow'}&quot; to the server.
+                        </p>
                     </div>
                 </div>
             </Modal>

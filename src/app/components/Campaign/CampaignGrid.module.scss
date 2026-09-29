@@ -156,6 +156,61 @@
     border: 1px solid var(--error-main) !important;
 }
 
+// ── Animated countdown chip ───────────────────────────────────────────────────
+.countdownChip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 30px;
+    height: 30px;
+    padding: 6px;
+    border: none;
+    border-radius: 8px;
+    background: var(--error-light-bg);
+    color: var(--error-main);
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s;
+
+    &:hover {
+        transform: scale(1.05);
+    }
+
+    &:active {
+        transform: scale(0.98);
+    }
+}
+
+.countdownDigits {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+    line-height: 1;
+}
+
+.countdownSeconds {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    animation: tickPop 0.35s ease-out;
+}
+
+@keyframes tickPop {
+    0% {
+        transform: translateY(-6px);
+        opacity: 0;
+    }
+
+    100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
 @keyframes rocketGlow {
     0% {
         box-shadow: 0 0 0 0 var(--primary-light);
@@ -173,4 +228,373 @@
 .rocketHighlight {
     animation: rocketGlow 2s infinite ease-in-out;
     color: var(--primary-main) !important;
+}
+// ── Campaign Detail Drawer ────────────────────────────────────────────────────
+.drawerRoot {
+    width: 400px;
+    max-width: 100%;
+    height: 100%;
+    background: var(--bg-paper);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
+    @media (max-width: 600px) {
+        width: 100%;
+    }
+}
+
+.drawerHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.drawerTitleRow {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    min-width: 0;
+}
+
+.drawerIcon {
+    color: var(--primary-main);
+    flex-shrink: 0;
+}
+
+.drawerTitle {
+    font-size: 1.02rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-family: $font-family;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.drawerClose {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-subtle);
+    color: var(--text-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.15s;
+
+    &:hover {
+        background: var(--primary-main);
+        color: var(--button-color);
+    }
+}
+
+.drawerContent {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.detailSection {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.detailSectionHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.detailSectionTitle {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.detailRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.55rem 0.75rem;
+    border-radius: 8px;
+    background: var(--bg-subtle);
+}
+
+.detailLabel {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    flex-shrink: 0;
+}
+
+.detailValue {
+    font-size: 0.82rem;
+    color: var(--text-primary);
+    font-weight: 600;
+    text-align: right;
+    word-break: break-word;
+}
+
+.drawerActions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.drawerActionBtn {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--bg-subtle);
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.15s ease;
+
+    &:hover:not(:disabled) {
+        border-color: var(--primary-light);
+        background: var(--primary-light-bg);
+    }
+
+    &:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+    }
+}
+
+.drawerActionDanger {
+    &:hover:not(:disabled) {
+        border-color: var(--error-main);
+        background: var(--error-light-bg);
+    }
+
+    .drawerActionIcon {
+        color: var(--error-main);
+        background: var(--error-light-bg);
+    }
+
+    .drawerActionLabel {
+        color: var(--error-main);
+    }
+}
+
+.drawerActionIcon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--primary-light-bg);
+    color: var(--primary-main);
+    flex-shrink: 0;
+}
+
+.drawerActionText {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.drawerActionLabel {
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.drawerActionDesc {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+}
+
+// ── Drawer stat cards ─────────────────────────────────────────────────────────
+.statGrid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.6rem;
+}
+
+.statCard {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    padding: 0.7rem 0.75rem;
+    border-radius: 10px;
+    border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+}
+
+.statCardIcon {
+    opacity: 0.8;
+}
+
+.statCardValue {
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+}
+
+.statCardLabel {
+    font-size: 0.64rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    opacity: 0.75;
+}
+
+.statInfo {
+    background: var(--info-light-bg);
+    color: var(--info-main);
+}
+
+.statSuccess {
+    background: var(--success-light-bg);
+    color: var(--success-main);
+}
+
+.statWarning {
+    background: var(--warning-light-bg);
+    color: var(--warning-main);
+}
+
+// ── Drawer timeline ───────────────────────────────────────────────────────────
+.timeline {
+    display: flex;
+    flex-direction: column;
+}
+
+.timelineItem {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.45rem 0 0.45rem 0;
+
+    &::before {
+        content: '';
+        position: absolute;
+        left: 12px;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: var(--border-color);
+    }
+
+    &:first-child::before {
+        top: 50%;
+    }
+
+    &.timelineLast::before {
+        bottom: 50%;
+    }
+}
+
+.timelineDot {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-color);
+    color: var(--text-placeholder);
+    flex-shrink: 0;
+}
+
+.timelineDone {
+    .timelineDot {
+        background: var(--primary-light-bg);
+        border-color: var(--primary-main);
+        color: var(--primary-main);
+    }
+
+    .timelineLabel {
+        color: var(--text-primary);
+    }
+}
+
+.timelineBody {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.timelineLabel {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.timelineTime {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+// ── Drawer footer ─────────────────────────────────────────────────────────────
+.drawerFooter {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.drawerReportBtn {
+    text-transform: none !important;
+    font-weight: 600 !important;
+    border-radius: 10px !important;
+    padding: 0.6rem 1rem !important;
+    font-family: $font-family !important;
+}
+
+// ── Drawer typography (theme font) ────────────────────────────────────────────
+.drawerRoot {
+    font-family: $font-family;
+}
+
+.drawerHeroStatus,
+.drawerHeroMeta,
+.statCardValue,
+.statCardLabel,
+.timelineLabel,
+.timelineTime,
+.detailSectionTitle,
+.detailLabel,
+.detailValue,
+.drawerActionLabel,
+.drawerActionDesc,
+.eventTitle,
+.eventSubtitle,
+.eventTime {
+    font-family: $font-family;
+}
+
+.drawerActionBtn {
+    font-family: $font-family;
 }

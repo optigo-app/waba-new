@@ -175,11 +175,12 @@ export default function MediaPreviewOverlay({
       <div className="media-preview-footer">
         <div className="media-preview-thumb-row" ref={thumbRowRef}>
           {mediaPreview.map((preview, i) => (
-            <button
+            <div
               key={`thumb-${preview.name}-${i}`}
               className={`media-preview-thumb-item ${i === selectedPreviewIndex ? 'active' : ''}`}
               onClick={() => onSelectIndex(i)}
-              disabled={isSendingMedia}
+              role="button"
+              tabIndex={0}
               aria-label={`Select ${preview.name}`}
             >
               {preview.type === 'image' ? (
@@ -199,7 +200,7 @@ export default function MediaPreviewOverlay({
               >
                 <X size={10} />
               </button>
-            </button>
+            </div>
           ))}
           <button
             className="media-preview-add-thumb"

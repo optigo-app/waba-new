@@ -6,65 +6,38 @@ import {
     Zap,
     MessageSquare,
     HelpCircle,
-    GitBranch,
-    Clock,
-    ArrowRight,
-    Database,
-    Globe,
     UserCheck,
     CheckCircle2,
     ListPlus,
-    Smartphone,
     Image,
     ImagePlus,
-    PanelLeftClose,
+    PanelLeft,
 } from 'lucide-react';
 import { useFlowStore } from '../../../store/flowStore';
 import { getDefaultNodeData } from './CustomNodes';
-import styles from './FlowBuilder.module.scss';
+import styles from './NodePalette.module.scss';
 
 const categories = [
     {
-        title: 'Incoming Events',
+        title: 'Start',
         items: [
-            { type: 'keyword_trigger', label: 'Keyword Trigger', description: 'Triggers flow on incoming keywords', icon: Zap, color: '#1daa61' },
+            { type: 'keyword_trigger', label: 'Keyword Trigger', description: 'Start flow on incoming keywords', icon: Zap, color: '#1daa61' },
         ],
     },
     {
-        title: 'Interactive Replies',
+        title: 'Messages',
         items: [
-            { type: 'send_question', label: 'Send Question', description: 'Ask choice with custom buttons', icon: HelpCircle, color: '#25D366' },
-            { type: 'send_message', label: 'Send Message', description: 'Send simple text or media', icon: MessageSquare, color: '#25D366' },
-            { type: 'whatsapp_flow', label: 'Meta WhatsApp Flow', description: 'Validated form screen in WhatsApp', icon: Smartphone, color: '#075E54' },
+            { type: 'send_message', label: 'Send Message', description: 'Send a simple text message', icon: MessageSquare, color: '#25D366' },
+            { type: 'send_question', label: 'Send Question', description: 'Ask with quick reply buttons', icon: HelpCircle, color: '#ff2d55' },
+            { type: 'send_message_image', label: 'Image Card', description: 'Send an image message', icon: Image, color: '#8b5cf6', nodeType: 'send_message' },
+            { type: 'send_question_image', label: 'Image with Options', description: 'Image card with reply buttons', icon: ImagePlus, color: '#8b5cf6', nodeType: 'send_question' },
         ],
     },
     {
-        title: 'Media Templates',
+        title: 'Finish',
         items: [
-            { type: 'send_message_image', label: 'Image Card', description: 'Send image-only card (no buttons)', icon: Image, color: '#8b5cf6', nodeType: 'send_message' },
-            { type: 'send_question_image', label: 'Image with Options', description: 'Image card with quick reply buttons', icon: ImagePlus, color: '#8b5cf6', nodeType: 'send_question' },
-        ],
-    },
-    {
-        title: 'Router & Storage',
-        items: [
-            { type: 'condition', label: 'Condition', description: 'Evaluate if-else branches', icon: GitBranch, color: '#f57c00' },
-            { type: 'set_variable', label: 'Set Variable', description: 'Record custom user variables', icon: Database, color: '#a855f7' },
-        ],
-    },
-    {
-        title: 'Workflow Helpers',
-        items: [
-            { type: 'delay', label: 'Wait / Delay', description: 'Suspend action for durations', icon: Clock, color: '#00CFE8' },
-            { type: 'goto', label: 'Goto Node', description: 'Redirect flow to any node', icon: ArrowRight, color: '#6366f1' },
-            { type: 'api_call', label: 'Service API Call', description: 'Request external JSON APIs', icon: Globe, color: '#3b82f6' },
-        ],
-    },
-    {
-        title: 'Customer Exit',
-        items: [
-            { type: 'human_handoff', label: 'Human Handoff', description: 'Escalate chat to agent desk', icon: UserCheck, color: '#ec4899' },
-            { type: 'end_flow', label: 'End Flow', description: 'Close chatbot session', icon: CheckCircle2, color: '#64748b' },
+            { type: 'human_handoff', label: 'Human Handoff', description: 'Pass chat to a live agent', icon: UserCheck, color: '#ec4899' },
+            { type: 'end_flow', label: 'End Flow', description: 'Close the chatbot session', icon: CheckCircle2, color: '#64748b' },
         ],
     },
 ];
@@ -100,7 +73,7 @@ const NodePalette = () => {
                 <div className={styles.sidebarTitleRow}>
                     <ListPlus size={16} className={styles.sidebarTitleIcon} />
                     <Typography component="h3" className={styles.sidebarTitle}>
-                        Interactive Nodes
+                        Flow Blocks
                     </Typography>
                     <IconButton
                         size="small"
@@ -108,11 +81,11 @@ const NodePalette = () => {
                         className={styles.sidebarCloseBtn}
                         title="Hide node panel"
                     >
-                        <PanelLeftClose size={16} />
+                        <PanelLeft size={16} />
                     </IconButton>
                 </div>
                 <Typography component="p" className={styles.sidebarHint}>
-                    Drag any element below, then drop it on the canvas to expand your chatbot flow.
+                    Drag a block onto the canvas — or click it to add instantly.
                 </Typography>
             </div>
 
@@ -154,7 +127,7 @@ const NodePalette = () => {
 
             <div className={styles.sidebarTip}>
                 <span className={styles.sidebarTipText}>
-                    Connect handles to map user buttons to triggers.
+                    Link blocks by dragging between their handles.
                 </span>
             </div>
         </div>

@@ -24,7 +24,7 @@ import {
     ExternalLink,
 } from 'lucide-react';
 import { useFlowStore } from '../../../store/flowStore';
-import styles from './FlowBuilder.module.scss';
+import styles from './CustomNodes.module.scss';
 
 // ── Inline Editable Text ─────────────────────────────────────────────────────
 function InlineEditable({ value, onSave, placeholder = 'Click to edit...', multiline = false, maxLength, className, stopPropagation = true }) {
@@ -138,9 +138,10 @@ const NODE_TYPE_LABELS = {
 const NodeWrapper = ({ id, type, selected, title, icon: Icon, children, warnings = [], onTitleChange }) => {
     const color = colorMap[type] || 'var(--text-tertiary)';
     const duplicateNode = useFlowStore((state) => state.duplicateNode);
+    const hasError = useFlowStore((state) => state.errorNodeIds.includes(id));
 
     return (
-        <div className={`${styles.flowNode} ${selected ? styles.flowNodeSelected : ''}`} style={{ '--node-color': color }}>
+        <div className={`${styles.flowNode} ${selected ? styles.flowNodeSelected : ''} ${hasError ? styles.flowNodeError : ''}`} style={{ '--node-color': color }}>
             <div className={styles.flowNodeHeader} style={{ background: color }}>
                 <div className={styles.flowNodeHeaderLeft}>
                     <Icon size={14} />

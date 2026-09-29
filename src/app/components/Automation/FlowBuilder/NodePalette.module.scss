@@ -1,0 +1,213 @@
+@use '../../../globals.scss' as *;
+
+// ── Sidebar ───────────────────────────────────────────────────────────────────
+.sidebar {
+    width: 300px;
+    flex-shrink: 0;
+    background: var(--bg-paper);
+    border-right: 1px solid var(--sidebar-borderColor);
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem 1rem 0 1.25rem;
+    overflow: hidden;
+    box-shadow: 4px 0 16px rgba(0, 0, 0, 0.04);
+    z-index: 5;
+}
+
+.sidebarHeader {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding-right: 0.25rem;
+    margin-bottom: 0.25rem;
+}
+
+.sidebarTitleRow {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0;
+}
+
+.sidebarTitleIcon {
+    color: var(--primary-main);
+}
+
+.sidebarTitle {
+    font-size: 0.78rem !important;
+    font-weight: 700 !important;
+    color: var(--titleColor);
+    font-family: 'Poppins', sans-serif !important;
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    flex: 1;
+}
+
+.sidebarCloseBtn {
+    margin-left: auto !important;
+    color: var(--secondary-color) !important;
+    padding: 4px !important;
+
+    &:hover {
+        background: rgba(0, 0, 0, 0.04) !important;
+        color: var(--titleColor) !important;
+    }
+}
+
+.sidebarHint {
+    font-size: 0.62rem !important;
+    color: var(--secondary-color);
+    font-family: 'Poppins', sans-serif !important;
+    margin: 0;
+    line-height: 1.65;
+    padding-right: 0.25rem;
+}
+
+.sidebarSeparator {
+    height: 1px;
+    background: var(--sidebar-borderColor);
+    margin: 1rem 0.25rem 0.75rem 0;
+    flex-shrink: 0;
+}
+
+.nodeList {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 0.375rem;
+    padding-bottom: 1rem;
+
+    &::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: var(--border-color);
+        border-radius: 999px;
+    }
+
+    &::-webkit-scrollbar-thumb:hover {
+        background: var(--border-strong);
+    }
+}
+
+.nodeCategory {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+}
+
+.nodeCategoryTitle {
+    font-size: 0.56rem;
+    font-weight: 700;
+    color: var(--secondary-color);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-family: 'Poppins', sans-serif;
+    padding-left: 0.25rem;
+    margin-bottom: 0.125rem;
+}
+
+.nodeCategoryItems {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+}
+
+.nodeItem {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.7rem 0.8rem;
+    border-radius: 12px;
+    border: 1px solid var(--sidebar-borderColor);
+    background: var(--bg-light);
+    cursor: grab;
+    transition: all 0.2s ease;
+    position: relative;
+
+    &:hover {
+        background: var(--bg-paper);
+        border-color: var(--border-strong);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.07);
+        transform: translateY(-1px);
+    }
+
+    &:active {
+        cursor: grabbing;
+        transform: translateY(0);
+    }
+}
+
+.nodeItemIcon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    flex-shrink: 0;
+}
+
+.nodeItemContent {
+    flex: 1;
+    min-width: 0;
+}
+
+.nodeItemLabel {
+    font-size: 0.73rem;
+    font-weight: 600;
+    color: var(--titleColor);
+    font-family: 'Poppins', sans-serif;
+    line-height: 1.35;
+}
+
+.nodeItemDesc {
+    font-size: 0.58rem;
+    color: var(--secondary-color);
+    font-family: 'Poppins', sans-serif;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 4px;
+    line-height: 1.4;
+}
+
+.nodeItemDrag {
+    font-size: 0.52rem;
+    font-weight: 700;
+    font-family: monospace;
+    color: var(--border-strong);
+    opacity: 0;
+    transition: opacity 0.2s;
+    flex-shrink: 0;
+}
+
+.nodeItem:hover .nodeItemDrag {
+    opacity: 1;
+}
+
+.sidebarTip {
+    padding: 0.875rem 1rem;
+    background: var(--bg-light);
+    border-top: 1px solid var(--sidebar-borderColor);
+    border-radius: 0 0 0 12px;
+    flex-shrink: 0;
+    margin: 0 -1rem 0 -1.25rem;
+}
+
+.sidebarTipText {
+    font-size: 0.58rem;
+    color: var(--secondary-color);
+    font-family: 'Poppins', sans-serif;
+    line-height: 1.65;
+    padding-right: 0.25rem;
+}
+

@@ -60,6 +60,13 @@
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
 }
 
+/* When the emoji button sits on the left of the input, anchor the dropdown
+   to the left edge so it doesn't overflow outside the panel */
+.emoji-picker-dropdown-left {
+  right: auto;
+  left: 0;
+}
+
 .emoji-picker-dropdown .EmojiPickerReact {
   --epr-bg-color: var(--bg-paper);
   --epr-category-label-bg-color: var(--bg-default);
@@ -69,6 +76,20 @@
   --epr-active-category-icon-color: var(--chat-primary, #25d366);
   --epr-text-color: var(--text-primary);
   --epr-search-border-color: var(--border-color);
+  --epr-emoji-size: 24px;
+  --epr-emoji-padding: 5px;
+  --epr-category-label-height: 26px;
+  font-family: var(--chat-font);
+}
+
+/* Category headings ("Frequently Used", "Smileys & People") — the picker's
+   default 16px bold label is oversized for this dropdown */
+.emoji-picker-dropdown .EmojiPickerReact .epr-emoji-category-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary);
 }
 
 /* Reaction picker popup (inline on message hover) */
@@ -92,6 +113,17 @@
   --epr-active-category-icon-color: var(--chat-primary, #25d366);
   --epr-text-color: var(--text-primary);
   --epr-search-border-color: var(--border-color);
+  --epr-emoji-size: 24px;
+  --epr-category-label-height: 26px;
+  font-family: var(--chat-font);
+}
+
+.reaction-picker-popup .EmojiPickerReact .epr-emoji-category-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary);
 }
 
 /* ─── Redirection modal ──────────────────────────────────────────────────── */

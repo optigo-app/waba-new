@@ -9,6 +9,8 @@ import { logoutApi } from '../../api/LogoutConfig'
 import { Menu, MenuItem, Tooltip, IconButton, Avatar, Divider, Box, Typography, ToggleButtonGroup, ToggleButton } from '@mui/material'
 import { getWhatsAppAvatarConfig } from '@/app/utils/globalFunc'
 import { useAuth } from '../../hooks/useAuth'
+import AddChannelPromo from '../Chat/AddChannelPromo'
+import ConfirmationModal from '../ConfirmationModal/ConfirmationModal'
 import { useWallet } from '../../contexts/WalletContext'
 
 const Sidebar = ({isCollapsed = false, onCollapsedChange = () => { }, mobileOpen = false, onMobileClose = () => { } }) => {
@@ -18,6 +20,8 @@ const Sidebar = ({isCollapsed = false, onCollapsedChange = () => { }, mobileOpen
     const router = useRouter();
     const { walletInfo } = useWallet();
     const [userMenuAnchorEl, setUserMenuAnchorEl] = useState(null);
+    const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
+    const [loggingOut, setLoggingOut] = useState(false);
     const isUserMenuOpen = Boolean(userMenuAnchorEl);
     const { mode, setMode } = useThemeMode();
 
@@ -40,8 +44,13 @@ const Sidebar = ({isCollapsed = false, onCollapsedChange = () => { }, mobileOpen
         setTimeout(() => setIsSyncing(false), 3000);
     };
 
-    const handleLogout = async () => {
+    const handleLogoutClick = () => {
         handleCloseUserMenu();
+        setLogoutConfirmOpen(true);
+    };
+
+    const handleLogout = async () => {
+        setLoggingOut(true);
         try {
             await logoutApi({ UserId: auth?.id }, auth?.whatsappNumber);
         } catch {
@@ -179,6 +188,9 @@ const Sidebar = ({isCollapsed = false, onCollapsedChange = () => { }, mobileOpen
                     </div>
                 </div>
 
+                {/* Channel upsell card — reusable promo, shown above the user section */}
+                <AddChannelPromo collapsed={isCollapsed} />
+
                 {/* User avatar section */}
                 <div className={isCollapsed ? "sidebar-user collapsed" : "sidebar-user"}>
                     <Tooltip title={displayName} placement="right" arrow disableHoverListener={!isCollapsed}>
@@ -306,7 +318,7 @@ const Sidebar = ({isCollapsed = false, onCollapsedChange = () => { }, mobileOpen
                         <Divider sx={{ my: 0.5 }} />
 
                         <MenuItem
-                            onClick={handleLogout}
+                            onClick={handleLogoutClick}
                             sx={{
                                 borderRadius: 1,
                                 gap: 1.5,
@@ -318,6 +330,18 @@ const Sidebar = ({isCollapsed = false, onCollapsedChange = () => { }, mobileOpen
                             Logout
                         </MenuItem>
                     </Menu>
+
+                    <ConfirmationModal
+                        isOpen={logoutConfirmOpen}
+                        onClose={() => !loggingOut && setLogoutConfirmOpen(false)}
+                        onConfirm={handleLogout}
+                        title="Log out?"
+                        description="Are you sure you want to log out of your account?"
+                        icon={LogOut}
+                        isDanger
+                        confirmLabel="Logout"
+                        isLoading={loggingOut}
+                    />
                 </div>
 
                 {/* Powered by section at the bottom */}

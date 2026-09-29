@@ -17,28 +17,21 @@ export function getDecodedSession() {
     const searchParams = new URLSearchParams(window.location.search);
     const session = searchParams.get("session");
 
-    console.log('[Session] Raw session param from URL:', session);
-
     if (!session) {
-      console.log('[Session] No session param found in URL');
       return null;
     }
 
     const decoded = atob(decodeURIComponent(session));
-    console.log('[Session] Decoded base64 string:', decoded);
 
     const parsed = JSON.parse(decoded);
-    console.log('[Session] Parsed session object:', parsed);
 
     if (!parsed?.appuserid) {
-      console.error("[Session] Decoded session missing appuserid", parsed);
       return null;
     }
 
     cachedSession = parsed;
     cachedAt = Date.now();
 
-    console.log('[Session] Session decoded and cached successfully');
     return parsed;
   } catch (error) {
     console.error("[Session] Failed to decode session:", error);

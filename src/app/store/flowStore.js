@@ -90,6 +90,7 @@ export const useFlowStore = create((set, get) => ({
     nodes: [],
     edges: [],
     selectedNodeId: null,
+    errorNodeIds: [],
     isDirty: false,
     isSimulatorOpen: false,
     activeThemeId: 'emerald',
@@ -162,6 +163,7 @@ export const useFlowStore = create((set, get) => ({
                 style: e.style || { strokeWidth: 2, stroke: '#1daa61' },
             })),
             selectedNodeId: null,
+            errorNodeIds: [],
             isDirty: true,
             view: 'builder',
             _past: draft._past || [],
@@ -362,6 +364,7 @@ export const useFlowStore = create((set, get) => ({
             nodes: initialNodes,
             edges: initialEdges,
             selectedNodeId: null,
+            errorNodeIds: [],
             isDirty: wasDecompiledFromBackend,
             view: 'builder',
             _past: [],
@@ -408,6 +411,7 @@ export const useFlowStore = create((set, get) => ({
             nodes: laidOutNodes,
             edges: importedEdges,
             selectedNodeId: null,
+            errorNodeIds: [],
             isDirty: true,
             view: 'builder',
             _past: [],
@@ -452,6 +456,7 @@ export const useFlowStore = create((set, get) => ({
             nodes: initialNodes,
             edges: [],
             selectedNodeId: null,
+            errorNodeIds: [],
             isDirty: false,
             view: 'builder',
             _past: [],
@@ -502,6 +507,7 @@ export const useFlowStore = create((set, get) => ({
                 nodes: fixedNodes,
                 edges: fixedEdges,
                 selectedNodeId: null,
+                errorNodeIds: [],
                 isDirty: true,
                 view: 'builder',
                 _past: [],
@@ -549,6 +555,7 @@ export const useFlowStore = create((set, get) => ({
                 nodes: fixedNodes,
                 edges: fixedEdges,
                 selectedNodeId: null,
+                errorNodeIds: [],
                 isDirty: true,
                 _past: [...state._past, snapshot(state)].slice(-MAX_HISTORY),
                 _future: [],
@@ -633,7 +640,12 @@ export const useFlowStore = create((set, get) => ({
 
     setNodes: (nodes) => { set((state) => ({ ...pushHistory(state), nodes, isDirty: true })); saveDraft(get()); },
     setEdges: (edges) => { set((state) => ({ ...pushHistory(state), edges, isDirty: true })); saveDraft(get()); },
-    selectNode: (id) => set({ selectedNodeId: id }),
+    selectNode: (id) => set((state) => ({
+        selectedNodeId: id,
+        nodes: state.nodes.map((n) =>
+            n.selected === (n.id === id) ? n : { ...n, selected: n.id === id }
+        ),
+    })),
 
     autoFixFlowErrors: () => {
         const state = get();
@@ -648,6 +660,9 @@ export const useFlowStore = create((set, get) => ({
         return fixes;
     },
 
+    // Save-error highlights — set on failed save, cleared per-node on edit/delete
+    setErrorNodeIds: (ids) => set({ errorNodeIds: ids }),
+
     // Flow Node Actions
     updateNodeData: (id, data) => {
         set((state) => ({
@@ -655,6 +670,7 @@ export const useFlowStore = create((set, get) => ({
             nodes: state.nodes.map((n) =>
                 n.id === id ? { ...n, data: { ...n.data, ...data } } : n
             ),
+            errorNodeIds: state.errorNodeIds.filter((e) => e !== id),
             isDirty: true,
         }));
         saveDraft(get());
@@ -667,6 +683,7 @@ export const useFlowStore = create((set, get) => ({
             nodes: state.nodes.map((n) =>
                 n.id === id ? { ...n, data: { ...n.data, ...data } } : n
             ),
+            errorNodeIds: state.errorNodeIds.filter((e) => e !== id),
             isDirty: true,
         }));
         saveDraft(get());
@@ -687,6 +704,7 @@ export const useFlowStore = create((set, get) => ({
             nodes: state.nodes.filter((n) => n.id !== id),
             edges: state.edges.filter((e) => e.source !== id && e.target !== id),
             selectedNodeId: state.selectedNodeId === id ? null : state.selectedNodeId,
+            errorNodeIds: state.errorNodeIds.filter((e) => e !== id),
             isDirty: true,
         }));
         saveDraft(get());
@@ -702,7 +720,7 @@ export const useFlowStore = create((set, get) => ({
             id: newId,
             position: { x: parentNode.position.x + 60, y: parentNode.position.y + 60 },
             data: JSON.parse(JSON.stringify(parentNode.data)),
-            selected: false,
+            selected: true,
         };
 
         if (duplicated.data.label) {
@@ -719,6 +737,32 @@ export const useFlowStore = create((set, get) => ({
     },
 
     setFlowName: (name) => { set({ flowName: name, isDirty: true }); saveDraft(get()); },
+    applyFlowMeta: ({ name, description, keywords, triggerMode }) => {
+        const state = get();
+        const kw = (keywords || []).filter(Boolean);
+        const primary = kw[0];
+        const updatedNodes = kw.length
+            ? state.nodes.map((n) =>
+                n.type === 'keyword_trigger'
+                    ? { ...n, data: { ...n.data, keywords: kw } }
+                    : n
+            )
+            : state.nodes;
+        set({
+            flowName: name || state.flowName,
+            flowDescription: description ?? state.flowDescription,
+            triggerKeyword: primary || state.triggerKeyword,
+            triggerMode: triggerMode || state.triggerMode,
+            nodes: updatedNodes,
+            flowsList: state.flowsList.map((f) =>
+                f.id === state.flowId
+                    ? { ...f, name: name || f.name, triggerKeyword: primary || f.triggerKeyword, nodeCount: updatedNodes.length }
+                    : f
+            ),
+            isDirty: true,
+        });
+        saveDraft(get());
+    },
     setFlowDescription: (desc) => { set({ flowDescription: desc, isDirty: true }); saveDraft(get()); },
     setTriggerKeyword: (keyword) => {
         const state = get();
@@ -816,10 +860,12 @@ export const useFlowStore = create((set, get) => ({
             (n) => n.data?.mediaUrl && n.data.mediaUrl.includes('placehold.co')
         );
         if (placeholderNodes.length > 0) {
-            const nodeNames = placeholderNodes.map((n) => `"${n.data.label || n.id}"`).join(', ');
             return {
                 success: false,
-                error: `The following nodes still have placeholder images: ${nodeNames}. Please replace them with real images before saving.`,
+                errors: placeholderNodes.map((n) => ({
+                    nodeId: n.id,
+                    message: `"${n.data.label || n.id}" still uses a placeholder image — upload a real image to publish this flow.`,
+                })),
             };
         }
 
@@ -954,6 +1000,7 @@ export const useFlowStore = create((set, get) => ({
             nodes: [],
             edges: [],
             selectedNodeId: null,
+            errorNodeIds: [],
             isDirty: false,
             isSimulatorOpen: false,
             showAiModal: false,

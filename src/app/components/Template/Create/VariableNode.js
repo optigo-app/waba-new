@@ -17,8 +17,28 @@ export class VariableNode extends TextNode {
         this.__number = number;
     }
 
+    isToken() {
+        return true;
+    }
+
+    getMode() {
+        return 'token';
+    }
+
     getNumber() {
         return this.__number;
+    }
+
+    canInsertTextBefore() {
+        return false;
+    }
+
+    canInsertTextAfter() {
+        return false;
+    }
+
+    spliceText() {
+        return this;
     }
 
     createDOM(config) {
@@ -26,7 +46,6 @@ export class VariableNode extends TextNode {
         dom.textContent = `{{${this.__number}}}`;
         dom.className = 'variable-node';
         dom.setAttribute('data-number', String(this.__number));
-        dom.contentEditable = 'false';
         dom.style.display = 'inline-block';
         dom.style.backgroundColor = 'var(--new-main)';
         dom.style.color = 'var(--new-light)';
@@ -35,7 +54,6 @@ export class VariableNode extends TextNode {
         dom.style.fontWeight = '600';
         dom.style.fontSize = '0.9em';
         dom.style.cursor = 'default';
-        dom.style.userSelect = 'none';
         return dom;
     }
 

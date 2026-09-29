@@ -37,6 +37,13 @@ export default function ChatPreloader({ onComplete }) {
           const channels = channelsResp?.data || [];
           if (!mounted) return;
 
+          // Store ALL channels in the chat store so ChatChannelPanel can use them instantly
+          if (channels.length) {
+            const store = useChatStore.getState();
+            store.setChannels(channels);
+            store.setChannelsLoaded(true);
+          }
+
           // 2. Find default channel (IsDefault === 1), fall back to first active
           const defaultChannel =
             channels.find((c) => Number(c.IsDefault) === 1) ||
@@ -52,11 +59,11 @@ export default function ChatPreloader({ onComplete }) {
             store.setSelectedChannel(defaultChannel);
           }
 
-          // 3. Fetch conversations AND preload messages in parallel
+          // 3. Fetch conversations AND preload messages in parallel (channel is now set in store)
           if (mounted) setStatusMsg('Loading chats…');
           const [convResp, preloadResp] = await Promise.all([
-            fetchConversationLists(1, 100, userId, ''),
-            fetchPreloadChat(userId, 1, 100, defaultChannel?.Id || ''),
+            fetchConversationLists(1, 20, userId, ''),
+            fetchPreloadChat(userId, 1, 20, defaultChannel?.Id || ''),
           ]);
 
           // 4. Store conversations in the store

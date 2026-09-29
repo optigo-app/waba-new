@@ -1,0 +1,846 @@
+@use '../../../globals.scss' as *;
+
+// ── Toolbar ───────────────────────────────────────────────────────────────────
+.toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 1rem;
+    background: var(--bg-paper);
+    border-bottom: 1px solid var(--sidebar-borderColor);
+    flex-shrink: 0;
+    position: relative;
+    z-index: 30;
+}
+
+.toolbarLeft {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.toolbarMiddle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.toolbarRight {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.toolbarBackBtn {
+    font-family: 'Poppins', sans-serif !important;
+    text-transform: capitalize !important;
+    color: var(--secondary-color) !important;
+    font-size: 0.75rem !important;
+    border: 1px solid var(--sidebar-borderColor) !important;
+    border-radius: 10px !important;
+    background: var(--bg-light) !important;
+
+    &:hover {
+        background: var(--bg-light) !important;
+        color: var(--titleColor) !important;
+    }
+}
+
+.toolbarPaletteBtn {
+    color: var(--secondary-color) !important;
+    border: 1px solid var(--sidebar-borderColor) !important;
+    border-radius: 10px !important;
+    padding: 5px !important;
+    background: var(--bg-light) !important;
+
+    &:hover {
+        color: var(--primary-main) !important;
+        border-color: var(--primary-main) !important;
+        background: var(--primary-light-bg) !important;
+    }
+}
+
+.toolbarPaletteBtnActive {
+    color: var(--primary-main) !important;
+    border-color: var(--primary-main) !important;
+    background: var(--primary-light-bg) !important;
+}
+
+.toolbarDivider {
+    width: 1px;
+    height: 24px;
+    background: var(--sidebar-borderColor);
+}
+
+.toolbarUndoRedo {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    background: var(--bg-light);
+    border: 1px solid var(--sidebar-borderColor);
+    border-radius: 10px;
+    padding: 2px;
+}
+
+.toolbarUndoBtn,
+.toolbarRedoBtn {
+    color: var(--secondary-color) !important;
+    border-radius: 8px !important;
+    padding: 4px !important;
+
+    &:hover:not(:disabled) {
+        background: var(--border-color) !important;
+        color: var(--titleColor) !important;
+    }
+
+    &:disabled {
+        color: var(--border-strong) !important;
+        cursor: not-allowed;
+    }
+}
+
+.toolbarFlowInfo {
+    display: flex;
+    flex-direction: column;
+}
+
+.toolbarFlowNameRow {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.toolbarFlowNameInput {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--titleColor);
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid transparent;
+    outline: none;
+    padding: 2px 0;
+    max-width: 220px;
+    transition: border-color 0.2s;
+
+    &:hover {
+        border-bottom-color: var(--sidebar-borderColor);
+    }
+
+    &:focus {
+        border-bottom-color: var(--primary-main);
+    }
+}
+
+.toolbarFlowDesc {
+    font-size: 0.62rem;
+    color: var(--secondary-color);
+    font-family: 'Poppins', sans-serif;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 280px;
+}
+
+// Trigger display in toolbar
+.toolbarTriggerKeyword,
+.toolbarTriggerInstant {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.7rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 10px;
+    border: 1px solid var(--sidebar-borderColor);
+}
+
+.toolbarTriggerKeyword {
+    background: var(--bg-light);
+    color: var(--secondary-color);
+}
+
+.toolbarTriggerInstant {
+    background: var(--warning-light-bg);
+    border-color: var(--warning-light-bg);
+    color: var(--warning-main);
+}
+
+// Inline trigger in header
+.toolbarTriggerInline {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-left: 0.5rem;
+}
+
+.toolbarTriggerInlineLabel {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--secondary-color);
+    white-space: nowrap;
+}
+
+.toolbarTriggerBadge {
+    font-family: monospace;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--primary-main);
+    background: var(--primary-light-bg);
+    padding: 3px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+}
+
+.toolbarTriggerInput {
+    width: 90px;
+    border: 1px solid var(--sidebar-borderColor);
+    border-radius: 8px;
+    padding: 4px 8px;
+    font-family: monospace;
+    font-size: 0.72rem;
+    color: var(--titleColor);
+    background: var(--bg-light);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+
+    &:focus {
+        border-color: var(--primary-main);
+        box-shadow: 0 0 0 2px var(--primary-light-bg);
+    }
+
+    &::placeholder {
+        color: var(--border-strong);
+    }
+}
+
+.toolbarTriggerInputError {
+    border-color: var(--error-main) !important;
+    background: var(--error-light-bg);
+
+    &:focus {
+        border-color: var(--error-main) !important;
+        box-shadow: 0 0 0 2px var(--error-light-bg) !important;
+    }
+}
+
+.toolbarTriggerError {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.58rem;
+    font-weight: 500;
+    color: var(--error-main);
+    white-space: nowrap;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.toolbarTriggerCount {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.58rem;
+    font-weight: 600;
+    color: var(--primary-main);
+    background: var(--primary-light-bg);
+    padding: 2px 6px;
+    border-radius: 6px;
+    white-space: nowrap;
+    cursor: help;
+}
+
+.toolbarTriggerInstantBadge {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--warning-main);
+    background: var(--warning-light-bg);
+    border: 1px solid var(--warning-light-bg);
+    border-radius: 8px;
+    padding: 4px 10px;
+    margin-left: 0.5rem;
+    white-space: nowrap;
+}
+
+.toolbarTriggerDot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--primary-main);
+    display: inline-block;
+    animation: pulse 2s infinite;
+}
+
+.toolbarTriggerInstant .toolbarTriggerDot {
+    background: var(--warning-main);
+}
+
+.toolbarTriggerKeywordValue {
+    font-weight: 700;
+    color: var(--primary-main);
+    font-family: monospace;
+}
+
+.toolbarTriggerConfigBtn,
+.toolbarTriggerEditBtn {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.58rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid;
+    cursor: pointer;
+    background: transparent;
+    transition: all 0.2s;
+}
+
+.toolbarTriggerConfigBtn {
+    color: var(--warning-main);
+    border-color: var(--warning-light-bg);
+
+    &:hover {
+        background: var(--warning-light-bg);
+    }
+}
+
+.toolbarTriggerEditBtn {
+    color: var(--secondary-color);
+    border-color: var(--sidebar-borderColor);
+
+    &:hover {
+        background: var(--bg-light);
+    }
+}
+
+// Info button & shortcuts popover
+.toolbarInfoWrap {
+    position: relative;
+}
+
+.toolbarInfoBtn {
+    border: 1px solid var(--sidebar-borderColor) !important;
+    border-radius: 10px !important;
+    color: var(--secondary-color) !important;
+    background: var(--bg-light) !important;
+
+    &:hover {
+        background: var(--bg-light) !important;
+        color: var(--titleColor) !important;
+    }
+}
+
+.shortcutsPopover {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    background: var(--bg-paper);
+    border: 1px solid var(--sidebar-borderColor);
+    border-radius: 14px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    width: 280px;
+    z-index: 50;
+}
+
+.shortcutsHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.65rem 1rem;
+    border-bottom: 1px solid var(--sidebar-borderColor);
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    font-size: 0.78rem;
+    color: var(--titleColor);
+}
+
+.shortcutsBody {
+    padding: 0.75rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+}
+
+.shortcutItem {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.7rem;
+    color: var(--secondary-color);
+    line-height: 1.5;
+}
+
+.shortcutIcon {
+    flex-shrink: 0;
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+
+.shortcutKey {
+    font-family: monospace;
+    font-size: 0.62rem;
+    font-weight: 700;
+    background: var(--bg-light);
+    border: 1px solid var(--sidebar-borderColor);
+    border-radius: 4px;
+    padding: 1px 6px;
+    color: var(--titleColor);
+}
+
+.toolbarSimulatorBtn {
+    font-family: 'Poppins', sans-serif !important;
+    text-transform: capitalize !important;
+    font-size: 0.72rem !important;
+    border-radius: 10px !important;
+    color: var(--primary-main) !important;
+    border-color: var(--primary-light-bg) !important;
+    background: var(--primary-light-bg) !important;
+
+    &:hover {
+        background: var(--primary-light-bg) !important;
+        border-color: var(--primary-main) !important;
+    }
+}
+
+// ── Config popover ────────────────────────────────────────────────────────────
+.configPopover {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--bg-paper);
+    border: 1px solid var(--sidebar-borderColor);
+    border-radius: 16px;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.18), 0 4px 12px rgba(0, 0, 0, 0.08);
+    width: 420px;
+    max-width: calc(100vw - 32px);
+    z-index: 1300;
+    overflow: hidden;
+}
+
+.configPopoverHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--sidebar-borderColor);
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--titleColor);
+    background: var(--bg-light);
+}
+
+.configPopoverBody {
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+    max-height: 70vh;
+    overflow-y: auto;
+
+    .settingsField {
+        gap: 0.45rem;
+    }
+
+    .settingsFieldLabel {
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: none;
+        letter-spacing: 0;
+    }
+
+    .settingsInput > div {
+        font-size: 0.85rem !important;
+        border-radius: 12px !important;
+    }
+}
+
+.configKeywordList {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.configKeywordItem {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: var(--bg-light);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+}
+
+.configKeywordText {
+    font-family: monospace;
+    font-size: 0.78rem;
+    color: var(--titleColor);
+}
+
+.configKeywordRemove {
+    color: var(--text-tertiary) !important;
+    padding: 4px !important;
+    border-radius: 6px !important;
+
+    &:hover {
+        color: var(--error-main) !important;
+        background: var(--error-light-bg) !important;
+    }
+}
+
+.configKeywordAddRow {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+
+    & > div {
+        flex: 1;
+    }
+
+    button {
+        height: 40px;
+        white-space: nowrap;
+    }
+}
+
+// ── Save success modal ────────────────────────────────────────────────────────
+.saveModal {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--bg-paper);
+    border-radius: 16px;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.16);
+    width: 480px;
+    max-width: 90vw;
+    outline: none;
+    overflow: hidden;
+}
+
+.saveModalHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--bg-light);
+}
+
+.saveModalHeaderText {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--titleColor);
+    letter-spacing: -0.01em;
+}
+
+.saveModalCloseBtn {
+    color: var(--secondary-color) !important;
+    background: var(--bg-light) !important;
+
+    &:hover {
+        background: var(--border-color) !important;
+        color: var(--titleColor) !important;
+    }
+}
+
+.saveSuccessBody {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 2.5rem 2rem 2.5rem;
+}
+
+.saveSuccessIconWrap {
+    margin-bottom: 1.5rem;
+}
+
+.saveSuccessSvg {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    display: block;
+}
+
+.saveSuccessCircle {
+    stroke: #0d9f5f;
+    stroke-width: 2;
+    stroke-dasharray: 151;
+    stroke-dashoffset: 151;
+    animation: saveCircleAnim 0.6s ease-out forwards;
+}
+
+.saveSuccessCheck {
+    stroke: #0d9f5f;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 40;
+    stroke-dashoffset: 40;
+    animation: saveCheckAnim 0.4s 0.5s ease-out forwards;
+}
+
+@keyframes saveCircleAnim {
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+@keyframes saveCheckAnim {
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+// Saving spinner — same 72px ring footprint as the success checkmark
+.saveLoadingSvg {
+    width: 72px;
+    height: 72px;
+    display: block;
+    animation: saveSpinAnim 1s linear infinite;
+}
+
+.saveLoadingTrack {
+    stroke: var(--bg-light);
+    stroke-width: 4;
+}
+
+.saveLoadingRing {
+    stroke: #0d9f5f;
+    stroke-width: 4;
+    stroke-linecap: round;
+    stroke-dasharray: 40 111; /* ~26% of the 151px circumference */
+}
+
+@keyframes saveSpinAnim {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.saveSuccessTitle {
+    font-family: 'Poppins', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--titleColor);
+    margin: 0 0 0.5rem 0;
+    letter-spacing: -0.01em;
+}
+
+.saveSuccessDesc {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.78rem;
+    color: var(--secondary-color);
+    line-height: 1.6;
+    margin: 0 0 1.5rem 0;
+    max-width: 340px;
+}
+
+// ── Save error modal ──────────────────────────────────────────────────────────
+.saveErrorModal {
+    width: 560px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.saveErrorBody {
+    padding: 1.25rem 1.5rem 1.5rem;
+    overflow-y: auto;
+}
+
+.saveErrorBanner {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.78rem;
+    color: #b91c1c;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    line-height: 1.5;
+
+    code {
+        background: #fee2e2;
+        padding: 0.1rem 0.35rem;
+        border-radius: 4px;
+        font-family: 'Fira Code', monospace;
+        font-size: 0.72rem;
+    }
+}
+
+.saveErrorList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.saveErrorItem {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.78rem;
+    color: #334155;
+    line-height: 1.5;
+    background: var(--bg-light);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0.625rem 0.875rem;
+}
+
+.saveErrorItemLink {
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+
+    &:hover {
+        border-color: #fca5a5;
+        background: #fef2f2;
+        box-shadow: 0 1px 4px rgba(220, 38, 38, 0.08);
+    }
+}
+
+.saveErrorText {
+    flex: 1;
+    min-width: 0;
+}
+
+.saveErrorLocate {
+    color: #b91c1c;
+    flex-shrink: 0;
+    opacity: 0.55;
+
+    .saveErrorItemLink:hover & {
+        opacity: 1;
+    }
+}
+
+.saveErrorHint {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.66rem;
+    color: var(--secondary-color);
+    font-style: italic;
+    margin: 0.6rem 0 0;
+    text-align: center;
+}
+
+.saveErrorNode {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--titleColor);
+    background: var(--border-color);
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    max-width: 180px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 0;
+}
+
+.saveErrorActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+}
+
+.saveSuccessInfo {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    background: var(--bg-light);
+    border: 1px solid var(--bg-light);
+    border-radius: 12px;
+    padding: 0.875rem 1.25rem;
+    width: 100%;
+}
+
+.saveSuccessInfoItem {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    flex: 1;
+}
+
+.saveSuccessInfoLabel {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.6rem;
+    color: var(--secondary-color);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 500;
+}
+
+.saveSuccessInfoValue {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.85rem;
+    color: var(--titleColor);
+    font-weight: 700;
+}
+
+.saveSuccessInfoDivider {
+    width: 1px;
+    height: 32px;
+    background: var(--border-color);
+    flex-shrink: 0;
+}
+
+
+.settingsField {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.settingsFieldLabel {
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: var(--titleColor);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-family: 'Poppins', sans-serif;
+}
+
+.settingsFieldOptional {
+    font-weight: 400;
+    color: var(--text-tertiary);
+    text-transform: none;
+}
+
+.settingsFieldHint {
+    font-family: 'Poppins', sans-serif !important;
+    font-size: 0.58rem !important;
+    color: var(--secondary-color) !important;
+    line-height: 1.5 !important;
+}
+
+.settingsInput {
+    & > div {
+        border-radius: 10px !important;
+        font-family: 'Poppins', sans-serif !important;
+        font-size: 0.75rem !important;
+    }
+}
+
+.settingsDivider {
+    border-color: var(--sidebar-borderColor) !important;
+    margin: 0.25rem 0 !important;
+}
+
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}

@@ -38,6 +38,18 @@ export const getSocketURL = () => {
 
 const Image_upload_url = process.env.NEXT_PUBLIC_IMAGE_UPLOAD;
 
+export const getUploadBaseUrl = () => {
+    const { isLocal, isNxt, isLocalWeb } = getEnvFlags();
+
+    const envUrl = (isLocal || isLocalWeb)
+        ? process.env.NEXT_PUBLIC_UPLOAD_LOCAL
+        : isNxt
+            ? process.env.NEXT_PUBLIC_UPLOAD_NXT
+            : process.env.NEXT_PUBLIC_UPLOAD_PRODUCTION;
+
+    return envUrl || Image_upload_url || 'https://nxt22.optigoapps.com/api';
+};
+
 export const APIURL = () => `${getApiBaseUrl()}/report`;
 export const LOGOUTAPI = () => `${getApiBaseUrl()}/whatsapp/chat/logout`;
 export const MESSAGEAPIURL = () => `${getApiBaseUrl()}/whatsapp/chat/send`;
@@ -62,14 +74,8 @@ export const ONBOARDING = `${getApiBaseUrl()}/whatsapp/onboarding/exchange-token
 
 export const PROFILE_UPDATE = () => `${getApiBaseUrl()}/whatsapp/profile/update`;
 
-export const UPLOADFILE = () => {
-    const { isLocal } = getEnvFlags();
-    return isLocal ? 'https://nxt22.optigoapps.com/api/upload' : `${Image_upload_url}/upload`;
-};
-export const REMOVE_FILE_URL = () => {
-    const { isLocal } = getEnvFlags();
-    return isLocal ? 'https://nxt22.optigoapps.com/api/removefile' : `${Image_upload_url}/removefile`;
-};
+export const UPLOADFILE = () => `${getUploadBaseUrl()}/upload`;
+export const REMOVE_FILE_URL = () => `${getUploadBaseUrl()}/removefile`;
 
 const getAuthData = () => {
     try {

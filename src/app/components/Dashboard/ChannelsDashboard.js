@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     Box,
@@ -8,11 +8,13 @@ import {
     Button,
     Paper,
     InputBase,
+    Grid,
 } from '@mui/material';
-import { Search, Plus, MessageCircle } from 'lucide-react';
+import { Search, Plus, MessageCircle, LayoutGrid, Table2 } from 'lucide-react';
 import WalletDrawer from './WalletDrawer';
 import ChannelCardSkeleton from './ChannelCardSkeleton';
 import ChannelCard from './ChannelCard';
+import ChannelTable from './ChannelTable';
 import BusinessProfile from '../BusinessProfile/BusinessProfile';
 import Pagination from '../Common/Pagination/Pagination';
 import { useAuth } from '../../hooks/useAuth';
@@ -38,17 +40,9 @@ const ChannelsDashboard = () => {
     const [profileOpen, setProfileOpen] = useState(false);
     const [activeChannel, setActiveChannel] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
-    const [currentPage, setCurrentPage] = useState(0);
-    const [itemsPerPage, setItemsPerPage] = useState(50);
-    const [pageChangeLoading, setPageChangeLoading] = useState(false);
-    const pageChangeTimeoutRef = useRef(null);
-
-    useEffect(() => () => {
-        if (pageChangeTimeoutRef.current) {
-            clearTimeout(pageChangeTimeoutRef.current);
-            pageChangeTimeoutRef.current = null;
-        }
-    }, []);
+    const [viewMode, setViewMode] = useState('grid');
+    const [cardPage, setCardPage] = useState(0);
+    const [cardRowsPerPage, setCardRowsPerPage] = useState(15);
 
     const appUserId = useMemo(
         () => auth?.userid || auth?.userId || auth?.appuserid || '',
@@ -79,35 +73,14 @@ const ChannelsDashboard = () => {
             (ch.companyCode || '').toLowerCase().includes(q) ||
             (ch.mobileNumber || '').toLowerCase().includes(q) ||
             (ch.wabaId || '').toLowerCase().includes(q) ||
-            (ch.whatsappName || '').toLowerCase().includes(q)
+            (ch.whatsappName || '').toLowerCase().includes(q) ||
+            (ch.channelTitle || '').toLowerCase().includes(q)
         );
     }, [channels, searchQuery]);
 
     const handleSearchChange = useCallback((val) => {
         setSearchQuery(val);
-        setCurrentPage(0);
-    }, []);
-
-    const paginatedChannels = useMemo(() => {
-        const start = currentPage * itemsPerPage;
-        return filteredChannels.slice(start, start + itemsPerPage);
-    }, [filteredChannels, currentPage, itemsPerPage]);
-
-    const handlePageChange = useCallback((_, newPage) => {
-        setPageChangeLoading(true);
-        setCurrentPage(newPage);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        if (pageChangeTimeoutRef.current) clearTimeout(pageChangeTimeoutRef.current);
-        pageChangeTimeoutRef.current = setTimeout(() => setPageChangeLoading(false), 400);
-    }, []);
-
-    const handleRowsPerPageChange = useCallback((val) => {
-        setPageChangeLoading(true);
-        setItemsPerPage(val);
-        setCurrentPage(0);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        if (pageChangeTimeoutRef.current) clearTimeout(pageChangeTimeoutRef.current);
-        pageChangeTimeoutRef.current = setTimeout(() => setPageChangeLoading(false), 400);
+        setCardPage(0);
     }, []);
 
     const handleWalletOpen = (channel) => {
@@ -180,7 +153,58 @@ const ChannelsDashboard = () => {
                         />
                     </Paper>
 
-                    {/* Add Channel Button — hidden while multi-channel is pending */}
+                    {/* View Switcher */}
+                    <Box
+                        sx={{
+                            display: 'flex',
+                            borderRadius: '12px',
+                            border: '1px solid var(--border-color)',
+                            overflow: 'hidden',
+                            background: 'var(--bg-paper)',
+                            flexShrink: 0,
+                        }}
+                    >
+                        <Box
+                            onClick={() => setViewMode('grid')}
+                            sx={{
+                                width: '38px',
+                                height: '38px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                background: viewMode === 'grid' ? 'var(--primary-main)' : 'transparent',
+                                color: viewMode === 'grid' ? 'var(--button-color)' : 'var(--text-tertiary)',
+                                '&:hover': {
+                                    background: viewMode === 'grid' ? 'var(--primary-main)' : 'var(--bg-light)',
+                                    color: viewMode === 'grid' ? 'var(--button-color)' : 'var(--text-primary)',
+                                },
+                            }}
+                        >
+                            <LayoutGrid size={17} />
+                        </Box>
+                        <Box
+                            onClick={() => setViewMode('table')}
+                            sx={{
+                                width: '38px',
+                                height: '38px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                background: viewMode === 'table' ? 'var(--primary-main)' : 'transparent',
+                                color: viewMode === 'table' ? 'var(--button-color)' : 'var(--text-tertiary)',
+                                '&:hover': {
+                                    background: viewMode === 'table' ? 'var(--primary-main)' : 'var(--bg-light)',
+                                    color: viewMode === 'table' ? 'var(--button-color)' : 'var(--text-primary)',
+                                },
+                            }}
+                        >
+                            <Table2 size={17} />
+                        </Box>
+                    </Box>
                     {false && (
                         <Button
                             variant="contained"
@@ -212,8 +236,8 @@ const ChannelsDashboard = () => {
 
             {/* Content */}
             <div className={styles.contentArea}>
-                {isLoading || pageChangeLoading ? (
-                    <ChannelCardSkeleton count={Math.min(itemsPerPage, Math.max(3, filteredChannels.length || itemsPerPage))} />
+                {isLoading ? (
+                    <ChannelCardSkeleton count={Math.min(6, Math.max(3, filteredChannels.length || 6))} />
                 ) : filteredChannels.length === 0 ? (
                     <Box
                         sx={{
@@ -313,39 +337,44 @@ const ChannelsDashboard = () => {
                     </Box>
                 ) : (
                     <>
-                        <Box
-                            sx={{
-                                display: 'grid',
-                                gridTemplateColumns: 'repeat(3, 1fr)',
-                                gap: '1.5rem',
-                                '@media (max-width: 1200px)': {
-                                    gridTemplateColumns: 'repeat(2, 1fr)',
-                                },
-                                '@media (max-width: 768px)': {
-                                    gridTemplateColumns: '1fr',
-                                },
-                            }}
-                        >
-                            {paginatedChannels.map((channel) => (
-                                <ChannelCard
-                                    key={channel.id}
-                                    channel={channel}
-                                    onWalletOpen={() => handleWalletOpen(channel)}
-                                    onTemplatesClick={() => {
-                                        const qs = buildQueryString({ tempid: channel.Id, wabaid: channel.wabaId, whatsappNo: channel.mobileNumber });
-                                        router.push(qs ? `/templates?${qs}` : '/templates');
-                                    }}
-                                    onBusinessProfileClick={() => handleBusinessProfileOpen(channel)}
-                                />
-                            ))}
-                        </Box>
-                        {filteredChannels.length > itemsPerPage && (
-                            <Pagination
-                                count={filteredChannels.length}
-                                page={currentPage}
-                                rowsPerPage={itemsPerPage}
-                                onPageChange={handlePageChange}
-                                onRowsPerPageChange={handleRowsPerPageChange}
+                        {viewMode === 'grid' ? (
+                            <Box sx={{ flex: 1, overflow: 'auto', minHeight: 0, position: 'relative' }}>
+                                <Box sx={{ pb: 16 }}>
+                                    <Grid container spacing={2}>
+                                        {filteredChannels.slice(cardPage * cardRowsPerPage, (cardPage + 1) * cardRowsPerPage).map((channel) => (
+                                            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }} key={channel.id}>
+                                                <ChannelCard
+                                                    channel={channel}
+                                                    onWalletOpen={() => handleWalletOpen(channel)}
+                                                    onTemplatesClick={() => {
+                                                        const qs = buildQueryString({ tempid: channel.Id, wabaid: channel.wabaId, whatsappNo: channel.mobileNumber });
+                                                        router.push(qs ? `/templates?${qs}` : '/templates');
+                                                    }}
+                                                    onBusinessProfileClick={() => handleBusinessProfileOpen(channel)}
+                                                />
+                                            </Grid>
+                                        ))}
+                                    </Grid>
+                                </Box>
+                                {filteredChannels.length > cardRowsPerPage && (
+                                    <Pagination
+                                        count={filteredChannels.length}
+                                        page={cardPage}
+                                        rowsPerPage={cardRowsPerPage}
+                                        onPageChange={(_, p) => setCardPage(p)}
+                                        onRowsPerPageChange={(val) => { setCardRowsPerPage(val); setCardPage(0); }}
+                                    />
+                                )}
+                            </Box>
+                        ) : (
+                            <ChannelTable
+                                items={filteredChannels}
+                                onWalletOpen={(ch) => handleWalletOpen(ch)}
+                                onTemplatesClick={(ch) => {
+                                    const qs = buildQueryString({ tempid: ch.Id, wabaid: ch.wabaId, whatsappNo: ch.mobileNumber });
+                                    router.push(qs ? `/templates?${qs}` : '/templates');
+                                }}
+                                onBusinessProfileClick={(ch) => handleBusinessProfileOpen(ch)}
                             />
                         )}
                     </>
@@ -359,7 +388,7 @@ const ChannelsDashboard = () => {
                 channel={activeChannel}
             />
 
-            {/* Business Profile Dialog */}
+            {/* Business Profile Dialog — opens on the Meta/Optigo picker view */}
             <BusinessProfile
                 open={profileOpen}
                 onClose={() => setProfileOpen(false)}

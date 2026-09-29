@@ -2,7 +2,9 @@
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
-import { fetchWabaCategories, fetchWabaProfile, updateWabaProfile } from '../../api/BusinessProfileApi';
+import { useWallet } from '../../contexts/WalletContext';
+import { fetchWabaCategories, fetchWabaProfile, updateWabaProfile, updateWabaChannel } from '../../api/BusinessProfileApi';
+import { filesUploadApi } from '../../api/filesUploadApi';
 import {
     Box,
     Typography,
@@ -19,6 +21,7 @@ import {
     Avatar,
     Slide,
     Tooltip,
+    Paper,
 } from '@mui/material';
 import {
     Building2,
@@ -30,6 +33,7 @@ import {
     UploadCloud,
     Plus,
     Trash2,
+    ArrowLeft,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Whatsapp } from '../../assests/svg';
@@ -67,7 +71,15 @@ const isValidEmail = (email) => !email || EMAIL_PATTERN.test(email);
 
 const BusinessProfile = ({ open, onClose, channel }) => {
     const { auth } = useAuth();
+    const { refreshWallet } = useWallet();
+    const [view, setView] = useState('select'); // 'select' | 'meta' | 'optigo'
+    const isOptigo = view === 'optigo';
     const [savedData, setSavedData] = useState(EMPTY_PROFILE);
+    const [channelTitle, setChannelTitle] = useState('');
+    const [savedChannelTitle, setSavedChannelTitle] = useState('');
+    const [channelImageFile, setChannelImageFile] = useState(null);
+    const [channelImagePreview, setChannelImagePreview] = useState('');
+    const [savedChannelImage, setSavedChannelImage] = useState('');
     const [savedLogo, setSavedLogo] = useState(EMPTY_PROFILE.logo);
     const [formData, setFormData] = useState(EMPTY_PROFILE);
     const [logoPreview, setLogoPreview] = useState(EMPTY_PROFILE.logo);
@@ -86,8 +98,13 @@ const BusinessProfile = ({ open, onClose, channel }) => {
 
     const userId = auth?.userId || '';
 
+    // Reset to the picker view whenever the dialog opens
     useEffect(() => {
-        if (open) {
+        if (open) setView('select');
+    }, [open]);
+
+    useEffect(() => {
+        if (open && view !== 'select') {
             setSavedData(EMPTY_PROFILE);
             setSavedLogo(EMPTY_PROFILE.logo);
             setFormData(EMPTY_PROFILE);
@@ -100,6 +117,21 @@ const BusinessProfile = ({ open, onClose, channel }) => {
             setModalDragActive(false);
             setProfileLoading(true);
 
+            const initialTitle = channel?.channelTitle || channel?.ChannelTitle || '';
+            setChannelTitle(initialTitle);
+            setSavedChannelTitle(initialTitle);
+
+            const initialChannelImg = channel?.ChannelImage || channel?.channelImage || channel?.profilePictureUrl || channel?.ProfilePictureUrl || '';
+            setChannelImagePreview(initialChannelImg);
+            setSavedChannelImage(initialChannelImg);
+            setChannelImageFile(null);
+
+            const wabaPhoneNo = channel?.WabaPhoneNo || channel?.wabaPhoneNo || channel?.mobileNumber || channel?.MobileNumber || '';
+
+            if (isOptigo) {
+                // Optigo WABA mode — ERP display fields only, no Meta fetch needed
+                setProfileLoading(false);
+            } else {
             // Fetch categories
             if (categoriesAbortRef.current) {
                 categoriesAbortRef.current.abort();
@@ -107,7 +139,7 @@ const BusinessProfile = ({ open, onClose, channel }) => {
             const catController = new AbortController();
             categoriesAbortRef.current = catController;
             setCategoriesLoading(true);
-            fetchWabaCategories(userId, catController.signal).then((cats) => {
+            fetchWabaCategories(userId, catController.signal, wabaPhoneNo).then((cats) => {
                 if (!catController.signal.aborted) {
                     setCategories(cats);
                     setCategoriesLoading(false);
@@ -124,6 +156,7 @@ const BusinessProfile = ({ open, onClose, channel }) => {
                 userId,
                 accountId: channel?.Id || '',
                 companyCode: channel?.companyCode || '',
+                wabaPhoneNo,
                 signal: profileController.signal,
             }).then((profile) => {
                 if (!profileController.signal.aborted && profile) {
@@ -142,6 +175,7 @@ const BusinessProfile = ({ open, onClose, channel }) => {
                     setProfileLoading(false);
                 }
             });
+            }
         }
 
         return () => {
@@ -152,14 +186,17 @@ const BusinessProfile = ({ open, onClose, channel }) => {
                 profileAbortRef.current.abort();
             }
         };
-    }, [open, userId, channel]);
+    }, [open, userId, channel, view]);
 
-    const hasChanges =
-        JSON.stringify(formData) !== JSON.stringify(savedData) ||
-        logoPreview !== savedLogo;
+    const hasChanges = isOptigo
+        ? (channelTitle.trim() !== savedChannelTitle.trim() ||
+            Boolean(channelImageFile) || channelImagePreview !== savedChannelImage)
+        : (JSON.stringify(formData) !== JSON.stringify(savedData) ||
+            logoPreview !== savedLogo);
 
-    // Validation errors — block update when any field is invalid
+    // Validation errors — block update when any field is invalid (Meta fields only)
     const hasErrors = (() => {
+        if (isOptigo) return false;
         if (formData.email && !isValidEmail(formData.email)) return true;
         if ((formData.websites || []).some((w) => w && !isValidWebsiteUrl(w))) return true;
         return false;
@@ -198,16 +235,21 @@ const BusinessProfile = ({ open, onClose, channel }) => {
         }));
     };
 
-    const handleLogoFile = useCallback((file) => {
-        if (!file) return;
+    const validateImageFile = (file) => {
+        if (!file) return false;
         if (!file.type.startsWith('image/')) {
             toast.error('Please select an image file');
-            return;
+            return false;
         }
         if (file.size > 2 * 1024 * 1024) {
             toast.error('Image must be under 2MB');
-            return;
+            return false;
         }
+        return true;
+    };
+
+    const handleLogoFile = useCallback((file) => {
+        if (!validateImageFile(file)) return;
         const reader = new FileReader();
         reader.onload = () => {
             setLogoPreview(reader.result);
@@ -217,9 +259,19 @@ const BusinessProfile = ({ open, onClose, channel }) => {
         reader.readAsDataURL(file);
     }, []);
 
+    // Pick or drop a file — applies directly to the current mode's photo
+    const applyPhotoFile = useCallback((file) => {
+        if (!validateImageFile(file)) return;
+        if (isOptigo) {
+            applyChannelImageFile(file);
+        } else {
+            handleLogoFile(file);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOptigo]);
+
     const handleLogoUpload = (e) => {
-        const file = e.target.files?.[0];
-        if (file) handleLogoFile(file);
+        applyPhotoFile(e.target.files?.[0]);
         e.target.value = '';
     };
 
@@ -227,8 +279,7 @@ const BusinessProfile = ({ open, onClose, channel }) => {
         e.preventDefault();
         e.stopPropagation();
         setIsDragOver(false);
-        const file = e.dataTransfer?.files?.[0];
-        if (file) handleLogoFile(file);
+        applyPhotoFile(e.dataTransfer?.files?.[0]);
     };
 
     const handleLogoDragOver = (e) => {
@@ -263,14 +314,38 @@ const BusinessProfile = ({ open, onClose, channel }) => {
         e.stopPropagation();
         setModalDragActive(false);
         setIsDragOver(false);
-        const file = e.dataTransfer?.files?.[0];
-        if (file) handleLogoFile(file);
+        if (view === 'select') return;
+        applyPhotoFile(e.dataTransfer?.files?.[0]);
     };
 
     const handleRemoveLogo = () => {
-        setLogoPreview('');
-        setLogoFile(null);
+        if (isOptigo) {
+            setChannelImagePreview('');
+            setChannelImageFile(null);
+        } else {
+            setLogoPreview('');
+            setLogoFile(null);
+        }
         if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
+    const applyChannelImageFile = (file) => {
+        if (!file) return;
+        if (!file.type.startsWith('image/')) {
+            toast.error('Please select an image file');
+            return;
+        }
+        if (file.size > 2 * 1024 * 1024) {
+            toast.error('Image must be under 2MB');
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+            setChannelImagePreview(reader.result);
+            setChannelImageFile(file);
+        };
+        reader.onerror = () => toast.error('Failed to read image');
+        reader.readAsDataURL(file);
     };
 
     const handleUpdateClick = () => {
@@ -278,7 +353,6 @@ const BusinessProfile = ({ open, onClose, channel }) => {
     };
 
     const handleConfirmUpdate = async () => {
-        // Validate website URLs — Meta requires http:// or https:// prefix
         const invalidWebsites = (formData.websites || []).filter((w) => w && !isValidWebsiteUrl(w));
         if (invalidWebsites.length > 0) {
             toast.error('Website URLs must start with http:// or https://');
@@ -288,6 +362,39 @@ const BusinessProfile = ({ open, onClose, channel }) => {
 
         setIsUpdating(true);
         try {
+            if (isOptigo) {
+                // Optigo WABA mode — ERP channel update only
+                const wabaPhoneNo = channel?.WabaPhoneNo || channel?.wabaPhoneNo || channel?.MobileNumber || channel?.mobileNumber || '';
+                const channelImgChanged = Boolean(channelImageFile) || channelImagePreview !== savedChannelImage;
+                let fileUrl = channel?.ChannelImage || channel?.channelImage || channel?.profilePictureUrl || channel?.ProfilePictureUrl || '';
+                if (channelImageFile) {
+                    const up = await filesUploadApi({
+                        attachments: [{ file: channelImageFile }],
+                        folderName: 'waba/channel',
+                        uniqueNo: `${Date.now()}_${Math.floor(Math.random() * 1000000)}`,
+                    });
+                    fileUrl = up?.files?.[0]?.url || fileUrl;
+                } else if (channelImgChanged) {
+                    fileUrl = channelImagePreview || '';
+                }
+                await updateWabaChannel({
+                    userId,
+                    accountId: channel?.Id,
+                    channelTitle: channelTitle.trim(),
+                    fileUrl,
+                    wabaPhoneNo,
+                });
+                refreshWallet?.();
+                setSavedChannelTitle(channelTitle);
+                setSavedChannelImage(channelImagePreview);
+                setChannelImageFile(null);
+                toast.success('Channel updated successfully!');
+                setUpdateDialogOpen(false);
+                onClose();
+                return;
+            }
+
+            // Meta mode — WhatsApp business profile update only
             const result = await updateWabaProfile({
                 profile: formData,
                 logoFile,
@@ -295,7 +402,6 @@ const BusinessProfile = ({ open, onClose, channel }) => {
                 userId,
             });
 
-            // New format: { success: true, message, data } | Legacy: { Status: '200' }
             const isSuccess = result?.success === true || result?.Status === '200';
             if (isSuccess) {
                 setSavedData(formData);
@@ -308,7 +414,7 @@ const BusinessProfile = ({ open, onClose, channel }) => {
                 toast.error(result?.message || result?.Message || 'Failed to update business profile');
             }
         } catch {
-            toast.error('Failed to update business profile');
+            toast.error(isOptigo ? 'Failed to update channel' : 'Failed to update business profile');
         } finally {
             setIsUpdating(false);
         }
@@ -320,6 +426,9 @@ const BusinessProfile = ({ open, onClose, channel }) => {
 
     const handleConfirmCancel = () => {
         setFormData(savedData);
+        setChannelTitle(savedChannelTitle);
+        setChannelImagePreview(savedChannelImage);
+        setChannelImageFile(null);
         setLogoPreview(savedLogo);
         setLogoFile(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
@@ -334,7 +443,8 @@ const BusinessProfile = ({ open, onClose, channel }) => {
 
     const channelName = channel?.whatsappName || channel?.companyCode || 'Channel';
     const [headerImgError, setHeaderImgError] = useState(false);
-    const hasHeaderPic = Boolean(channel?.profilePictureUrl) && !headerImgError;
+    const headerPicUrl = channel?.ChannelImage || channel?.channelImage || channel?.profilePictureUrl || channel?.ProfilePictureUrl || '';
+    const hasHeaderPic = Boolean(headerPicUrl) && !headerImgError;
 
     return (
         <>
@@ -351,10 +461,19 @@ const BusinessProfile = ({ open, onClose, channel }) => {
             >
                 <DialogTitle className={styles.dialogHeader}>
                     <Box className={styles.dialogHeaderLeft}>
+                        {view !== 'select' && (
+                            <IconButton
+                                size="small"
+                                onClick={() => setView('select')}
+                                sx={{ color: 'var(--text-tertiary)', mr: 0.5 }}
+                            >
+                                <ArrowLeft size={18} />
+                            </IconButton>
+                        )}
                         <Box className={styles.pageHeaderIcon} sx={{ overflow: 'hidden', p: hasHeaderPic ? 0 : undefined }}>
                             {hasHeaderPic ? (
                                 <img
-                                    src={channel.profilePictureUrl}
+                                    src={headerPicUrl}
                                     alt={channelName}
                                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                     onError={() => setHeaderImgError(true)}
@@ -365,10 +484,10 @@ const BusinessProfile = ({ open, onClose, channel }) => {
                         </Box>
                         <Box>
                             <Typography component="h2" className={styles.pageTitle}>
-                                Business Profile
+                                {view === 'select' ? 'Business Profile' : isOptigo ? 'Optigo WABA Profile' : 'Meta Business Profile'}
                             </Typography>
                             <Typography component="p" className={styles.pageSubtitle}>
-                                Manage your business identity
+                                {view === 'select' ? 'Choose what to update' : isOptigo ? 'Dashboard display name & photo' : 'Manage your WhatsApp business identity'}
                             </Typography>
                         </Box>
                     </Box>
@@ -378,7 +497,7 @@ const BusinessProfile = ({ open, onClose, channel }) => {
                                 {channelName}{channel?.mobileNumber ? ` • ${channel.mobileNumber}` : ''}
                             </Typography>
                         </Box>
-                        <IconButton onClick={onClose} size="small" sx={{ color: '#7d7f85' }}>
+                        <IconButton onClick={onClose} size="small" sx={{ color: 'var(--text-tertiary)' }}>
                             <X size={20} />
                         </IconButton>
                     </Box>
@@ -390,12 +509,90 @@ const BusinessProfile = ({ open, onClose, channel }) => {
                     onDragLeave={handleModalDragLeave}
                     onDrop={handleModalDrop}
                 >
-                    {profileLoading ? (
+                    {view === 'select' ? (
+                        <Box
+                            className={styles.pickerContent}
+                            sx={{
+                                animation: 'bpSlideLeft 0.28s ease',
+                                '@keyframes bpSlideLeft': {
+                                    from: { opacity: 0, transform: 'translateX(-24px)' },
+                                    to: { opacity: 1, transform: 'translateX(0)' },
+                                },
+                            }}
+                        >
+                            <Typography sx={{ fontFamily: 'Poppins, sans-serif', fontSize: '0.82rem', color: 'var(--text-secondary)', mb: 2.5 }}>
+                                Choose which profile you want to manage for this channel.
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 2 }}>
+                                <Paper
+                                    onClick={() => setView('meta')}
+                                    elevation={0}
+                                    sx={{
+                                        flex: 1,
+                                        px: 2,
+                                        py: 3,
+                                        borderRadius: '14px',
+                                        border: '1.5px solid var(--border-color)',
+                                        background: 'linear-gradient(160deg, var(--bg-paper) 0%, rgba(29,170,97,0.07) 100%)',
+                                        cursor: 'pointer',
+                                        textAlign: 'center',
+                                        transition: 'all 0.2s ease',
+                                        '&:hover': { borderColor: 'var(--primary-main)', background: 'linear-gradient(160deg, var(--bg-paper) 0%, rgba(29,170,97,0.12) 100%)', boxShadow: '0 8px 20px rgba(29,170,97,0.12)', transform: 'translateY(-2px)' },
+                                    }}
+                                >
+                                    <Box sx={{ width: 52, height: 52, mx: 'auto', mb: 1.5, borderRadius: '14px', background: 'var(--primary-light-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <Whatsapp width={26} height={26} fill="var(--primary-main)" />
+                                    </Box>
+                                    <Typography sx={{ fontFamily: 'Poppins, sans-serif', fontSize: '0.88rem', fontWeight: 600, color: 'var(--titleColor)', mb: 0.5 }}>
+                                        Meta Business
+                                    </Typography>
+                                    <Typography sx={{ fontFamily: 'Poppins, sans-serif', fontSize: '0.72rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                                        WhatsApp profile — photo, about, address, websites
+                                    </Typography>
+                                </Paper>
+                                <Paper
+                                    onClick={() => setView('optigo')}
+                                    elevation={0}
+                                    sx={{
+                                        flex: 1,
+                                        px: 2,
+                                        py: 3,
+                                        borderRadius: '14px',
+                                        border: '1.5px solid var(--border-color)',
+                                        background: 'linear-gradient(160deg, var(--bg-paper) 0%, rgba(100,116,139,0.07) 100%)',
+                                        cursor: 'pointer',
+                                        textAlign: 'center',
+                                        transition: 'all 0.2s ease',
+                                        '&:hover': { borderColor: 'var(--primary-main)', background: 'linear-gradient(160deg, var(--bg-paper) 0%, rgba(100,116,139,0.12) 100%)', boxShadow: '0 8px 20px rgba(29,170,97,0.12)', transform: 'translateY(-2px)' },
+                                    }}
+                                >
+                                    <Box sx={{ width: 52, height: 52, mx: 'auto', mb: 1.5, borderRadius: '14px', background: 'var(--primary-light-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <Building2 size={26} color="var(--primary-main)" />
+                                    </Box>
+                                    <Typography sx={{ fontFamily: 'Poppins, sans-serif', fontSize: '0.88rem', fontWeight: 600, color: 'var(--titleColor)', mb: 0.5 }}>
+                                        Optigo WABA
+                                    </Typography>
+                                    <Typography sx={{ fontFamily: 'Poppins, sans-serif', fontSize: '0.72rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                                        Dashboard display — channel title & display photo
+                                    </Typography>
+                                </Paper>
+                            </Box>
+                        </Box>
+                    ) : profileLoading ? (
                         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '300px' }}>
-                            <CircularProgress size={32} sx={{ color: '#1daa61' }} />
+                            <CircularProgress size={32} sx={{ color: 'var(--primary-main)' }} />
                         </Box>
                     ) : (
-                    <Box className={styles.dialogContent}>
+                    <Box
+                        className={styles.dialogContent}
+                        sx={{
+                            animation: 'bpSlideRight 0.28s ease',
+                            '@keyframes bpSlideRight': {
+                                from: { opacity: 0, transform: 'translateX(24px)' },
+                                to: { opacity: 1, transform: 'translateX(0)' },
+                            },
+                        }}
+                    >
                         <Box className={styles.formLayout}>
                     {/* Left: Logo Upload */}
                     <Box className={styles.logoSection}>
@@ -407,15 +604,15 @@ const BusinessProfile = ({ open, onClose, channel }) => {
                             onClick={() => !isDragOver && fileInputRef.current?.click()}
                             sx={{
                                 position: 'relative',
-                                border: (isDragOver || modalDragActive) ? '2px dashed #1daa61' : 'none',
+                                border: (isDragOver || modalDragActive) ? '2px dashed var(--primary-main)' : 'none',
                                 background: (isDragOver || modalDragActive) ? 'rgba(29, 170, 97, 0.05)' : 'transparent',
                                 borderRadius: '16px',
                                 transition: 'all 0.2s ease',
                             }}
                         >
-                            {logoPreview ? (
+                            {(isOptigo ? channelImagePreview : logoPreview) ? (
                                 <Avatar
-                                    src={logoPreview}
+                                    src={isOptigo ? channelImagePreview : logoPreview}
                                     className={styles.logoAvatar}
                                     sx={{
                                         width: 150,
@@ -434,12 +631,12 @@ const BusinessProfile = ({ open, onClose, channel }) => {
                                         transition: 'opacity 0.2s ease',
                                     }}
                                 >
-                                    <Building2 size={40} color="#a0a0a0" />
+                                    <Building2 size={40} color="var(--text-tertiary)" />
                                 </Avatar>
                             )}
                             {!(isDragOver || modalDragActive) && (
                                 <Box className={styles.logoEditBadge}>
-                                    <Camera size={14} color="#fff" />
+                                    <Camera size={14} color="var(--button-color)" />
                                 </Box>
                             )}
                             <input
@@ -460,19 +657,19 @@ const BusinessProfile = ({ open, onClose, channel }) => {
                                         justifyContent: 'center',
                                         gap: '8px',
                                         borderRadius: '14px',
-                                        background: 'rgba(255, 255, 255, 0.92)',
+                                        background: 'color-mix(in srgb, var(--bg-paper) 92%, transparent)',
                                         pointerEvents: 'none',
                                         zIndex: 3,
                                     }}
                                 >
-                                    <UploadCloud size={36} color="#1daa61" />
-                                    <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#1daa61', fontFamily: 'Poppins, sans-serif' }}>
+                                    <UploadCloud size={36} color="var(--primary-main)" />
+                                    <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary-main)', fontFamily: 'Poppins, sans-serif' }}>
                                         Drop image here
                                     </Typography>
                                 </Box>
                             )}
                         </Box>
-                        {logoPreview && (
+                        {(isOptigo ? channelImagePreview : logoPreview) && (
                             <IconButton
                                 size="small"
                                 className={styles.logoRemoveBtn}
@@ -482,13 +679,64 @@ const BusinessProfile = ({ open, onClose, channel }) => {
                             </IconButton>
                         )}
                         <Typography className={styles.logoHint}>
-                            Click or drag to upload logo
+                            {isOptigo ? 'Channel display photo' : 'Click or drag to upload photo'}
                         </Typography>
+                        {(isOptigo ? channelImageFile : logoFile) && (
+                            <Typography sx={{ fontSize: '0.7rem', color: 'var(--primary-main)', fontFamily: 'Poppins, sans-serif', fontWeight: 500, textAlign: 'center', lineHeight: 1.3 }}>
+                                New photo ready — click Update to save
+                            </Typography>
+                        )}
                     </Box>
 
                     {/* Right: Form Fields */}
                     <Box className={styles.formFields}>
                         <Grid container spacing={2.5}>
+                            {/* Row 0: Channel Title (Optigo WABA mode only) */}
+                            {isOptigo && (
+                            <Grid size={{ xs: 12 }}>
+                                <Typography component="label" className={styles.fieldLabel}>
+                                    Channel Title
+                                </Typography>
+                                <TextField
+                                    fullWidth
+                                    size="small"
+                                    placeholder="Enter channel display name"
+                                    value={channelTitle}
+                                    onChange={(e) => setChannelTitle(e.target.value)}
+                                    slotProps={{ htmlInput: { maxLength: 100 } }}
+                                    helperText="Display name shown in dashboard"
+                                    className={styles.textField}
+                                />
+                            </Grid>
+                            )}
+
+                            {!isOptigo && (
+                            <>
+                            {/* Row 0: WhatsApp Name (read-only — actual Meta display name) */}
+                            <Grid size={{ xs: 12 }}>
+                                <Typography component="label" className={styles.fieldLabel}>
+                                    WhatsApp Name
+                                </Typography>
+                                <TextField
+                                    fullWidth
+                                    size="small"
+                                    value={channel?.whatsappName || channel?.WhatsappName || channelName}
+                                    slotProps={{ htmlInput: { readOnly: true } }}
+                                    helperText="Display name on WhatsApp — changed via Meta Business Manager"
+                                    className={styles.textField}
+                                    sx={{
+                                        '& .MuiInputBase-input': {
+                                            color: 'var(--text-tertiary)',
+                                            cursor: 'default',
+                                            WebkitTextFillColor: 'var(--text-tertiary)',
+                                        },
+                                        '& .MuiOutlinedInput-root': {
+                                            background: 'color-mix(in srgb, var(--text-secondary) 8%, transparent)',
+                                        },
+                                    }}
+                                />
+                            </Grid>
+
                             {/* Row 1: Email + Business Category */}
                             <Grid size={{ xs: 12, sm: 6 }}>
                                 <Typography component="label" className={styles.fieldLabel}>
@@ -667,6 +915,8 @@ const BusinessProfile = ({ open, onClose, channel }) => {
                                     })}
                                 </Box>
                             </Grid>
+                            </>
+                            )}
                         </Grid>
 
                         {/* Action Buttons */}
@@ -709,8 +959,8 @@ const BusinessProfile = ({ open, onClose, channel }) => {
                     paper: { sx: { borderRadius: '16px' } },
                 }}
             >
-                <DialogTitle sx={{ fontFamily: 'Poppins, sans-serif', fontWeight: 600, fontSize: '1.1rem', color: '#444050' }}>
-                    Update Business Profile?
+                <DialogTitle sx={{ fontFamily: 'Poppins, sans-serif', fontWeight: 600, fontSize: '1.1rem', color: 'var(--titleColor)' }}>
+                    {isOptigo ? 'Update Channel?' : 'Update Business Profile?'}
                 </DialogTitle>
                 <DialogContent>
                     <Box sx={{
@@ -720,8 +970,8 @@ const BusinessProfile = ({ open, onClose, channel }) => {
                         p: '12px',
                         mb: '14px',
                         borderRadius: '12px',
-                        background: '#f8fafc',
-                        border: '1px solid #e4e8ee',
+                        background: 'var(--bg-subtle)',
+                        border: '1px solid var(--border-color)',
                     }}>
                         <Box
                             sx={{
@@ -737,15 +987,15 @@ const BusinessProfile = ({ open, onClose, channel }) => {
                                 overflow: 'hidden',
                             }}
                         >
-                            {channel?.profilePictureUrl ? (
+                            {headerPicUrl ? (
                                 <img
-                                    src={channel.profilePictureUrl}
+                                    src={headerPicUrl}
                                     alt={channel?.whatsappName || channel?.companyCode || 'Channel'}
                                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                     onError={(e) => { e.currentTarget.style.display = 'none'; }}
                                 />
                             ) : (
-                                <Whatsapp width={22} height={22} fill="#1daa61" />
+                                <Whatsapp width={22} height={22} fill="var(--primary-main)" />
                             )}
                         </Box>
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
@@ -753,7 +1003,7 @@ const BusinessProfile = ({ open, onClose, channel }) => {
                                 fontFamily: 'Poppins, sans-serif',
                                 fontSize: '0.9rem',
                                 fontWeight: 600,
-                                color: '#444050',
+                                color: 'var(--titleColor)',
                                 lineHeight: 1.2,
                                 whiteSpace: 'nowrap',
                                 overflow: 'hidden',
@@ -765,7 +1015,7 @@ const BusinessProfile = ({ open, onClose, channel }) => {
                                 <Typography sx={{
                                     fontFamily: 'Poppins, sans-serif',
                                     fontSize: '0.75rem',
-                                    color: '#6D6B77',
+                                    color: 'var(--text-secondary)',
                                     fontWeight: 500,
                                 }}>
                                     {channel.mobileNumber}
@@ -773,7 +1023,7 @@ const BusinessProfile = ({ open, onClose, channel }) => {
                             )}
                         </Box>
                     </Box>
-                    <Typography sx={{ fontFamily: 'Poppins, sans-serif', fontSize: '0.875rem', color: '#7d7f85', lineHeight: 1.6 }}>
+                    <Typography sx={{ fontFamily: 'Poppins, sans-serif', fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
                         Are you sure you want to update your business profile? This will reflect changes across your WhatsApp Business account.
                     </Typography>
                 </DialogContent>
@@ -786,9 +1036,9 @@ const BusinessProfile = ({ open, onClose, channel }) => {
                             textTransform: 'none',
                             fontFamily: 'Poppins, sans-serif',
                             borderRadius: '10px',
-                            borderColor: '#e4e8ee',
-                            color: '#7d7f85',
-                            '&:hover': { borderColor: '#c8c8c8', background: 'transparent' },
+                            borderColor: 'var(--border-color)',
+                            color: 'var(--text-secondary)',
+                            '&:hover': { borderColor: 'var(--text-tertiary)', background: 'transparent' },
                         }}
                     >
                         Cancel
@@ -803,9 +1053,9 @@ const BusinessProfile = ({ open, onClose, channel }) => {
                             fontFamily: 'Poppins, sans-serif',
                             fontWeight: 600,
                             borderRadius: '10px',
-                            background: '#1daa61',
+                            background: 'var(--primary-main)',
                             boxShadow: '0 4px 12px rgba(29, 170, 97, 0.25)',
-                            '&:hover': { background: '#1a9a57' },
+                            '&:hover': { background: 'var(--primary-main)', filter: 'brightness(0.93)' },
                         }}
                     >
                         {isUpdating ? 'Updating...' : 'Confirm Update'}
@@ -824,11 +1074,11 @@ const BusinessProfile = ({ open, onClose, channel }) => {
                     paper: { sx: { borderRadius: '16px' } },
                 }}
             >
-                <DialogTitle sx={{ fontFamily: 'Poppins, sans-serif', fontWeight: 600, fontSize: '1.1rem', color: '#444050' }}>
+                <DialogTitle sx={{ fontFamily: 'Poppins, sans-serif', fontWeight: 600, fontSize: '1.1rem', color: 'var(--titleColor)' }}>
                     Discard Changes?
                 </DialogTitle>
                 <DialogContent>
-                    <Typography sx={{ fontFamily: 'Poppins, sans-serif', fontSize: '0.875rem', color: '#7d7f85', lineHeight: 1.6 }}>
+                    <Typography sx={{ fontFamily: 'Poppins, sans-serif', fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
                         You have unsaved changes. Are you sure you want to discard them and revert to the last saved version?
                     </Typography>
                 </DialogContent>
@@ -840,9 +1090,9 @@ const BusinessProfile = ({ open, onClose, channel }) => {
                             textTransform: 'none',
                             fontFamily: 'Poppins, sans-serif',
                             borderRadius: '10px',
-                            borderColor: '#e4e8ee',
-                            color: '#7d7f85',
-                            '&:hover': { borderColor: '#c8c8c8', background: 'transparent' },
+                            borderColor: 'var(--border-color)',
+                            color: 'var(--text-secondary)',
+                            '&:hover': { borderColor: 'var(--text-tertiary)', background: 'transparent' },
                         }}
                     >
                         Keep Editing
@@ -856,15 +1106,16 @@ const BusinessProfile = ({ open, onClose, channel }) => {
                             fontFamily: 'Poppins, sans-serif',
                             fontWeight: 600,
                             borderRadius: '10px',
-                            background: '#ef4444',
+                            background: 'var(--error-main)',
                             boxShadow: '0 4px 12px rgba(239, 68, 68, 0.25)',
-                            '&:hover': { background: '#dc2626' },
+                            '&:hover': { background: 'var(--error-main)', filter: 'brightness(0.92)' },
                         }}
                     >
                         Discard
                     </Button>
                 </DialogActions>
             </Dialog>
+
         </>
     );
 };

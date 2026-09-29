@@ -56,10 +56,18 @@ const QuickReactionMenu = memo(function QuickReactionMenu({
                 '--epr-search-border-color': 'transparent',
                 '--epr-search-input-bg-color': 'var(--bg-light)',
                 '--epr-active-category-icon-color': 'var(--chat-primary, #25d366)',
-                '--epr-emoji-size': '28px',
+                '--epr-emoji-size': '24px',
                 '--epr-emoji-padding': '4px',
+                '--epr-category-label-height': '26px',
                 fontFamily: 'inherit',
                 border: 'none',
+                '& .epr-emoji-category-label': {
+                  fontSize: '11.5px',
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.04em',
+                  color: 'var(--text-tertiary)',
+                },
               },
             },
           },
@@ -71,7 +79,9 @@ const QuickReactionMenu = memo(function QuickReactionMenu({
           width={310}
           height={400}
           skinTonesDisabled
+          lazyLoadEmojis
           searchPlaceholder="Search emoji..."
+          previewConfig={{ showPreview: false }}
         />
       </Popover>
     </div>

@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { MessageCircle } from 'lucide-react';
+import { CircularProgress, Box, Typography } from '@mui/material';
 import ChatSidebar from './ChatSidebar';
 import ChatChannelPanel from './ChatChannelPanel';
 import ChatConversation from './ChatConversation';
@@ -28,6 +29,7 @@ export default function ChatPage() {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [pendingDropFiles, setPendingDropFiles] = useState(null);
   const [preloading, setPreloading] = useState(true);
+  const [channelSwitching, setChannelSwitching] = useState(false);
   const layoutRef = useRef(null);
   const wasCollapsedByBreakpoint = useRef(false);
 
@@ -60,11 +62,15 @@ export default function ChatPage() {
   const handleChannelSelect = useCallback((channel) => {
     setSelectedChannel(channel);
     setSelectedCustomer(null);
+    setSelectedTag('All');
+    setChannelSwitching(true);
     const store = useChatStore.getState();
     store.setSelectedChannelId(channel?.Id || null);
     store.setSelectedChannel(channel || null);
     // Clear current conversations so ChatSidebar re-checks cache or fetches for the new channel
     store.setConversations([]);
+    // Clear switching state after conversations load (covers cache hit + API fetch)
+    setTimeout(() => setChannelSwitching(false), 800);
   }, []);
 
   const toggleChannelCollapse = useCallback(() => {
@@ -161,7 +167,12 @@ export default function ChatPage() {
 
         {/* Middle: conversation list */}
         <div className="chat-sidebar-section">
-          {selectedChannel ? (
+          {preloading ? (
+            <div className="chat-sidebar-placeholder">
+              <CircularProgress size={32} thickness={3.5} sx={{ color: 'var(--chat-primary, #25d366)' }} />
+              <p>Loading conversations...</p>
+            </div>
+          ) : selectedChannel ? (
             <ChatSidebar
               onCustomerSelect={handleCustomerSelect}
               selectedCustomer={selectedCustomer}
@@ -175,6 +186,7 @@ export default function ChatPage() {
               channelId={selectedChannel.Id}
               channel={selectedChannel}
               onChannelSelect={handleChannelSelect}
+              channelSwitching={channelSwitching}
             />
           ) : (
             <div className="chat-sidebar-placeholder">
@@ -186,19 +198,30 @@ export default function ChatPage() {
 
         {/* Right: conversation area */}
         <div className="chat-conversation-section">
-          <ChatConversation
-            selectedCustomer={selectedCustomer}
-            onConversationRead={handleConversationRead}
-            onViewConversationRead={handleViewConversationRead}
-            onCustomerSelect={handleCustomerSelect}
-            onBack={handleBackToList}
-            converList={converList}
-            isConversationRead={isConversationRead}
-            setIsConversationRead={setIsConversationRead}
-            onToggleDetailsPanel={toggleDetailsPanel}
-            pendingDropFiles={pendingDropFiles}
-            onClearPendingDropFiles={clearPendingDropFiles}
-          />
+          {preloading && !selectedCustomer ? (
+            <div className="chat-conversation empty-state">
+              <div className="chat-empty-center">
+                <CircularProgress size={40} thickness={3.5} sx={{ color: 'var(--chat-primary, #25d366)', mb: 2 }} />
+                <h2 className="chat-empty-title">Loading chat...</h2>
+                <p className="chat-empty-subtitle">Preparing your conversations</p>
+              </div>
+            </div>
+          ) : (
+            <ChatConversation
+              selectedCustomer={selectedCustomer}
+              onConversationRead={handleConversationRead}
+              onViewConversationRead={handleViewConversationRead}
+              onCustomerSelect={handleCustomerSelect}
+              onBack={handleBackToList}
+              converList={converList}
+              isConversationRead={isConversationRead}
+              setIsConversationRead={setIsConversationRead}
+              onToggleDetailsPanel={toggleDetailsPanel}
+              pendingDropFiles={pendingDropFiles}
+              onClearPendingDropFiles={clearPendingDropFiles}
+              channelSwitching={channelSwitching}
+            />
+          )}
         </div>
 
       </div>

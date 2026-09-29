@@ -1,8 +1,8 @@
 'use client';
 
-import { Avatar, IconButton, Popover, useMediaQuery, useTheme } from '@mui/material';
+import { Avatar, IconButton, Popover, Tooltip, useMediaQuery, useTheme } from '@mui/material';
 import {
-  ArrowLeft, X, Plus, Tag as TagIcon, ChevronLeft, ChevronRight, Flag,
+  ArrowLeft, X, Plus, Tag as TagIcon, ChevronLeft, ChevronRight, Flag, RefreshCw,
 } from 'lucide-react';
 import { getCustomerDisplayName, getCustomerAvatarSeed, getWhatsAppAvatarConfig, hasCustomerName } from './utils/chatUtils';
 import AssigneeDropdown from './AssigneeDropdown';
@@ -17,6 +17,7 @@ export default function ChatHeader({
   onBack,
   tagsList,
   setTagModalOpen,
+  tagAdding,
   tagsMenuAnchorEl,
   setTagsMenuAnchorEl,
   canScrollLeft,
@@ -30,6 +31,8 @@ export default function ChatHeader({
   auth,
   onToggleDetails,
   onDeleteTag,
+  onRefresh,
+  refreshing = false,
 }) {
   const theme = useTheme();
   const isCompact = useMediaQuery('(max-width:1024px)');
@@ -94,6 +97,7 @@ export default function ChatHeader({
                 <IconButton
                   size="small"
                   onClick={(e) => setTagsMenuAnchorEl(e.currentTarget)}
+                  disabled={tagAdding}
                   sx={{
                     color: 'var(--chat-primary, #25d366)',
                     bgcolor: 'rgba(37, 211, 102, 0.08)',
@@ -125,10 +129,11 @@ export default function ChatHeader({
                     <span
                       className="customer-tags-add"
                       onClick={() => {
+                        if (tagAdding) return;
                         setTagsMenuAnchorEl(null);
                         setTagModalOpen(true);
                       }}
-                      style={{ display: 'flex', justifyContent: 'center', width: '100%', cursor: 'pointer' }}
+                      style={{ display: 'flex', justifyContent: 'center', width: '100%', cursor: tagAdding ? 'not-allowed' : 'pointer', opacity: tagAdding ? 0.5 : 1 }}
                     >
                       <Plus size={12} style={{ marginRight: 4 }} />
                       Add tag
@@ -140,12 +145,13 @@ export default function ChatHeader({
                     ) : (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', maxHeight: '180px', overflowY: 'auto', pt: 0.5 }}>
                         {tagsList.map((tag, index) => (
-                          <span className="customer-tags-chip" key={tag?.Id ?? index}>
+                          <span className="customer-tags-chip" key={tag?.Id ?? index} style={{ opacity: tagAdding ? 0.5 : 1 }}>
                             {tag?.TagName}
                             <X
                               size={14}
-                              style={{ cursor: 'pointer', marginLeft: 4 }}
+                              style={{ cursor: tagAdding ? 'not-allowed' : 'pointer', marginLeft: 4 }}
                               onClick={(e) => {
+                                if (tagAdding) return;
                                 e.stopPropagation();
                                 onDeleteTag?.(tag);
                               }}
@@ -161,8 +167,8 @@ export default function ChatHeader({
               <div style={{ display: 'flex', alignItems: 'center', width: '100%', minWidth: 0 }}>
                 <span
                   className="customer-tags-add"
-                  onClick={() => setTagModalOpen(true)}
-                  style={{ marginRight: 4, flexShrink: 0 }}
+                  onClick={() => { if (!tagAdding) setTagModalOpen(true); }}
+                  style={{ marginRight: 4, flexShrink: 0, cursor: tagAdding ? 'not-allowed' : 'pointer', opacity: tagAdding ? 0.5 : 1 }}
                 >
                   <Plus size={12} style={{ marginRight: 4 }} />
                   Add tag
@@ -179,12 +185,13 @@ export default function ChatHeader({
                   )}
                   <div className="customer-tags-scroll" ref={tagsScrollRef}>
                     {tagsList.map((tag, index) => (
-                      <span className="customer-tags-chip" key={tag?.Id ?? index}>
+                      <span className="customer-tags-chip" key={tag?.Id ?? index} style={{ opacity: tagAdding ? 0.5 : 1 }}>
                         {tag?.TagName}
                         <X
                           size={14}
-                          style={{ cursor: 'pointer', marginLeft: 4 }}
+                          style={{ cursor: tagAdding ? 'not-allowed' : 'pointer', marginLeft: 4 }}
                           onClick={(e) => {
+                            if (tagAdding) return;
                             e.stopPropagation();
                             onDeleteTag?.(tag);
                           }}
@@ -213,6 +220,21 @@ export default function ChatHeader({
         )}
       </div>
       <div className="chat-conv-header-right">
+        {onRefresh && (
+          <Tooltip title="Refresh chat" arrow>
+            <IconButton
+              size="small"
+              onClick={onRefresh}
+              disabled={refreshing}
+              sx={{
+                color: 'var(--text-secondary)',
+                '&:hover': { bgcolor: 'var(--bg-light)' },
+              }}
+            >
+              <RefreshCw size={18} className={refreshing ? 'chat-refresh-spin' : ''} />
+            </IconButton>
+          </Tooltip>
+        )}
         {can(5) && assigneeList.length > 0 && (
           <AssigneeDropdown
             options={assigneeList}

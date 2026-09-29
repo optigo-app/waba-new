@@ -2,9 +2,12 @@
  * AI Flow Provider — provider-agnostic wrapper for generating WhatsApp
  * chatbot flows from plain-language descriptions.
  *
- * Supports multiple AI providers controlled by the AI_PROVIDER env var:
- *   - "mistral" (default) — uses MISTRAL_API_KEY
- *   - "gemini"            — uses GEMINI_API_KEY
+ * Supports multiple AI providers:
+ *   - AI_PROVIDER env var forces a provider when set.
+ *   - Otherwise "mistral" is used only for localhost requests and
+ *     "gemini" for every other host.
+ *   - "mistral" — uses MISTRAL_API_KEY
+ *   - "gemini"  — uses GEMINI_API_KEY
  *
  * SECURITY: API keys must only live in backend environment variables.
  * This module is designed to be called from a server-side context only.
@@ -13,7 +16,7 @@
 
 // ── Provider config (overridable via env) ────────────────────────────────────
 const MISTRAL_API_URL = process.env.MISTRAL_API_URL || 'https://api.mistral.ai/v1/chat/completions';
-const MISTRAL_MODEL = process.env.MISTRAL_MODEL || 'mistral-large-latest';
+const MISTRAL_MODEL = process.env.MISTRAL_MODEL || 'mistral-small-latest';
 
 const GEMINI_API_URL = process.env.GEMINI_API_URL || 'https://generativelanguage.googleapis.com/v1beta/models';
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
@@ -276,8 +279,8 @@ async function callGeminiEdit(currentFlow, instruction, apiKey) {
  * @param {string} [apiKey] - API key (defaults to env var)
  * @returns {Promise<object>} Flow JSON with { id, name, description, triggerKeyword, triggerMode, isActive, nodes, edges }
  */
-export async function generateFlowFromDescription(description, apiKey) {
-    const provider = process.env.AI_PROVIDER || 'mistral';
+export async function generateFlowFromDescription(description, apiKey, providerName) {
+    const provider = providerName || resolveProvider();
     const key = apiKey || (provider === 'gemini' ? process.env.GEMINI_API_KEY : process.env.MISTRAL_API_KEY);
     if (!key) {
         const envVar = provider === 'gemini' ? 'GEMINI_API_KEY' : 'MISTRAL_API_KEY';
@@ -318,8 +321,8 @@ export async function generateFlowFromDescription(description, apiKey) {
  * @param {string} [apiKey] - API key (defaults to env var)
  * @returns {Promise<object>} Modified flow JSON with { id, name, nodes, edges, ... }
  */
-export async function editFlowFromDescription(currentFlow, instruction, apiKey) {
-    const provider = process.env.AI_PROVIDER || 'mistral';
+export async function editFlowFromDescription(currentFlow, instruction, apiKey, providerName) {
+    const provider = providerName || resolveProvider();
     const key = apiKey || (provider === 'gemini' ? process.env.GEMINI_API_KEY : process.env.MISTRAL_API_KEY);
     if (!key) {
         const envVar = provider === 'gemini' ? 'GEMINI_API_KEY' : 'MISTRAL_API_KEY';
@@ -354,11 +357,28 @@ export const aiProviders = {
 };
 
 /**
- * Returns the active AI provider based on env config.
- * Set AI_PROVIDER=gemini in .env to switch to Gemini.
- * Defaults to 'mistral'.
+ * Resolves which provider to use for a request.
+ * - AI_PROVIDER env var always wins when set.
+ * - Otherwise Mistral is used only for localhost requests; every other
+ *   host falls back to Gemini.
+ *
+ * @param {string} [host] - Request host header (e.g. "localhost:5044")
+ * @returns {"mistral" | "gemini"}
  */
-export function getActiveProvider() {
-    const providerName = process.env.AI_PROVIDER || 'mistral';
-    return aiProviders[providerName] || aiProviders.mistral;
+export function resolveProvider(host) {
+    if (process.env.AI_PROVIDER) return process.env.AI_PROVIDER;
+
+    const raw = (host || '').split(',')[0].trim().toLowerCase();
+    const name = raw.startsWith('[') ? raw.slice(1, raw.indexOf(']')) : raw.split(':')[0];
+    const isLocal = name === 'localhost' || name === '127.0.0.1' || name === '::1';
+    return isLocal ? 'mistral' : 'gemini';
+}
+
+/**
+ * Returns the active AI provider.
+ * Set AI_PROVIDER in .env to force a provider; otherwise pass the request
+ * host to resolveProvider() (localhost → mistral, others → gemini).
+ */
+export function getActiveProvider(host) {
+    return aiProviders[resolveProvider(host)] || aiProviders.gemini;
 }

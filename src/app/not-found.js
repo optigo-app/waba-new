@@ -1,8 +1,11 @@
 'use client';
 
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { Home, ArrowLeft } from 'lucide-react';
 
 export default function NotFound() {
+  const router = useRouter();
+
   return (
     <div className="not-found-page">
       <div className="not-found-container">
@@ -12,13 +15,18 @@ export default function NotFound() {
           The page you&apos;re looking for doesn&apos;t exist or has been moved.
         </p>
         <div className="not-found-actions">
-          <Link href="/" className="not-found-btn not-found-btn-primary">
+          <button
+            className="not-found-btn not-found-btn-primary"
+            onClick={() => router.push('/')}
+          >
+            <Home size={18} />
             Go Home
-          </Link>
+          </button>
           <button
             className="not-found-btn not-found-btn-secondary"
-            onClick={() => window.history.back()}
+            onClick={() => router.back()}
           >
+            <ArrowLeft size={18} />
             Go Back
           </button>
         </div>
@@ -28,8 +36,9 @@ export default function NotFound() {
           display: flex;
           align-items: center;
           justify-content: center;
-          min-height: 100vh;
-          background: linear-gradient(135deg, #f0fdf4 0%, #e8f5e9 100%);
+          flex: 1;
+          min-height: calc(100vh - 80px);
+          background: var(--bg-light, #f8f9fa);
           padding: 24px;
         }
         .not-found-container {
@@ -49,12 +58,12 @@ export default function NotFound() {
         .not-found-subtitle {
           font-size: 1.75rem;
           font-weight: 600;
-          color: #444050;
+          color: var(--text-primary, #444050);
           margin: 12px 0 8px;
         }
         .not-found-description {
           font-size: 1rem;
-          color: #7d7f85;
+          color: var(--text-secondary, #7d7f85);
           margin: 0 0 32px;
           line-height: 1.6;
         }
@@ -88,8 +97,8 @@ export default function NotFound() {
           box-shadow: 0 6px 20px rgba(29, 170, 97, 0.3);
         }
         .not-found-btn-secondary {
-          background: #ebebed;
-          color: #7d7f85;
+          background: var(--bg-elevated, #ebebed);
+          color: var(--text-secondary, #7d7f85);
         }
         .not-found-btn-secondary:hover {
           background: #1daa61;

@@ -345,7 +345,7 @@ const CampaignReport = () => {
             const templateId = quickReportData?.TemplateId || null;
 
             // Single call with templateId and chatMsgStatus — gets rd (campaign), rd1 (template), rd3 (audience)
-            const detailsResult = await fetchCampaignDetails(userId, id, chatMsgStatus, templateId);
+            const detailsResult = await fetchCampaignDetails(userId, id, chatMsgStatus, templateId, channelId);
             if (!detailsResult.success || !detailsResult.data?.rd?.length) {
                 toast.error('Failed to load campaign details');
                 return;
@@ -393,7 +393,8 @@ const CampaignReport = () => {
                 userToken?.userId || userToken?.userid || userToken?.appuserid,
                 id,
                 quickReportData?.TemplateId || 1,
-                getChatMsgStatusFromFilter(statFilter)
+                getChatMsgStatusFromFilter(statFilter),
+                channelId
             );
 
             if (result.success) {

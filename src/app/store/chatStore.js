@@ -5,8 +5,11 @@ import {
   getCustomerDisplayName,
   getCustomerAvatarSeed,
   getWhatsAppAvatarConfig,
+  getInteractiveReplyTitle,
+  parseContactData,
+  sortConversations,
 } from '../components/Chat/utils/chatUtils';
-import { formatChatTimestamp } from '../components/Chat/utils/dateUtils';
+import { formatChatTimestamp, nowAsServerIST } from '../components/Chat/utils/dateUtils';
 
 /* ── helpers ── */
 const normalizeMessage = (data) => ({
@@ -21,8 +24,8 @@ const normalizeMessage = (data) => ({
   MessageType: data?.MessageType ?? data?.type ?? 'text',
   content: data?.Message ?? data?.content ?? data?.message ?? data?.text ?? '',
   Message: data?.Message ?? data?.content ?? data?.message ?? data?.text ?? '',
-  sentAt: data?.DateTime ?? data?.sentAt ?? data?.sent_at ?? new Date().toISOString(),
-  DateTime: data?.DateTime ?? data?.sentAt ?? data?.sent_at ?? new Date().toISOString(),
+  sentAt: data?.DateTime ?? data?.sentAt ?? data?.sent_at ?? nowAsServerIST(),
+  DateTime: data?.DateTime ?? data?.sentAt ?? data?.sent_at ?? nowAsServerIST(),
   status: data?.Status ?? data?.status ?? 1,
   Status: data?.Status ?? data?.status ?? 1,
 });
@@ -35,15 +38,66 @@ const buildPreview = (msg) => {
         : type === 'document' ? 'Document'
           : type === 'file' ? 'File'
             : type === 'template' ? (msg?.Message ? `Template: ${msg.Message}` : 'Template')
-              : 'New message';
+              : type === 'contacts' || type === 'contact'
+                ? (() => {
+                    const c = parseContactData(msg);
+                    const n = c.contacts?.length || 0;
+                    return n > 1 ? `${n} contacts` : 'Contact';
+                  })()
+                : type === 'interactive' ? (getInteractiveReplyTitle(msg) || 'Interactive message')
+                  : 'New message';
   return {
     lastMessage: text,
     lastMessageText: text,
-    lastMessageTime: formatChatTimestamp(msg?.DateTime || new Date().toISOString()),
-    lastMessageTimestamp: msg?.DateTime || new Date().toISOString(),
+    lastMessageTime: formatChatTimestamp(msg?.DateTime || nowAsServerIST()),
+    lastMessageTimestamp: msg?.DateTime || nowAsServerIST(),
     lastMessageDirection: msg?.Direction ?? msg?.direction ?? 0,
     lastMessageStatus: msg?.Status ?? msg?.status,
   };
+};
+
+/* Merge an emoji into a message's ReactionEmojis JSON — one reaction per
+   party (Direction): replace the existing entry, or remove when emoji is '' */
+const mergeReactionEmojis = (raw, emoji, direction) => {
+  let list = [];
+  try {
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (Array.isArray(parsed)) list = parsed;
+  } catch { /* ignore */ }
+  const dir = Number(direction);
+  list = list.filter((r) => Number(r?.Direction ?? r?.direction) !== dir);
+  if (emoji) list.push({ Reaction: emoji, Direction: dir });
+  return list.length ? JSON.stringify(list) : '';
+};
+
+/* Map a fn over every stored message matching any of targetIds — scoped to
+   the emitted conversation when available, else across all loaded ones */
+const updateMatchedMessages = (messagesByConversationId, conversationId, targetIds, mapFn) => {
+  const keys =
+    conversationId && Array.isArray(messagesByConversationId[conversationId])
+      ? [conversationId]
+      : Object.keys(messagesByConversationId);
+  let changed = false;
+  const next = { ...messagesByConversationId };
+  for (const key of keys) {
+    const list = next[key];
+    if (!Array.isArray(list)) continue;
+    let touched = false;
+    const updated = list.map((m) => {
+      const ids = [m?.id, m?.Id, m?.autoid, m?.MessageId]
+        .filter((v) => v !== undefined && v !== null && v !== '')
+        .map(String);
+      if (!ids.some((x) => targetIds.includes(x))) return m;
+      const mapped = mapFn(m);
+      if (mapped !== m) {
+        touched = true;
+        changed = true;
+      }
+      return mapped;
+    });
+    if (touched) next[key] = updated;
+  }
+  return changed ? next : null;
 };
 
 /* ── store ── */
@@ -52,11 +106,14 @@ export const useChatStore = create((set, get) => ({
   conversations: [],
   allConversationsCache: [],
   conversationsByChannel: {},
+  channels: [],
+  channelsLoaded: false,
   selectedConversationId: null,
   selectedChannelId: null,
   selectedChannel: null,
   defaultChannelId: null,
   messagesByConversationId: {},
+  pendingReadClears: {},
   templates: [],
   templatesLoaded: false,
 
@@ -87,6 +144,12 @@ export const useChatStore = create((set, get) => ({
   setSelectedChannelId: (selectedChannelId) => set({ selectedChannelId }),
   setSelectedChannel: (selectedChannel) => set({ selectedChannel }),
   setDefaultChannelId: (defaultChannelId) => set({ defaultChannelId }),
+  setChannels: (channels) =>
+    set((s) => ({
+      channels:
+        typeof channels === 'function' ? channels(s.channels) : channels,
+    })),
+  setChannelsLoaded: (loaded) => set({ channelsLoaded: loaded }),
 
   setTemplates: (templates) =>
     set((s) => ({
@@ -155,22 +218,110 @@ export const useChatStore = create((set, get) => ({
   clearConversationUnread: (conversationId) =>
     set((s) => {
       const cid = String(conversationId);
+      let cleared = 0;
       const clear = (list) =>
         list.map((c) => {
           const cId = String(c?.ConversationId ?? c?.Id ?? c?.CustomerId);
           if (cId === cid) {
+            cleared = Math.max(cleared, Number(c?.unreadCount ?? c?.UnReadMsgCount ?? 0) || 0);
             return { ...c, unreadCount: 0, UnReadMsgCount: 0 };
           }
           return c;
         });
+
+      // Resolve which channel this conversation belongs to — don't assume the
+      // selected channel (a read can land before a channel switch completes)
+      let channelKey = String(s.selectedChannelId ?? '');
+      for (const [key, list] of Object.entries(s.conversationsByChannel || {})) {
+        if (Array.isArray(list) && list.some((c) => String(c?.ConversationId ?? c?.Id ?? c?.CustomerId) === cid)) {
+          channelKey = key;
+          break;
+        }
+      }
+
+      const channels = cleared > 0
+        ? s.channels.map((ch) =>
+            String(ch?.Id) === channelKey
+              ? { ...ch, UnreadMessageCount: Math.max(0, (Number(ch?.UnreadMessageCount) || 0) - cleared) }
+              : ch
+          )
+        : s.channels;
+      // Record only what actually landed on a channel badge — if the channel
+      // list wasn't loaded yet, the read API's msgCount must apply in full later
+      const applied = cleared > 0 && s.channels.some((ch) => String(ch?.Id) === channelKey)
+        ? cleared
+        : 0;
+      const conversationsByChannel = Object.fromEntries(
+        Object.entries(s.conversationsByChannel || {}).map(([key, list]) => [key, clear(list)])
+      );
       return {
         conversations: clear(s.conversations),
         allConversationsCache: clear(s.allConversationsCache),
+        conversationsByChannel,
+        channels,
+        pendingReadClears: { ...s.pendingReadClears, [cid]: applied },
+      };
+    }),
+
+  applyChannelReadCount: (accountId, msgCount, conversationId) =>
+    set((s) => {
+      const cid = String(conversationId ?? '');
+      const already = cid ? (s.pendingReadClears?.[cid] ?? 0) : 0;
+      const rest = { ...s.pendingReadClears };
+      if (cid) delete rest[cid];
+      const extra = (Number(msgCount) || 0) - already;
+
+      const channelKey = String(accountId ?? s.selectedChannelId ?? '');
+      const match = s.channels.find((ch) =>
+        String(ch?.Id ?? ch?.AccountId ?? ch?.ChannelId ?? '') === channelKey
+      );
+      console.log('[chat] applyChannelReadCount', { accountId, msgCount, already, extra, channelKey, matched: match?.Id, channelIds: s.channels.map((c) => c?.Id) });
+      if (!match) return {};
+      if (extra === 0 || !channelKey) return { pendingReadClears: rest };
+
+      return {
+        pendingReadClears: rest,
+        channels: s.channels.map((ch) =>
+          String(ch?.Id ?? ch?.AccountId ?? ch?.ChannelId ?? '') === channelKey
+            ? { ...ch, UnreadMessageCount: Math.max(0, (Number(ch?.UnreadMessageCount) || 0) - extra) }
+            : ch
+        ),
+      };
+    }),
+
+  /* Push a just-sent (optimistic) message into the conversation list preview —
+     sidebar shows it instantly; socket emit/API then update it in realtime */
+  pushOutgoingToConversation: (conversationId, data) =>
+    set((s) => {
+      const cid = String(conversationId);
+      const preview = buildPreview(data);
+      const bump = (list) =>
+        sortConversations(
+          list.map((c) => {
+            const cId = String(c?.ConversationId ?? c?.Id ?? c?.CustomerId);
+            return cId === cid ? { ...c, ...preview } : c;
+          })
+        );
+      const conversationsByChannel = Object.fromEntries(
+        Object.entries(s.conversationsByChannel || {}).map(([key, l]) => [key, bump(l)])
+      );
+      return {
+        conversations: bump(s.conversations),
+        allConversationsCache: bump(s.allConversationsCache),
+        conversationsByChannel,
       };
     }),
 
   /* socket handlers */
   handleSocketMessage: (data) => {
+    /* Reaction payloads are not chat messages — attach the emoji to the
+       target message instead of appending a phantom bubble / bumping unread */
+    const msgType = String(data?.MessageType ?? data?.type ?? '').toLowerCase();
+    if (msgType === 'reaction') {
+      get().handleSocketReaction(data);
+      return;
+    }
+
     const state = get();
     const msgConversationId = String(
       data?.ConversationId ?? data?.conversationId ?? data?.customerId ?? data?.autoid
@@ -178,10 +329,27 @@ export const useChatStore = create((set, get) => ({
     if (!msgConversationId || msgConversationId === 'undefined') return;
 
     const normalized = normalizeMessage(data);
-    const isSelected = String(state.selectedConversationId) === msgConversationId;
 
-    /* Batch both updates (messages + conversation list) into a single set()
-       to avoid double re-renders on every incoming socket message. */
+    const emitChannelId = String(data?.ChannelId ?? data?.channelId ?? '');
+    const selectedKey = String(state.selectedChannelId ?? '');
+    // Only trust the emit's channel id when it matches a known channel —
+    // payloads (e.g. outgoing sendMessage echoes) may carry AccountId or an
+    // empty value, which is not the channel and must fall back to selected
+    const knownChannelIds = new Set(
+      (state.channels || []).map((ch) => String(ch?.Id ?? ch?.ChannelId ?? ''))
+    );
+    const emitIsKnownChannel =
+      emitChannelId !== '' &&
+      (knownChannelIds.size === 0 || knownChannelIds.has(emitChannelId));
+    const targetChannelKey = emitIsKnownChannel ? emitChannelId : selectedKey;
+    const isSelectedChannel = targetChannelKey === selectedKey;
+    const isSelected = isSelectedChannel && String(state.selectedConversationId) === msgConversationId;
+    const isOutgoing = Number(normalized.direction) === 1;
+    /* IsRead: 1 marks a re-emit of an already-read message (e.g. reaction
+       add/remove re-broadcasts the full row) — never bump unread for it */
+    const unreadDelta = isSelected || isOutgoing || Number(data?.IsRead) === 1 ? 0 : 1;
+
+    /* Batch all updates into a single set() to avoid double re-renders. */
     set((s) => {
       const next = {};
 
@@ -217,33 +385,43 @@ export const useChatStore = create((set, get) => ({
         }
       }
 
-      /* 2. update conversation list */
-      const idx = s.conversations.findIndex((c) => {
-        const cid = String(c?.ConversationId ?? c?.Id ?? c?.CustomerId);
-        return cid === msgConversationId;
-      });
+      /* 1b. Reaction add/remove re-emits the full message row (MessageType
+             stays 'text') with updated ReactionEmojis — sync the authoritative
+             value onto the stored message, since the append path skips it */
+      const incomingReactions = data?.ReactionEmojis ?? data?.reactionEmojis;
+      if (incomingReactions !== undefined) {
+        const ids = [normalized.id, normalized.MessageId]
+          .filter((v) => v !== undefined && v !== null && v !== '')
+          .map(String);
+        const synced = updateMatchedMessages(
+          next.messagesByConversationId || s.messagesByConversationId,
+          msgConversationId,
+          ids,
+          (m) =>
+            String(m?.ReactionEmojis ?? m?.reactionEmojis ?? '') === String(incomingReactions)
+              ? m
+              : { ...m, ReactionEmojis: incomingReactions, reactionEmojis: incomingReactions }
+        );
+        if (synced) next.messagesByConversationId = synced;
+      }
 
-      if (idx !== -1) {
-        /* existing conversation — update preview & unread */
-        const conv = { ...s.conversations[idx], ...buildPreview(data) };
-        conv.unreadCount = isSelected ? 0 : (conv.unreadCount || 0) + 1;
+      /* 2. upsert into a conversation list — update preview, bump unread,
+            re-sort WhatsApp-style: pinned first, then latest timestamp */
+      const sortByLatest = sortConversations;
 
-        // Move to top without splice/unshift (cheaper)
-        const updated = [conv, ...s.conversations.filter((_, i) => i !== idx)];
-
-        /* mirror in cache */
-        const cacheIdx = s.allConversationsCache.findIndex((c) => {
+      const upsertConvList = (list) => {
+        const idx = list.findIndex((c) => {
           const cid = String(c?.ConversationId ?? c?.Id ?? c?.CustomerId);
           return cid === msgConversationId;
         });
-        let updatedCache = s.allConversationsCache;
-        if (cacheIdx !== -1) {
-          updatedCache = [conv, ...s.allConversationsCache.filter((_, i) => i !== cacheIdx)];
+
+        if (idx !== -1) {
+          const conv = { ...list[idx], ...buildPreview(data) };
+          conv.unreadCount = isSelected ? 0 : (conv.unreadCount || 0) + unreadDelta;
+          conv.UnReadMsgCount = conv.unreadCount;
+          return sortByLatest([conv, ...list.filter((_, i) => i !== idx)]);
         }
 
-        next.conversations = updated;
-        next.allConversationsCache = updatedCache;
-      } else {
         /* new conversation from socket — create minimal record */
         const rawConv = {
           Id: msgConversationId,
@@ -255,7 +433,7 @@ export const useChatStore = create((set, get) => ({
           IsPin: 0,
           IsStar: 0,
           IsArchived: 0,
-          UnReadMsgCount: isSelected ? 0 : 1,
+          UnReadMsgCount: unreadDelta,
           LastMessage: data,
           DateTime: normalized.DateTime,
           TagList: null,
@@ -267,13 +445,35 @@ export const useChatStore = create((set, get) => ({
           name: getCustomerDisplayName(rawConv),
           avatar: null,
           avatarConfig: getWhatsAppAvatarConfig(getCustomerAvatarSeed(rawConv), 38),
-          unreadCount: isSelected ? 0 : 1,
+          unreadCount: unreadDelta,
           tags: [],
           ticketStatus: null,
         };
 
-        next.conversations = [enriched, ...s.conversations];
-        next.allConversationsCache = [enriched, ...s.allConversationsCache];
+        return sortByLatest([enriched, ...list]);
+      };
+
+      /* Visible list + global cache belong to the selected channel only */
+      if (isSelectedChannel) {
+        next.conversations = upsertConvList(s.conversations);
+        next.allConversationsCache = upsertConvList(s.allConversationsCache);
+      }
+
+      /* Per-channel cache — update it if that channel was loaded before */
+      if (targetChannelKey && s.conversationsByChannel?.[targetChannelKey]) {
+        next.conversationsByChannel = {
+          ...s.conversationsByChannel,
+          [targetChannelKey]: upsertConvList(s.conversationsByChannel[targetChannelKey]),
+        };
+      }
+
+      /* 3. channel badge — bump UnreadMessageCount on the emit's channel */
+      if (unreadDelta > 0 && targetChannelKey) {
+        next.channels = s.channels.map((ch) =>
+          String(ch?.Id) === targetChannelKey
+            ? { ...ch, UnreadMessageCount: (Number(ch?.UnreadMessageCount) || 0) + unreadDelta }
+            : ch
+        );
       }
 
       return next;
@@ -302,28 +502,91 @@ export const useChatStore = create((set, get) => ({
 
     set((s) => {
       const list = s.messagesByConversationId[conversationId] || [];
-      let changed = false;
       const updated = list.map((m) => {
-        const mId = String(m.id ?? m.Id ?? m.autoid ?? m.MessageId);
-        if (mId === targetId || mId === targetMessageId) {
+        const ids = [m.id, m.Id, m.autoid, m.MessageId].filter((v) => v !== undefined && v !== null).map(String);
+        if (ids.includes(targetId) || ids.includes(targetMessageId)) {
           const currentStatus = m?.Status ?? m?.status;
           if (currentStatus === newStatus) return m;
-          changed = true;
           return { ...m, status: newStatus, Status: newStatus };
         }
         return m;
       });
-      if (!changed) return {};
+
+      /* Also sync the conversation-list preview status in realtime —
+         only when the emitted message is that conversation's latest */
+      const isLastMessage = (() => {
+        if (updated.length === 0) return true;
+        const last = updated[updated.length - 1];
+        const ids = [last?.id, last?.Id, last?.autoid, last?.MessageId].filter((v) => v !== undefined && v !== null).map(String);
+        return ids.includes(targetId) || ids.includes(targetMessageId);
+      })();
+
+      const updateConvStatus = (l) =>
+        l.map((c) => {
+          const cid = String(c?.ConversationId ?? c?.Id ?? c?.CustomerId);
+          if (cid !== conversationId || c?.lastMessageStatus === newStatus) return c;
+          if (!isLastMessage) return c;
+          if (typeof c?.lastMessageStatus === 'number' && typeof newStatus === 'number' && newStatus < c.lastMessageStatus) return c;
+          return { ...c, lastMessageStatus: newStatus };
+        });
+
+      const conversationsByChannel = Object.fromEntries(
+        Object.entries(s.conversationsByChannel || {}).map(([key, l]) => [key, updateConvStatus(l)])
+      );
+
       return {
         messagesByConversationId: {
           ...s.messagesByConversationId,
           [conversationId]: updated,
         },
+        conversations: updateConvStatus(s.conversations),
+        allConversationsCache: updateConvStatus(s.allConversationsCache),
+        conversationsByChannel,
       };
     });
   },
 
+  /* Apply a realtime reaction onto the target message's ReactionEmojis —
+     matches by any known message id (DB Id, autoid, wamid) and tolerates
+     whatever key casing the emit carries. A payload carrying the full
+     ReactionEmojis list is written verbatim (server's authoritative state) */
   handleSocketReaction: (data) => {
-    /* placeholder — reactions are handled locally in ChatConversation for now */
+    if (!data) return;
+    const targetIds = [
+      data?.MessageId,
+      data?.messageId,
+      data?.MsgId,
+      data?.Id,
+      data?.id,
+      data?.autoid,
+      data?.reaction?.message_id,
+      data?.ReactionMessageId,
+    ]
+      .filter((v) => v !== undefined && v !== null && v !== '')
+      .map(String);
+    if (targetIds.length === 0) return;
+
+    const conversationId = String(
+      data?.ConversationId ?? data?.conversationId ?? data?.customerId ?? ''
+    );
+    const fullReactions = data?.ReactionEmojis ?? data?.reactionEmojis;
+    const emoji =
+      data?.emoji ?? data?.Emoji ?? data?.Reaction ?? data?.reaction?.emoji ?? data?.ReactionEmoji ?? '';
+    const direction = data?.Direction ?? data?.direction ?? 1;
+
+    set((s) => {
+      const next =
+        fullReactions !== undefined
+          ? updateMatchedMessages(s.messagesByConversationId, conversationId, targetIds, (m) =>
+              String(m?.ReactionEmojis ?? m?.reactionEmojis ?? '') === String(fullReactions)
+                ? m
+                : { ...m, ReactionEmojis: fullReactions, reactionEmojis: fullReactions }
+            )
+          : updateMatchedMessages(s.messagesByConversationId, conversationId, targetIds, (m) => {
+              const merged = mergeReactionEmojis(m?.ReactionEmojis ?? m?.reactionEmojis, emoji, direction);
+              return { ...m, ReactionEmojis: merged, reactionEmojis: merged };
+            });
+      return next ? { messagesByConversationId: next } : {};
+    });
   },
 }));

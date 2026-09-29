@@ -12,9 +12,7 @@ import './styles/TemplateStyles.scss';
 
 const MEDIA_FORMATS = ['IMAGE', 'VIDEO'];
 
-// Local cache for individually-fetched templates (survives re-renders)
 const localTemplateCache = new Map();
-// In-flight request tracker: templateName -> Promise, so duplicate mounts share one fetch
 const inflightRequests = new Map();
 
 export default function DynamicTemplate({
@@ -34,7 +32,6 @@ export default function DynamicTemplate({
     ? JSON.parse(sessionStorage.getItem('token') || '{}')
     : {};
 
-  // Check preloaded templates from store first
   const preloadedTemplates = useChatStore((s) => s.templates);
   const templatesLoaded = useChatStore((s) => s.templatesLoaded);
   const selectedChannel = useChatStore((s) => s.selectedChannel);
@@ -44,14 +41,12 @@ export default function DynamicTemplate({
     const _wabaid = selectedChannel?.WabaId || token?.wabaid;
     if (!_wabaid) return;
 
-    // 1. Check local cache first (individually fetched templates)
     if (localTemplateCache.has(templateName.toLowerCase())) {
       setTemplateData(localTemplateCache.get(templateName.toLowerCase()));
       setLoading(false);
       return;
     }
 
-    // 2. Check if template is already preloaded in store (case-insensitive, check name & Name)
     const cached = preloadedTemplates.find(
       (t) => (t.name || t.Name || '')?.toLowerCase() === templateName?.toLowerCase()
     );
@@ -62,19 +57,16 @@ export default function DynamicTemplate({
       return;
     }
 
-    // 3. If preloader hasn't finished yet, wait — don't fire individual API calls
     if (!templatesLoaded) {
       setLoading(true);
       return;
     }
 
-    // 4. Preloader finished but this template wasn't preloaded — fetch individually
     const key = templateName.toLowerCase();
     const fetchTemplate = async () => {
       setLoading(true);
       setError(null);
 
-      // If a request for this template is already in-flight, wait for it
       if (inflightRequests.has(key)) {
         const data = await inflightRequests.get(key);
         if (data) {
@@ -86,7 +78,6 @@ export default function DynamicTemplate({
         return;
       }
 
-      // Start a new request and track it
       const promise = fetchTemplateByName(templateName, {
         wabaid: selectedChannel?.WabaId || token?.wabaid || '',
       });
@@ -97,7 +88,6 @@ export default function DynamicTemplate({
 
       if (data) {
         localTemplateCache.set(key, data);
-        // Also add to store so other instances find it instantly
         useChatStore.getState().setTemplates((prev) => [...prev, data]);
         setTemplateData(data);
       } else {

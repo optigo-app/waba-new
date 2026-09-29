@@ -163,6 +163,32 @@ export default function ChatInputArea({
               </div>
             )}
           </div>
+          <div style={{ position: 'relative' }} ref={emojiPickerRef}>
+            <Tooltip title="Emoji (Ctrl+.)">
+              <IconButton
+                size="small"
+                className="chat-emoji-btn"
+                onClick={() => setEmojiPickerOpen((prev) => !prev)}
+              >
+                <Smile size={20} />
+              </IconButton>
+            </Tooltip>
+            {emojiPickerOpen && (
+              <div className="emoji-picker-dropdown emoji-picker-dropdown-left">
+                <EmojiPicker
+                  onEmojiClick={(emojiData) => {
+                    setInput((prev) => prev + emojiData.emoji);
+                  }}
+                  width={320}
+                  height={400}
+                  skinTonesDisabled
+                  lazyLoadEmojis
+                  searchPlaceholder="Search emoji"
+                  previewConfig={{ showPreview: false }}
+                />
+              </div>
+            )}
+          </div>
           <textarea
             ref={textareaRef}
             className="chat-text-input"
@@ -181,6 +207,15 @@ export default function ChatInputArea({
               onTyping?.();
             }}
             onKeyDown={(e) => {
+              if ((e.ctrlKey || e.metaKey) && (e.key === '.' || e.key.toLowerCase() === 'e')) {
+                e.preventDefault();
+                setEmojiPickerOpen((prev) => !prev);
+                return;
+              }
+              if (e.key === 'Escape' && emojiPickerOpen) {
+                setEmojiPickerOpen(false);
+                return;
+              }
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 handleSend();
@@ -195,29 +230,6 @@ export default function ChatInputArea({
               }
             }}
           />
-          <div style={{ position: 'relative' }} ref={emojiPickerRef}>
-            <Tooltip title="Emoji">
-              <IconButton
-                size="small"
-                className="chat-emoji-btn"
-                onClick={() => setEmojiPickerOpen((prev) => !prev)}
-              >
-                <Smile size={20} />
-              </IconButton>
-            </Tooltip>
-            {emojiPickerOpen && (
-              <div className="emoji-picker-dropdown">
-                <EmojiPicker
-                  onEmojiClick={(emojiData) => {
-                    setInput((prev) => prev + emojiData.emoji);
-                  }}
-                  width={300}
-                  height={380}
-                  skinTonesDisabled
-                />
-              </div>
-            )}
-          </div>
           <button
             className="chat-send-btn"
             onClick={handleSend}

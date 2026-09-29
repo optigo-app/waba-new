@@ -7,9 +7,8 @@ import {
     Zap,
     Plus,
     Trash2,
-    PenSquare,
+    Pencil,
     Workflow,
-    Sparkles,
     Upload,
     Hash,
     Eye,
@@ -22,6 +21,7 @@ import { useWallet } from '../../contexts/WalletContext';
 import FilterBar from '../Common/FilterBar/FilterBar';
 import FlowBuilder from './FlowBuilder/FlowBuilder';
 import AutomationSkelton from './AutomationSkelton';
+import AutomationSetupDialog from './AutomationSetupDialog';
 
 const formatFlowDate = (isoString) => {
     if (!isoString) return '';
@@ -36,7 +36,6 @@ const Automation = () => {
     const importFlow = useFlowStore((state) => state.importFlow);
     const loadFlow = useFlowStore((state) => state.loadFlow);
     const deleteFlow = useFlowStore((state) => state.deleteFlow);
-    const setShowAiModal = useFlowStore((state) => state.setShowAiModal);
     const loadFlowsFromBackend = useFlowStore((state) => state.loadFlowsFromBackend);
     const isLoadingFlows = useFlowStore((state) => state.isLoadingFlows);
     const hasDraft = useFlowStore((state) => state.hasDraft);
@@ -51,6 +50,7 @@ const Automation = () => {
     const [viewMode, setViewMode] = useState('table');
     const [importError, setImportError] = useState('');
     const [showDraftPrompt, setShowDraftPrompt] = useState(false);
+    const [showSetupDialog, setShowSetupDialog] = useState(false);
     const fileInputRef = useRef(null);
 
     useEffect(() => {
@@ -115,7 +115,11 @@ const Automation = () => {
     }, [flowsList, search, filterStatus, sortBy]);
 
     const handleAddAutomation = () => {
-        createNewFlow();
+        if (process.env.NEXT_PUBLIC_ENABLE_AI_FLOW === 'true') {
+            setShowSetupDialog(true);
+        } else {
+            createNewFlow();
+        }
     };
 
     const handleImportClick = () => {
@@ -149,11 +153,6 @@ const Automation = () => {
         reader.onerror = () => setImportError('Failed to read file.');
         reader.readAsText(file);
         e.target.value = '';
-    };
-
-    const handleAiGenerateClick = () => {
-        createNewFlow();
-        setShowAiModal(true);
     };
 
     const handleEditFlow = (flowId) => {
@@ -202,13 +201,13 @@ const Automation = () => {
             filterable: false,
             renderCell: ({ row }) => (
                 <Box sx={{ display: 'flex', alignItems: 'center', height: '100%', gap: 0.5 }}>
-                    <IconButton size="small" onClick={() => handleEditFlow(row.id)} sx={{ color: 'var(--text-tertiary)' }}>
+                    <IconButton size="small" onClick={() => handleEditFlow(row.id)} sx={{ color: 'var(--text-tertiary)', '&:hover': { color: 'var(--titleColor)' } }}>
                         <Eye size={18} />
                     </IconButton>
-                    <IconButton size="small" onClick={() => handleEditFlow(row.id)} sx={{ color: 'var(--info-main)' }}>
-                        <PenSquare size={18} />
+                    <IconButton size="small" onClick={() => handleEditFlow(row.id)} sx={{ color: 'var(--text-tertiary)', '&:hover': { color: 'var(--titleColor)' } }}>
+                        <Pencil size={18} />
                     </IconButton>
-                    <IconButton size="small" onClick={(e) => handleDeleteFlow(row.id, e)} sx={{ color: 'var(--error-main)' }}>
+                    <IconButton size="small" onClick={(e) => handleDeleteFlow(row.id, e)} sx={{ color: 'var(--text-tertiary)', '&:hover': { color: 'var(--error-main)' } }}>
                         <Trash2 size={18} />
                     </IconButton>
                 </Box>
@@ -248,18 +247,6 @@ const Automation = () => {
                             <ToggleButton value="table"><Table size={16} /></ToggleButton>
                         </Tooltip>
                     </ToggleButtonGroup>
-                    {process.env.NEXT_PUBLIC_ENABLE_AI_FLOW === 'true' && (
-                        <button
-                            className="aiGenerateBtn"
-                            onClick={handleAiGenerateClick}
-                        >
-                            <span className="aiGenerateBtnShimmer" />
-                            <span className="aiGenerateBtnContent">
-                                <Sparkles size={16} />
-                                <span>AI Generate</span>
-                            </span>
-                        </button>
-                    )}
                     <Button
                         variant="outlined"
                         className={styles.importBtn}
@@ -327,6 +314,9 @@ const Automation = () => {
                 </div>
             </Modal>
 
+            {/* AI setup wizard for new automations */}
+            <AutomationSetupDialog open={showSetupDialog} onClose={() => setShowSetupDialog(false)} />
+
             {/* Filter bar — only when flows exist */}
             {flowsList.length > 0 && (
                 <FilterBar
@@ -355,7 +345,32 @@ const Automation = () => {
                     <AutomationSkelton count={8} />
                 ) : (
                 <>
-                {viewMode === 'grid' ? (
+                {filteredFlows.length === 0 && !isLoadingFlows ? (
+                    <Box className={styles.emptyState}>
+                        <div className={styles.emptyStateIconWrap}>
+                            <Zap size={40} className={styles.emptyStateIcon} />
+                        </div>
+                        <Typography component="h3" className={styles.emptyStateTitle}>
+                            {search ? 'No automations found' : 'No automations yet'}
+                        </Typography>
+                        <Typography component="p" className={styles.emptyStateDesc}>
+                            {search
+                                ? 'Try adjusting your search term.'
+                                : 'Create your first WhatsApp chatbot flow to get started.'}
+                        </Typography>
+                        {!search && (
+                            <Button
+                                variant="contained"
+                                className="buttonClassname"
+                                startIcon={<Plus size={16} />}
+                                onClick={handleAddAutomation}
+                                sx={{ mt: 1.5, borderRadius: '10px', textTransform: 'none' }}
+                            >
+                                Add Automation
+                            </Button>
+                        )}
+                    </Box>
+                ) : viewMode === 'grid' ? (
                     <Box className={styles.automationGrid}>
                     {filteredFlows.map((flow) => {
                         const statusConfig = flow.isActive
@@ -487,7 +502,7 @@ const Automation = () => {
                                                 e.stopPropagation();
                                                 handleEditFlow(flow.id);
                                             }}
-                                            sx={{ color: 'var(--text-tertiary)' }}
+                                            sx={{ color: 'var(--text-tertiary)', '&:hover': { color: 'var(--titleColor)' } }}
                                         >
                                             <Eye size={16} />
                                         </IconButton>
@@ -497,14 +512,14 @@ const Automation = () => {
                                                 e.stopPropagation();
                                                 handleEditFlow(flow.id);
                                             }}
-                                            sx={{ color: '#7367f0' }}
+                                            sx={{ color: 'var(--text-tertiary)', '&:hover': { color: 'var(--titleColor)' } }}
                                         >
-                                            <PenSquare size={16} />
+                                            <Pencil size={16} />
                                         </IconButton>
                                         <IconButton
                                             size="small"
                                             onClick={(e) => handleDeleteFlow(flow.id, e)}
-                                            sx={{ color: 'var(--error-main)' }}
+                                            sx={{ color: 'var(--text-tertiary)', '&:hover': { color: 'var(--error-main)' } }}
                                         >
                                             <Trash2 size={16} />
                                         </IconButton>
@@ -529,39 +544,16 @@ const Automation = () => {
                             sx={{
                                 border: 'none',
                                 '& .MuiDataGrid-main': { borderRadius: '12px' },
-                                '& .MuiDataGrid-cell': { fontFamily: 'Poppins, sans-serif' },
+                                '& .MuiDataGrid-cell': {
+                                    fontFamily: 'Poppins, sans-serif',
+                                    '&:focus, &:focus-within': { outline: 'none' },
+                                },
+                                '& .MuiDataGrid-columnHeader:focus, & .MuiDataGrid-columnHeader:focus-within': { outline: 'none' },
                                 '& .MuiDataGrid-columnHeaderTitle': { fontFamily: 'Poppins, sans-serif', fontWeight: 600 },
                             }}
                         />
                     </Box>
                 ) : null}
-
-                {filteredFlows.length === 0 && (
-                    <Box className={styles.emptyState}>
-                        <div className={styles.emptyStateIconWrap}>
-                            <Zap size={40} className={styles.emptyStateIcon} />
-                        </div>
-                        <Typography component="h3" className={styles.emptyStateTitle}>
-                            {search ? 'No automations found' : 'No automations yet'}
-                        </Typography>
-                        <Typography component="p" className={styles.emptyStateDesc}>
-                            {search
-                                ? 'Try adjusting your search term.'
-                                : 'Create your first WhatsApp chatbot flow to get started.'}
-                        </Typography>
-                        {!search && (
-                            <Button
-                                variant="contained"
-                                className="buttonClassname"
-                                startIcon={<Plus size={16} />}
-                                onClick={handleAddAutomation}
-                                sx={{ mt: 1.5, borderRadius: '10px', textTransform: 'none' }}
-                            >
-                                Add Automation
-                            </Button>
-                        )}
-                    </Box>
-                )}
                 </>
                 )}
             </div>
