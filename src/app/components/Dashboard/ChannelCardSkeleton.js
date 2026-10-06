@@ -3,7 +3,7 @@ import { Box, Skeleton, Paper, Divider } from '@mui/material';
 
 const ChannelCardSkeleton = ({ count = 1 }) => {
     return (
-        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginTop: '1.5rem', '@media (max-width: 1200px)': { gridTemplateColumns: 'repeat(2, 1fr)' }, '@media (max-width: 768px)': { gridTemplateColumns: '1fr' } }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginTop: '1.5rem', '@media (max-width: 1535.98px)': { gridTemplateColumns: 'repeat(2, 1fr)' }, '@media (max-width: 768px)': { gridTemplateColumns: '1fr' } }}>
             {[...Array(count)].map((_, index) => (
                 <Paper
                     key={index}

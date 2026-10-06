@@ -34,9 +34,11 @@ const getStatusConfig = (label) => {
 
 const StatCard = ({ icon: Icon, label, value, tone }) => (
   <div className={`${styles.statCard} ${styles[`stat${tone}`]}`}>
-    <Icon size={15} className={styles.statCardIcon} />
-    <span className={styles.statCardValue}>{value}</span>
     <span className={styles.statCardLabel}>{label}</span>
+    <div className={styles.statCardBody}>
+      <span className={styles.statCardValue}>{value}</span>
+      <span className={styles.statCardIcon}><Icon size={16} /></span>
+    </div>
   </div>
 );
 

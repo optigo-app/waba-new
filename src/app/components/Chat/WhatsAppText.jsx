@@ -148,8 +148,8 @@ function findLinks(text) {
   return matches;
 }
 
-function renderTextToken(token, onLinkClick, key) {
-  const matches = findLinks(token.text);
+function renderTextToken(token, onLinkClick, key, linkify) {
+  const matches = linkify ? findLinks(token.text) : [];
 
   if (matches.length === 0) {
     return <React.Fragment key={key}>{wrapWithFormats(token.text, token)}</React.Fragment>;
@@ -179,7 +179,9 @@ function renderTextToken(token, onLinkClick, key) {
 
 // Renders WhatsApp-formatted text. Relies on the parent `.message-text`
 // `white-space: pre-wrap` rule to honor the literal "\n" separators.
-export const WhatsAppText = ({ text, onLinkClick }) => {
+// `linkify` (default true) turns URLs/phone numbers into clickable links —
+// pass false for contexts like the conversation list where they should stay plain text.
+export const WhatsAppText = ({ text, onLinkClick, linkify = true }) => {
   if (!text) return null;
   const lines = String(text).split('\n');
   return (
@@ -190,7 +192,7 @@ export const WhatsAppText = ({ text, onLinkClick }) => {
           <React.Fragment key={lineIdx}>
             {lineIdx > 0 ? '\n' : null}
             {tokens.map((token, tIdx) =>
-              renderTextToken(token, onLinkClick, `l${lineIdx}-t${tIdx}`)
+              renderTextToken(token, onLinkClick, `l${lineIdx}-t${tIdx}`, linkify)
             )}
           </React.Fragment>
         );

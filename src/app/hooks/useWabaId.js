@@ -40,7 +40,13 @@ export const useWabaId = () => {
             );
             if (ch?.wabaId) return String(ch.wabaId);
         }
-        return channelId;
+        if (channelId) return channelId;
+        // Auto-select when only one channel is connected
+        if (walletChannels?.length === 1) {
+            const only = walletChannels[0];
+            return String(only?.wabaId || only?.WabaId || only?.Id || '');
+        }
+        return '';
     }, [wabaIdParam, tempId, whatsappNo, walletChannels, channelId]);
 
     return { wabaId, tempId, whatsappNo, channelId, urlParams };

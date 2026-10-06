@@ -7,7 +7,7 @@ export const getEnvFlags = () => {
     if (typeof window === "undefined") return { isLocal: false, isNxt: false, isLocalWeb: false };
     const hostname = window.location.hostname;
     return {
-        isLocal: ['5dmjw0dg-2000.inc1.devtunnels.ms'].includes(hostname),
+        isLocal: ['localhost','5dmjw0dg-2000.inc1.devtunnels.ms'].includes(hostname),
         isNxt: hostname.startsWith('nxt') && hostname.endsWith('.optigoapps.com'),
         isLocalWeb: ["waba.web"].includes(hostname),
     };
@@ -73,6 +73,10 @@ export const SENDBULK = `${getApiBaseUrl()}/whatsapp/brodcast/send-bulk`;
 export const ONBOARDING = `${getApiBaseUrl()}/whatsapp/onboarding/exchange-token`;
 
 export const PROFILE_UPDATE = () => `${getApiBaseUrl()}/whatsapp/profile/update`;
+
+export const AUTOMATION_LIST = () => `${getApiBaseUrl()}/whatsapp/automation/list`;
+export const AUTOMATION_UPLOAD = () => `${getApiBaseUrl()}/whatsapp/automation/upload`;
+export const AUTOMATION_DELETE = () => `${getApiBaseUrl()}/whatsapp/automation/delete`;
 
 export const UPLOADFILE = () => `${getUploadBaseUrl()}/upload`;
 export const REMOVE_FILE_URL = () => `${getUploadBaseUrl()}/removefile`;

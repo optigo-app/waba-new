@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Typography, TextField, Button, RadioGroup, Radio, FormControlLabel, Select, MenuItem, Box, IconButton, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Grid, Menu, ListItemText, ListItemIcon, Popover, Skeleton, Alert, Drawer, useMediaQuery, Paper } from '@mui/material';
-import { Smile, Send, Info, Eye, X } from 'lucide-react';
+import { Smile, Send, Info, Eye, X, Smartphone, BadgeCheck, Check } from 'lucide-react';
 import SelectAutocomplete from '../../Audience/SelectAutocomplete';
 import { useAuthToken } from '../../../../hooks/useAuthToken';
 import { useWallet } from '../../../../contexts/WalletContext';
@@ -14,6 +14,24 @@ import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import styles from '../AddCampaign.module.scss';
 import { fetchTemplateLists } from '@/app/api/TemplateList';
+import { getChannelDisplayName, getChannelSubName, getChannelMobile } from '../../../Chat/utils/chatUtils';
+import { Whatsapp } from '../../../../assests/svg';
+
+// Returns the URL only when it's a usable http(s) image URL — '' for junk values
+const getValidImageUrl = (url) => {
+  if (!url || typeof url !== 'string') return '';
+  const trimmed = url.trim();
+  if (!trimmed || trimmed === '-' || /^(null|undefined|n\/a)$/i.test(trimmed)) return '';
+  try {
+    const parsed = new URL(trimmed);
+    return (parsed.protocol === 'http:' || parsed.protocol === 'https:') ? trimmed : '';
+  } catch {
+    return '';
+  }
+};
+
+const getChannelImgUrl = (ch) =>
+  getValidImageUrl(ch.ChannelImage || ch.channelImage || ch.ProfilePictureUrl || ch.profilePictureUrl || ch.profile_picture_url);
 
 // ── Local Input Wrapper for General Performance ──────────────────────────────
 const LocalTextField = React.memo(({ value, onChange, ...props }) => {
@@ -55,12 +73,21 @@ const Message = ({ onNext, onBack, onMessageConfigured, showError, messageError,
   const { channels } = useWallet();
   const router = useRouter();
   const [selectedChannel, setSelectedChannel] = useState(channelId || '');
+  const [channelImgErrors, setChannelImgErrors] = useState({});
 
   useEffect(() => {
     if (channelId && channelId !== selectedChannel) {
       setSelectedChannel(channelId);
     }
   }, [channelId]);
+
+  // Auto-select the default channel (same as chat dashboard), or the only channel
+  if (!selectedChannel && channels?.length) {
+    const defaultCh = channels.find((c) => Number(c.IsDefault) === 1);
+    if (defaultCh || channels.length === 1) {
+      setSelectedChannel(String((defaultCh || channels[0]).Id));
+    }
+  }
 
   useEffect(() => {
     onChannelSelect?.(selectedChannel);
@@ -451,58 +478,115 @@ const Message = ({ onNext, onBack, onMessageConfigured, showError, messageError,
               <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mb: 3 }}>
                 {channels.map((ch) => {
                   const isSelected = String(selectedChannel) === String(ch.Id);
+                  const imgUrl = getChannelImgUrl(ch);
+                  const showImg = Boolean(imgUrl) && !channelImgErrors[ch.Id];
+                  const subName = getChannelSubName(ch);
+                  const mobile = getChannelMobile(ch);
+                  const isDefault = Number(ch.IsDefault) === 1;
+                  const isActive = ch.IsActive !== 0;
                   return (
                     <Paper
                       key={ch.Id}
                       onClick={() => {
+                        if (!isActive) return;
                         setSelectedChannel(String(ch.Id));
                         setTemplate(null);
                       }}
                       sx={{
-                        cursor: 'pointer',
+                        position: 'relative',
+                        cursor: isActive ? 'pointer' : 'not-allowed',
                         borderRadius: '12px',
                         border: isSelected ? '2px solid #1daa61' : '1px solid #e4e8ee',
                         background: isSelected ? 'rgba(29,170,97,0.04)' : '#fff',
-                        p: 1.5,
-                        minWidth: 180,
-                        maxWidth: 240,
-                        flex: '1 1 180px',
+                        p: 2,
+                        minWidth: 240,
+                        maxWidth: 320,
+                        flex: '1 1 240px',
                         transition: 'all 0.2s',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 1,
-                        '&:hover': {
+                        gap: 1.25,
+                        opacity: isActive ? 1 : 0.55,
+                        '&:hover': isActive ? {
                           borderColor: 'rgba(29,170,97,0.4)',
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-                        },
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
+                          transform: 'translateY(-1px)',
+                        } : {},
                       }}
                     >
-                      <Box
-                        sx={{
-                          width: 40,
-                          height: 40,
-                          borderRadius: '10px',
-                          background: 'linear-gradient(135deg, rgba(29,170,97,0.12), rgba(37,211,102,0.08))',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0,
-                          border: '1px solid rgba(29,170,97,0.15)',
-                        }}
-                      >
-                        <Box sx={{ fontSize: '1.1rem' }}>💬</Box>
+                      {/* Avatar — channel photo in a rounded-square box, like the dashboard card */}
+                      <Box sx={{ position: 'relative', flexShrink: 0 }}>
+                        <Box
+                          sx={{
+                            width: 44,
+                            height: 44,
+                            borderRadius: '12px',
+                            background: showImg ? 'transparent' : 'linear-gradient(135deg, rgba(29,170,97,0.12), rgba(37,211,102,0.08))',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            border: '1px solid rgba(29,170,97,0.15)',
+                            overflow: 'hidden',
+                          }}
+                        >
+                          {showImg ? (
+                            <Box
+                              component="img"
+                              src={imgUrl}
+                              alt={getChannelDisplayName(ch)}
+                              onError={() => setChannelImgErrors((prev) => (prev[ch.Id] ? prev : { ...prev, [ch.Id]: true }))}
+                              sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                            />
+                          ) : (
+                            <Whatsapp width={22} height={22} fill="#1daa61" />
+                          )}
+                        </Box>
+                        {ch.IsOfficialAccount === 1 && (
+                          <Box sx={{ position: 'absolute', bottom: -2, right: -2, background: '#fff', borderRadius: '50%', display: 'flex', lineHeight: 0 }}>
+                            <BadgeCheck size={15} color="#1daa61" fill="#fff" />
+                          </Box>
+                        )}
                       </Box>
+
+                      {/* Name + subname + phone */}
                       <Box sx={{ minWidth: 0, flex: 1 }}>
-                        <Typography sx={{ fontSize: '0.82rem', fontWeight: 600, color: '#444050', fontFamily: 'Poppins, sans-serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {ch.whatsappName || `Channel ${ch.Id}`}
-                        </Typography>
-                        <Typography sx={{ fontSize: '0.72rem', color: '#6D6B77', fontFamily: 'Poppins, sans-serif' }}>
-                          {ch.MobileNumber && ch.MobileNumber !== '-' ? ch.MobileNumber : (ch.mobileNumber || '-')}
-                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                          <Typography sx={{ fontSize: '0.82rem', fontWeight: 600, color: '#444050', fontFamily: 'Poppins, sans-serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {getChannelDisplayName(ch)}
+                          </Typography>
+                          {isDefault && (
+                            <Tooltip title="Default channel" arrow placement="top">
+                              <Box
+                                component="span"
+                                sx={{
+                                  width: 9,
+                                  height: 9,
+                                  borderRadius: '50%',
+                                  background: '#1daa61',
+                                  flexShrink: 0,
+                                  boxShadow: '0 0 0 2px rgba(29,170,97,0.18)',
+                                }}
+                              />
+                            </Tooltip>
+                          )}
+                        </Box>
+                        {subName && (
+                          <Typography sx={{ fontSize: '0.7rem', color: '#8a8794', fontFamily: 'Poppins, sans-serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {subName}
+                          </Typography>
+                        )}
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.25, color: '#6D6B77' }}>
+                          <Smartphone size={11} />
+                          <Typography component="span" sx={{ fontSize: '0.72rem', fontFamily: 'Poppins, sans-serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {mobile || '-'}
+                          </Typography>
+                        </Box>
                       </Box>
+
+                      {/* Selected check */}
                       {isSelected && (
-                        <Box sx={{ color: '#1daa61', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
-                          ✓
+                        <Box sx={{ position: 'absolute', top: 8, right: 8, width: 20, height: 20, borderRadius: '50%', background: '#1daa61', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Check size={12} strokeWidth={3} />
                         </Box>
                       )}
                     </Paper>
@@ -531,11 +615,14 @@ const Message = ({ onNext, onBack, onMessageConfigured, showError, messageError,
                 <MenuItem value="" disabled sx={{ fontFamily: 'Poppins, sans-serif', fontSize: '0.875rem', color: '#9e9e9e' }}>
                   Select a channel
                 </MenuItem>
-                {channels && channels.map((ch) => (
-                  <MenuItem key={ch.Id} value={String(ch.Id)} sx={{ fontFamily: 'Poppins, sans-serif', fontSize: '0.875rem' }}>
-                    {ch.whatsappName || ch.mobileNumber || `Channel ${ch.Id}`} {ch.MobileNumber && ch.MobileNumber !== '-' ? `(${ch.MobileNumber})` : ''}
-                  </MenuItem>
-                ))}
+                {channels && channels.map((ch) => {
+                  const mobile = getChannelMobile(ch);
+                  return (
+                    <MenuItem key={ch.Id} value={String(ch.Id)} sx={{ fontFamily: 'Poppins, sans-serif', fontSize: '0.875rem' }}>
+                      {getChannelDisplayName(ch)} {mobile && mobile !== '-' ? `(${mobile})` : ''}
+                    </MenuItem>
+                  );
+                })}
               </Select>
             )}
           </div>

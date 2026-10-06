@@ -133,7 +133,11 @@ const TemplatesPage = () => {
     const { wabaId, tempId, whatsappNo, urlParams } = useWabaId();
     const selectedChannelId = useMemo(() => {
         if (tempId) return tempId;
-        if (!whatsappNo || !walletChannels) return '';
+        if (!whatsappNo || !walletChannels) {
+            // Auto-select when only one channel is connected
+            if (!whatsappNo && walletChannels?.length === 1) return String(walletChannels[0].Id);
+            return '';
+        }
         const ch = walletChannels.find((c) => c.mobileNumber === whatsappNo);
         return ch ? String(ch.Id) : '';
     }, [tempId, whatsappNo, walletChannels]);
@@ -159,6 +163,11 @@ const TemplatesPage = () => {
     const [selectedTemplateForSend, setSelectedTemplateForSend] = useState(null);
     const [selectedWhatsappNo, setSelectedWhatsappNo] = useState(whatsappNo);
     const [showInsufficientBalanceDialog, setShowInsufficientBalanceDialog] = useState(false);
+
+    // Auto-select the channel when only one is connected (render-adjust pattern)
+    if (!selectedWhatsappNo && walletChannels?.length === 1) {
+        setSelectedWhatsappNo(walletChannels[0].mobileNumber || '');
+    }
 
     const selectedWabaPhoneNo = useMemo(() => {
         if (!walletChannels || walletChannels.length === 0) return '';

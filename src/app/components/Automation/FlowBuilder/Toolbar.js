@@ -111,6 +111,11 @@ const Toolbar = () => {
         });
     }, [walletChannels]);
 
+    // Auto-select when only one channel is available (render-adjust pattern)
+    if (!selectedChannelId && channelOptions.length === 1) {
+        setSelectedChannelId(channelOptions[0].value);
+    }
+
     const validateFlowName = (name) => {
         if (!name || !name.trim()) {
             return 'Flow name is required.';
@@ -202,6 +207,11 @@ const Toolbar = () => {
 
     const handleConfirmSave = async () => {
         setShowSaveConfirm(false);
+        if (channelOptions.length === 1) {
+            // Single channel — auto-select, no need to ask
+            await doSave(channelOptions[0].value);
+            return;
+        }
         if (channelOptions.length > 0) {
             setShowChannelSelect(true);
         } else {

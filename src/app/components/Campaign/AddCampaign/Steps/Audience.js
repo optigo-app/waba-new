@@ -15,7 +15,7 @@ import { useAuthToken } from '../../../../hooks/useAuthToken';
 import ConfirmationModal from '../../../ConfirmationModal/ConfirmationModal';
 import { normalizeMobileNumber, getStaticUrl } from '../../../../utils/globalFunc';
 import { getCampaignStepper, getAudienceDraft, setAudienceDraft } from '../../../../utils/storage';
-import { extractAudienceFromResponse, mapAudienceData } from '../../utils/audienceMapper';
+import { extractAudienceFromResponse, mapAudienceData, getCountryCodeValue, getCountryNameValue, getSourceLabel } from '../../utils/audienceMapper';
 
 const sampleExcelFile = () => getStaticUrl('/sampleAud.xlsx');
 
@@ -55,7 +55,7 @@ const Audience = ({ onNext, onBack, onAudienceChange, onDataSourceChange, onFilt
                 // Use pre-fetched data from handleRetarget — no duplicate API call
                 const source = audienceGridData[0]?.Source || 'optigo';
                 setSource(source === 'optigo' ? 'crm' : 'excel');
-                onDataSourceChange(source === 'optigo' ? 'crm' : 'excel');
+                onDataSourceChange(source === 'optigo' ? 'optigo' : 'excel');
 
                 setFilteredDataFromDialog(audienceGridData);
                 const selectedIds = audienceGridData.map(row => row.CustomerId || row.MessageId || row.id);
@@ -91,7 +91,7 @@ const Audience = ({ onNext, onBack, onAudienceChange, onDataSourceChange, onFilt
                             if (mappedAudience.length > 0) {
                                 const source = mappedAudience[0]?.Source || 'optigo';
                                 setSource(source === 'optigo' ? 'crm' : 'excel');
-                                onDataSourceChange(source === 'optigo' ? 'crm' : 'excel');
+                                onDataSourceChange(source === 'optigo' ? 'optigo' : 'excel');
 
                                 setFilteredDataFromDialog(mappedAudience);
                                 const selectedIds = mappedAudience.map(row => row.CustomerId || row.MessageId || row.id);
@@ -133,7 +133,7 @@ const Audience = ({ onNext, onBack, onAudienceChange, onDataSourceChange, onFilt
             if (isEditClone && audienceGridData && audienceGridData.length > 0) {
                 const source = audienceGridData[0]?.Source || 'optigo';
                 setSource(source === 'optigo' ? 'crm' : 'excel');
-                onDataSourceChange(source === 'optigo' ? 'crm' : 'excel');
+                onDataSourceChange(source === 'optigo' ? 'optigo' : 'excel');
 
                 setFilteredDataFromDialog(audienceGridData);
                 const selectedIds = audienceGridData.map(row => row.CustomerId || row.id);
@@ -179,7 +179,7 @@ const Audience = ({ onNext, onBack, onAudienceChange, onDataSourceChange, onFilt
                             if (mappedAudience.length > 0) {
                                 const source = mappedAudience[0]?.Source || 'optigo';
                                 setSource(source === 'optigo' ? 'crm' : 'excel');
-                                onDataSourceChange(source === 'optigo' ? 'crm' : 'excel');
+                                onDataSourceChange(source === 'optigo' ? 'optigo' : 'excel');
 
                                 setFilteredDataFromDialog(mappedAudience);
                                 const selectedIds = mappedAudience.map(row => row.CustomerId || row.id);
@@ -373,7 +373,8 @@ const Audience = ({ onNext, onBack, onAudienceChange, onDataSourceChange, onFilt
                 const phone = normalizeMobileNumber(item.CustomerPhone || item.PhoneNo || item.phone);
                 return {
                     customerId: item.CustomerId,
-                    phone: phone
+                    phone: phone,
+                    Source: item.Source || item.DataSource || (source === 'crm' ? 'optigo' : 'excel'),
                 };
             })
             .filter(item => item.phone.length > 0);
@@ -433,6 +434,7 @@ const Audience = ({ onNext, onBack, onAudienceChange, onDataSourceChange, onFilt
     }, []);
 
     const handleFilterContinue = (data) => {
+        const nextSource = data?.source || source;
         if (data?.source && data.source !== source) {
             setSource(data.source);
         }
@@ -469,7 +471,7 @@ const Audience = ({ onNext, onBack, onAudienceChange, onDataSourceChange, onFilt
                 newSelectedRowMap[rowId] = row;
             });
             setSelectedRowMap(newSelectedRowMap);
-            saveAudienceDraft(selectedRows, selectedIds, source, file);
+            saveAudienceDraft(selectedRows, selectedIds, nextSource, file);
         } else {
             const existingData = filteredDataFromDialog || [];
             const combinedData = [...existingData];
@@ -491,7 +493,7 @@ const Audience = ({ onNext, onBack, onAudienceChange, onDataSourceChange, onFilt
                 newSelectedRowMap[rowId] = row;
             });
             setSelectedRowMap(newSelectedRowMap);
-            saveAudienceDraft(combinedData, allIds, source, file);
+            saveAudienceDraft(combinedData, allIds, nextSource, file);
         }
 
         setFilterDialogOpen(false);
@@ -651,16 +653,24 @@ const Audience = ({ onNext, onBack, onAudienceChange, onDataSourceChange, onFilt
             return;
         }
 
+        // Source-aware columns — must mirror the grid's UNIFIED_COLUMNS so the
+        // exported file matches what the user sees (Excel rows use Company/
+        // CustomerType/Category/PinCode; CRM rows use CustomerCode/CompanyType/
+        // CountryCode/Country).
+        const isExcel = (row) => String(row?.Source || '').toLowerCase() === 'excel';
         const exportColumns = [
-            { header: 'Customer Name', field: 'CustomerName' },
-            { header: 'Email', field: 'CustomerEmail' },
-            { header: 'Phone', field: 'CustomerPhone' },
-            { header: 'Company', field: 'CustomerCode' },
-            { header: 'Type', field: 'CompanyType' },
-            { header: 'Country Code', field: 'CountryCode' },
-            { header: 'Country', field: 'Country' },
-            { header: 'State', field: 'State' },
-            { header: 'City', field: 'City' },
+            { header: 'Customer Name', get: (r) => r.CustomerName },
+            { header: 'CC', get: (r) => (isExcel(r) ? '—' : getCountryCodeValue(r.CountryCode)) },
+            { header: 'Phone', get: (r) => (isExcel(r) ? r.PhoneNo : r.CustomerPhone) },
+            { header: 'Email', get: (r) => (isExcel(r) ? r.Email : r.CustomerEmail) },
+            { header: 'Company', get: (r) => (isExcel(r) ? r.Company : r.CustomerCode) },
+            { header: 'Type', get: (r) => (isExcel(r) ? r.CustomerType : r.CompanyType) },
+            { header: 'Source', get: (r) => getSourceLabel(r.Source) },
+            { header: 'Category', get: (r) => (isExcel(r) ? r.Category : '—') },
+            { header: 'City', get: (r) => r.City },
+            { header: 'State', get: (r) => r.State },
+            { header: 'Country', get: (r) => (isExcel(r) ? '—' : getCountryNameValue(r.CountryCode, r.Country)) },
+            { header: 'Pin Code', get: (r) => (isExcel(r) ? r.PinCode : '—') },
         ];
 
         const headers = exportColumns.map((col) => col.header);
@@ -668,21 +678,8 @@ const Audience = ({ onNext, onBack, onAudienceChange, onDataSourceChange, onFilt
         const rows = rowSelectionData.map((row) => {
             const obj = {};
             exportColumns.forEach((col) => {
-                let val = row[col.field];
-                if (col.field === 'CustomerName') {
-                    val = row.CustomerName || '—';
-                } else if (col.field === 'CustomerPhone') {
-                    val = row.CustomerPhone || row.PhoneNo || '—';
-                } else if (col.field === 'CustomerEmail') {
-                    val = row.CustomerEmail || row.Email || '—';
-                } else if (col.field === 'CustomerCode') {
-                    val = row.CustomerCode || row.Company || '—';
-                } else if (col.field === 'CompanyType') {
-                    val = row.CompanyType || row.CustomerType || '—';
-                } else if (!val) {
-                    val = '—';
-                }
-                obj[col.header] = val;
+                const val = col.get(row);
+                obj[col.header] = val || '—';
             });
             return obj;
         });

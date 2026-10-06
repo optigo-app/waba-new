@@ -4,6 +4,7 @@ import { Send, CheckCircle, AlertCircle, Megaphone, Clock, Filter, Users, Messag
 import styles from '../AddCampaign.module.scss';
 import ConfirmationModal from '../../../ConfirmationModal/ConfirmationModal';
 import MessagePreview from '../../../Common/MessagePreview';
+import { getSourceLabel } from '../../utils/audienceMapper';
 
 const PreviewSave = ({ onBack, onSave, campaignName, campaignType, scheduledFor, audience, dataSource, repeat, recurrenceFrequency, messageConfigured, onNavigateToStep, isSaving, templateData }) => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -172,7 +173,10 @@ const PreviewSave = ({ onBack, onSave, campaignName, campaignType, scheduledFor,
     },
     {
       label: 'Audience Type',
-      value: dataSource === 'optigo' ? 'CRM' : 'Excel',
+      value: (() => {
+        const sources = new Set((audience || []).map(i => getSourceLabel(i?.Source || i?.DataSource || dataSource)));
+        return sources.size > 1 ? 'CRM + Excel' : ([...sources][0] || getSourceLabel(dataSource));
+      })(),
       icon: Filter,
       color: '#0891b2'
     },
@@ -194,122 +198,122 @@ const PreviewSave = ({ onBack, onSave, campaignName, campaignType, scheduledFor,
     <div className={styles.formCard}>
       <Typography variant="h6" className={styles.formTitle}>Preview & Save</Typography>
 
-      {/* Summary Cards Grid */}
+      {/* Two-column layout — details left, message preview right */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid size={{ xs: 12 }}>
-          <Paper className={styles.summaryCard} elevation={0}>
-            <Box className={styles.summaryCardContent}>
-              {previewData ? (
-                <MessagePreview
-                  headerType={previewData.headerType}
-                  headerText={previewData.headerText}
-                  headerTextExample={previewData.headerTextExample}
-                  headerMedia={previewData.headerMedia}
-                  body={previewData.body}
-                  footer={previewData.footer}
-                  buttons={previewData.buttons}
-                  templateType={previewData.templateType}
-                  carouselCards={previewData.carouselCards}
-                  variableValues={previewData.variableValues}
-                  showEmptyHint={false}
-                />
-              ) : (
-                <Typography className={styles.emptyMessageText}>No message configured</Typography>
-              )}
-            </Box>
-          </Paper>
+        {/* Left: campaign summary + validation + actions */}
+        <Grid size={{ xs: 12, lg: 7 }}>
+          <Grid container spacing={2} sx={{ mb: 3 }}>
+            {summaryCards.map((card, index) => (
+              <Grid key={index} size={{ sm: 6, xs: 12 }}>
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 2.5,
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '12px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 1,
+                    height: '100%'
+                  }}
+                >
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontSize: '0.8rem',
+                      fontWeight: 500,
+                      color: 'var(--text-2nd-color)'
+                    }}
+                  >
+                    {card.label}
+                  </Typography>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography
+                      variant="h6"
+                      sx={{
+                        fontSize: '1.25rem',
+                        fontWeight: 600,
+                        color: 'var(--text-1st-color)'
+                      }}
+                    >
+                      {card.value}
+                    </Typography>
+                    <Box
+                      sx={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: `${card.color}15`,
+                        color: card.color
+                      }}
+                    >
+                      <card.icon size={18} />
+                    </Box>
+                  </Box>
+                </Paper>
+              </Grid>
+            ))}
+          </Grid>
+
+          {/* Validation Status */}
+          <div className={styles.validationSection}>
+            <div className={styles.validationItem}>
+              <CheckCircle size={16} className={campaignName ? styles.validationSuccess : styles.validationError} />
+              <span className={styles.validationText}>{campaignName ? 'Campaign name provided' : 'Campaign name required'}</span>
+            </div>
+            <div className={styles.validationItem}>
+              <CheckCircle size={16} className={audience.length > 0 ? styles.validationSuccess : styles.validationError} />
+              <span className={styles.validationText}>{audience.length > 0 ? 'Audience selected' : 'Audience required'}</span>
+            </div>
+            <div className={styles.validationItem}>
+              <CheckCircle size={16} className={messageConfigured ? styles.validationSuccess : styles.validationError} />
+              <span className={styles.validationText}>{messageConfigured ? 'Message configured' : 'Message configuration required'}</span>
+            </div>
+          </div>
+
+          {/* Warning */}
+          <div className={styles.infoAlert}>
+            <AlertCircle size={18} className={styles.alertIcon} />
+            <div className={styles.alertContent}>
+              <Typography variant="body2" className={styles.alertMessage}>
+                Once you save this campaign, it will be added to your Campaign Grid.
+              </Typography>
+            </div>
+          </div>
         </Grid>
 
-        {summaryCards.map((card, index) => (
-          <Grid
-            key={index}
-            size={{
-              lg: index < 3 ? 4 : 6,
-              md: index < 3 ? 4 : 6,
-              sm: 6,
-              xs: 12
-            }}
-          >
-            <Paper
-              elevation={0}
-              sx={{
-                p: 2.5,
-                border: '1px solid #e2e8f0',
-                borderRadius: '12px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 1,
-                height: '100%'
-              }}
-            >
-              <Typography
-                variant="body2"
-                sx={{
-                  fontSize: '0.8rem',
-                  fontWeight: 500,
-                  color: 'var(--text-2nd-color)'
-                }}
-              >
-                {card.label}
-              </Typography>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography
-                  variant="h6"
-                  sx={{
-                    fontSize: '1.25rem',
-                    fontWeight: 600,
-                    color: 'var(--text-1st-color)'
-                  }}
-                >
-                  {card.value}
-                </Typography>
-                <Box
-                  sx={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: '8px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: `${card.color}15`,
-                    color: card.color
-                  }}
-                >
-                  <card.icon size={18} />
-                </Box>
+        {/* Right: sticky message preview */}
+        <Grid size={{ xs: 12, lg: 5 }}>
+          <Box sx={{ position: { lg: 'sticky' }, top: 16 }}>
+            <Paper className={styles.summaryCard} elevation={0}>
+              <Box className={styles.summaryCardContent}>
+                {previewData ? (
+                  <MessagePreview
+                    headerType={previewData.headerType}
+                    headerText={previewData.headerText}
+                    headerTextExample={previewData.headerTextExample}
+                    headerMedia={previewData.headerMedia}
+                    body={previewData.body}
+                    footer={previewData.footer}
+                    buttons={previewData.buttons}
+                    templateType={previewData.templateType}
+                    carouselCards={previewData.carouselCards}
+                    variableValues={previewData.variableValues}
+                    showEmptyHint={false}
+                  />
+                ) : (
+                  <Typography className={styles.emptyMessageText}>No message configured</Typography>
+                )}
               </Box>
             </Paper>
-          </Grid>
-        ))}
+          </Box>
+        </Grid>
       </Grid>
 
-      {/* Validation Status */}
-      <div className={styles.validationSection}>
-        <div className={styles.validationItem}>
-          <CheckCircle size={16} className={campaignName ? styles.validationSuccess : styles.validationError} />
-          <span className={styles.validationText}>{campaignName ? 'Campaign name provided' : 'Campaign name required'}</span>
-        </div>
-        <div className={styles.validationItem}>
-          <CheckCircle size={16} className={audience.length > 0 ? styles.validationSuccess : styles.validationError} />
-          <span className={styles.validationText}>{audience.length > 0 ? 'Audience selected' : 'Audience required'}</span>
-        </div>
-        <div className={styles.validationItem}>
-          <CheckCircle size={16} className={messageConfigured ? styles.validationSuccess : styles.validationError} />
-          <span className={styles.validationText}>{messageConfigured ? 'Message configured' : 'Message configuration required'}</span>
-        </div>
-      </div>
-
-      {/* Warning */}
-      <div className={styles.infoAlert}>
-        <AlertCircle size={18} className={styles.alertIcon} />
-        <div className={styles.alertContent}>
-          <Typography variant="body2" className={styles.alertMessage}>
-            Once you save this campaign, it will be added to your Campaign Grid.
-          </Typography>
-        </div>
-      </div>
-
-      {/* Action Buttons */}
+      {/* Action Buttons — full-width row at the bottom */}
       <div className={styles.formActions}>
         <Button variant="outlined" className='varientOutlinedBtn' onClick={onBack} disabled={isSaving}>
           Back

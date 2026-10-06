@@ -4,7 +4,7 @@ import { decompileFlow, compileFlow, autoLayoutFlow, validateFlow, autoFixFlow }
 import { generateAiFlow as generateAiFlowApi, editAiFlow as editAiFlowApi } from '../api/aiFlowApi';
 import { getApiBaseUrl, getHeaders } from '../api/Config';
 import { getApiUrl } from '../utils/globalFunc';
-import { fetchAutomationList, uploadAutomationFlow, fetchAutomationFile } from '../api/automationApi';
+import { fetchAutomationList, uploadAutomationFlow, fetchAutomationFile, deleteAutomationFlow } from '../api/automationApi';
 import { callCommonApi } from '../api/CommonApi';
 import { getToken, storage, STORAGE_KEYS } from '../utils/storage';
 import { getDecodedSession } from '../utils/session';
@@ -201,6 +201,7 @@ export const useFlowStore = create((set, get) => ({
                     updatedAt: new Date().toISOString(),
                     frontendPath: item.frontendUrl || null,
                     backendPath: item.backendUrl || null,
+                    accountId: item.ChannelId || item.AccountId || null,
                     _backendData: null,
                     _fromBackend: true,
                 }));
@@ -569,7 +570,27 @@ export const useFlowStore = create((set, get) => ({
 
     deleteFlow: async (flowId) => {
         const listSummary = get().flowsList.find((f) => f.id === flowId);
-        if (listSummary?.frontendPath) {
+
+        // Backend flows: call the automation delete API — only remove locally on success
+        if (listSummary?._fromBackend) {
+            const token = getToken();
+            const session = getDecodedSession();
+            const appUserId = token?.userId || '';
+            const accountId = listSummary?.accountId || token?.AccountId || token?.accountid || session?.accountid || '';
+            try {
+                await deleteAutomationFlow({
+                    appuserid: appUserId,
+                    FlowId: Number(flowId) || flowId,
+                    AccountId: accountId,
+                });
+            } catch (e) {
+                console.error('Failed to delete flow on backend:', e.message);
+                return { success: false, error: e.message };
+            }
+        }
+
+        // Local flows: clean up the on-disk file copy
+        if (listSummary?.frontendPath && !listSummary?._fromBackend) {
             try {
                 await fetch(getApiUrl('/api/flow/delete'), {
                     method: 'POST',
@@ -580,12 +601,14 @@ export const useFlowStore = create((set, get) => ({
                 console.error('Failed to delete flow from disk:', e.message);
             }
         }
+
         set((state) => ({
             flowsList: state.flowsList.filter((f) => f.id !== flowId),
             selectedNodeId: state.flowId === flowId ? null : state.selectedNodeId,
             flowId: state.flowId === flowId ? null : state.flowId,
             view: state.flowId === flowId ? 'list' : state.view,
         }));
+        return { success: true };
     },
 
     toggleFlowActiveInList: (flowId) => {

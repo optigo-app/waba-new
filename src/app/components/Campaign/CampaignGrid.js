@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation';
 import { DataGrid } from '@mui/x-data-grid';
 import { Paper, Chip, Box, Typography, Button, ToggleButtonGroup, ToggleButton, Grid, Card, CardContent, Tooltip, CircularProgress, Popover } from '@mui/material';
-import { BarChart3, Copy, Rocket, Edit2, Plus, RefreshCw, Megaphone, LayoutGrid, List, AlertTriangle, Trash2, SlidersHorizontal, MoreHorizontal } from 'lucide-react';
+import { BarChart3, Copy, Rocket, Edit2, Plus, RefreshCw, Megaphone, LayoutGrid, List, AlertTriangle, Trash2, SlidersHorizontal, MoreHorizontal, Download } from 'lucide-react';
 import FilterBar from '../Common/FilterBar/FilterBar';
 import IconButton from '../Common/IconButton';
 import Pagination from '../Common/Pagination/Pagination';
@@ -18,7 +18,7 @@ import { sendBulk } from '../../api/SendBulk';
 import { useAuthToken } from '../../hooks/useAuthToken';
 import { useWallet } from '../../contexts/WalletContext';
 import styles from './CampaignGrid.module.scss';
-import { formatDate } from '../../utils/globalFunc';
+import { formatDate, getStaticUrl } from '../../utils/globalFunc';
 import ConfirmationModal from '../ConfirmationModal/ConfirmationModal';
 import ConfettiCanvas from '../Dashboard/ConfettiCanvas';
 import { playCelebrationSound } from '../../utils/celebrationSound';
@@ -186,8 +186,18 @@ const buildColumns = (onAnalytics, onDuplicate, onDownload, onLaunch, onStop, on
       filterable: false, disableColumnMenu: true,
       renderCell: (params) => {
         const isPending = Number(params.row.Status) === 1;
+        const isActive = Number(params.row.Status) === 2;
         return (
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', pl: 1 }} onClick={(e) => e.stopPropagation()}>
+            {isActive && (
+              <IconButton
+                icon={CircularProgress}
+                color="primary"
+                tooltip="Sending campaign..."
+                disabled
+                className={styles.rocketHighlight}
+              />
+            )}
             {(Number(params.row.Type) === 1 && Number(params.row.Status) === 1) && (
               (() => {
                 const timers = getActiveTimers();
@@ -227,7 +237,7 @@ const buildColumns = (onAnalytics, onDuplicate, onDownload, onLaunch, onStop, on
             )}
             <ActionMenu
               items={[
-                { icon: BarChart3, label: 'Analytics', description: 'View campaign report & insights', color: '29, 170, 97', onClick: () => onAnalytics(params.row), disabled: isPending, disabledReason: 'Available after campaign is launched' },
+                { icon: BarChart3, label: 'Analytics', description: 'View campaign report & insights', color: '29, 170, 97', onClick: () => onAnalytics(params.row), disabled: isPending || isActive, disabledReason: isPending ? 'Available after campaign is launched' : 'Available once sending completes' },
                 { icon: Copy, label: 'Quick Clone', description: 'Duplicate this campaign setup', color: '0, 207, 232', onClick: () => onDuplicate(params.row) },
                 ...(isPending ? [
                   { icon: Edit2, label: 'Edit', description: 'Modify campaign details & audience', color: '125, 127, 133', onClick: () => onEdit(params.row) },
@@ -243,17 +253,19 @@ const buildColumns = (onAnalytics, onDuplicate, onDownload, onLaunch, onStop, on
       field: 'Name', headerName: 'NAME', minWidth: 200, flex: 1.5,
       renderCell: (p) => {
         const isPending = Number(p.row.Status) === 1;
+        const isActive = Number(p.row.Status) === 2;
+        const canViewReport = !isPending && !isActive;
         return (
           <Typography
             variant="body2"
-            onClick={(e) => { e.stopPropagation(); if (!isPending) onAnalytics(p.row); }}
+            onClick={(e) => { e.stopPropagation(); if (canViewReport) onAnalytics(p.row); }}
             sx={{
               fontWeight: 600,
               color: 'var(--title-color)',
               fontSize: '0.875rem',
-              cursor: isPending ? 'default' : 'pointer',
+              cursor: canViewReport ? 'pointer' : 'default',
               transition: 'color 0.15s ease',
-              '&:hover': isPending ? {} : { color: 'var(--primary-main)' },
+              '&:hover': canViewReport ? { color: 'var(--primary-main)' } : {},
             }}
           >
             {p.value || '—'}
@@ -378,6 +390,11 @@ const CampaignGrid = () => {
   const closeContextMenu = useCallback(() => setContextMenu(null), []);
   const { channels } = useWallet();
   const campaignsRef = useRef([]);
+
+  // Auto-select the only channel when just one is connected (render-adjust pattern)
+  if (!selectedChannel && channels?.length === 1) {
+    setSelectedChannel(String(channels[0].Id));
+  }
 
   const [activeTimers, setActiveTimers] = useState(() => {
     try {
@@ -510,7 +527,13 @@ const CampaignGrid = () => {
 
   // Action handlers
   const handlers = useMemo(() => ({
-    onAnalytics: (row) => router.push(`/campaign/report/${row.Id}?channelId=${row.ChannelId || ''}`),
+    onAnalytics: (row) => {
+      if (Number(row?.Status) === 2) {
+        toast.error('Campaign is still sending. Report will be available once it completes.');
+        return;
+      }
+      router.push(`/campaign/report/${row.Id}?channelId=${row.ChannelId || ''}`);
+    },
     onDuplicate: async (row) => {
       try {
         toast.loading('Fetching campaign data...', { id: 'fetch-campaign' });
@@ -608,8 +631,9 @@ const CampaignGrid = () => {
     if (!contextMenu?.row) return [];
     const row = contextMenu.row;
     const isPending = Number(row.Status) === 1;
+    const isActive = Number(row.Status) === 2;
     return [
-      { icon: BarChart3, label: 'Analytics', description: 'View campaign report & insights', color: '29, 170, 97', onClick: () => handlers.onAnalytics(row), disabled: isPending, disabledReason: 'Available after campaign is launched' },
+      { icon: BarChart3, label: 'Analytics', description: 'View campaign report & insights', color: '29, 170, 97', onClick: () => handlers.onAnalytics(row), disabled: isPending || isActive, disabledReason: isPending ? 'Available after campaign is launched' : 'Available once sending completes' },
       { icon: Copy, label: 'Quick Clone', description: 'Duplicate this campaign setup', color: '0, 207, 232', onClick: () => handlers.onDuplicate(row) },
       ...(isPending ? [
         { icon: Edit2, label: 'Edit', description: 'Modify campaign details & audience', color: '125, 127, 133', onClick: () => handlers.onEdit(row) },
@@ -799,6 +823,18 @@ const CampaignGrid = () => {
                 <ToggleButton value="card"><List size={16} /></ToggleButton>
               </Tooltip>
             </ToggleButtonGroup>
+            <Tooltip title="Download the sample Excel file for audience upload" arrow>
+              <Button
+                variant="outlined"
+                className='varientOutlinedBtn'
+                startIcon={<Download size={15} />}
+                component="a"
+                href={getStaticUrl('/sampleAud.xlsx')}
+                download="sample_audience.xlsx"
+              >
+                Sample Excel
+              </Button>
+            </Tooltip>
             <Button variant="outlined" className='varientOutlinedBtn' startIcon={<RefreshCw size={15} className={loading ? styles.spinning : ''} />} onClick={loadCampaigns} disabled={loading}>
               Refresh
             </Button>
@@ -823,6 +859,18 @@ const CampaignGrid = () => {
                 <ToggleButton value="card"><List size={14} /></ToggleButton>
               </Tooltip>
             </ToggleButtonGroup>
+            <Tooltip title="Download Sample Excel" arrow>
+              <Button
+                variant="outlined"
+                className='varientOutlinedBtn'
+                component="a"
+                href={getStaticUrl('/sampleAud.xlsx')}
+                download="sample_audience.xlsx"
+                sx={{ minWidth: 'auto', px: 1, py: 0.5 }}
+              >
+                <Download size={16} />
+              </Button>
+            </Tooltip>
             <Tooltip title="Refresh" arrow>
               <Button
                 variant="outlined"
@@ -985,9 +1033,11 @@ const CampaignGrid = () => {
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1, mb: 1.5 }}>
                         {(() => {
                           const isPending = Number(campaign.Status) === 1;
+                          const isActive = Number(campaign.Status) === 2;
+                          const canViewReport = !isPending && !isActive;
                           return (
                             <Typography
-                              onClick={(e) => { e.stopPropagation(); if (!isPending) handlers.onAnalytics(campaign); }}
+                              onClick={(e) => { e.stopPropagation(); if (canViewReport) handlers.onAnalytics(campaign); }}
                               sx={{
                                 fontFamily: 'Poppins, sans-serif',
                                 fontWeight: 600,
@@ -995,9 +1045,9 @@ const CampaignGrid = () => {
                                 lineHeight: 1.35,
                                 wordBreak: 'break-word',
                                 flex: 1,
-                                cursor: isPending ? 'default' : 'pointer',
+                                cursor: canViewReport ? 'pointer' : 'default',
                                 transition: 'color 0.15s ease',
-                                '&:hover': isPending ? {} : { color: 'var(--primary-main)' },
+                                '&:hover': canViewReport ? { color: 'var(--primary-main)' } : {},
                               }}
                             >
                               {campaign.Name || '—'}
@@ -1012,7 +1062,7 @@ const CampaignGrid = () => {
                           })()}
                           <ActionMenu
                             items={[
-                              { icon: BarChart3, label: 'Analytics', description: 'View campaign report & insights', color: '29, 170, 97', onClick: () => handlers.onAnalytics(campaign), disabled: Number(campaign.Status) === 1, disabledReason: 'Available after campaign is launched' },
+                              { icon: BarChart3, label: 'Analytics', description: 'View campaign report & insights', color: '29, 170, 97', onClick: () => handlers.onAnalytics(campaign), disabled: Number(campaign.Status) === 1 || Number(campaign.Status) === 2, disabledReason: Number(campaign.Status) === 1 ? 'Available after campaign is launched' : 'Available once sending completes' },
                               { icon: Copy, label: 'Quick Clone', description: 'Duplicate this campaign setup', color: '0, 207, 232', onClick: () => handlers.onDuplicate(campaign) },
                               ...(Number(campaign.Status) === 1 ? [
                                 { icon: Edit2, label: 'Edit', description: 'Modify campaign details & audience', color: '125, 127, 133', onClick: () => handlers.onEdit(campaign) },
@@ -1081,25 +1131,36 @@ const CampaignGrid = () => {
                           const hasActiveTimer = Object.keys(timers).length > 0;
                           const rowTimer = timers[String(campaign.Id)];
                           return (
-                            (Number(campaign.Type) === 1 && Number(campaign.Status) === 1) && (
-                              rowTimer ? (
-                                <CountdownButton
-                                  expiry={rowTimer}
-                                  onStop={handlers.onStop}
-                                  row={campaign}
-                                />
-                              ) : (
+                            <>
+                              {Number(campaign.Status) === 2 && (
                                 <IconButton
-                                  icon={Rocket}
+                                  icon={CircularProgress}
                                   color="primary"
-                                  tooltip={hasActiveTimer ? "Another launch in progress" : "Launch"}
-                                  onClick={() => handlers.onLaunch(campaign)}
-                                  disabled={hasActiveTimer}
-                                  iconClassName={launchingCampaignIds.has(String(campaign.Id)) ? styles.spinning : ''}
+                                  tooltip="Sending campaign..."
+                                  disabled
                                   className={styles.rocketHighlight}
                                 />
-                              )
-                            )
+                              )}
+                              {(Number(campaign.Type) === 1 && Number(campaign.Status) === 1) && (
+                                rowTimer ? (
+                                  <CountdownButton
+                                    expiry={rowTimer}
+                                    onStop={handlers.onStop}
+                                    row={campaign}
+                                  />
+                                ) : (
+                                  <IconButton
+                                    icon={Rocket}
+                                    color="primary"
+                                    tooltip={hasActiveTimer ? "Another launch in progress" : "Launch"}
+                                    onClick={() => handlers.onLaunch(campaign)}
+                                    disabled={hasActiveTimer}
+                                    iconClassName={launchingCampaignIds.has(String(campaign.Id)) ? styles.spinning : ''}
+                                    className={styles.rocketHighlight}
+                                  />
+                                )
+                              )}
+                            </>
                           );
                         })()}
                       </Box>

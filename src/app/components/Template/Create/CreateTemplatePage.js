@@ -348,7 +348,7 @@ const CreateTemplatePage = () => {
             setPreviewImageUrl(url);
             return () => URL.revokeObjectURL(url);
         }
-        setPreviewImageUrl(headerMedia.mediaUrl?.trim() || '');
+        setPreviewImageUrl(isOwnServerUrl(headerMedia.mediaUrl) ? headerMedia.mediaUrl.trim() : '');
     }, [builderData.headerType, headerMedia.mediaType, headerMedia.file, headerMedia.mediaUrl]);
 
     // Video preview URL
@@ -359,7 +359,7 @@ const CreateTemplatePage = () => {
             setPreviewVideoUrl(url);
             return () => URL.revokeObjectURL(url);
         }
-        setPreviewVideoUrl(headerMedia.mediaUrl?.trim() || '');
+        setPreviewVideoUrl(isOwnServerUrl(headerMedia.mediaUrl) ? headerMedia.mediaUrl.trim() : '');
     }, [builderData.headerType, headerMedia.mediaType, headerMedia.file, headerMedia.mediaUrl]);
 
     const handleClose = () => {

@@ -102,7 +102,7 @@ const ChannelTable = ({ items, onWalletOpen, onTemplatesClick, onBusinessProfile
         },
         {
             field: 'refundBalance',
-            headerName: 'Refund',
+            headerName: 'Credits',
             width: 120,
             renderCell: (params) => (
                 <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--info-main)', fontFamily: 'Poppins, sans-serif' }}>

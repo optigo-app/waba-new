@@ -1,6 +1,6 @@
 'use client';
 
-import { getApiBaseUrl, getHeaders } from './Config';
+import { getApiBaseUrl, getHeaders, AUTOMATION_LIST, AUTOMATION_UPLOAD, AUTOMATION_DELETE } from './Config';
 import { getToken } from '../utils/storage';
 import { getDecodedSession } from '../utils/session';
 
@@ -15,7 +15,6 @@ const getCompanyCode = () => {
  * @returns {Promise<object>} Backend response with `files` array
  */
 export async function fetchAutomationList() {
-    const apiUrl = getApiBaseUrl();
     const headers = getHeaders();
     const companyCode = getCompanyCode();
 
@@ -25,7 +24,7 @@ export async function fetchAutomationList() {
     if (headers?.Version) forwardHeaders['version'] = headers.Version;
     if (headers?.sv) forwardHeaders['sv'] = headers.sv;
 
-    const res = await fetch(`${apiUrl}/whatsapp/automation/list`, {
+    const res = await fetch(AUTOMATION_LIST(), {
         method: 'POST',
         headers: forwardHeaders,
         body: JSON.stringify({ company: companyCode || '' }),
@@ -53,7 +52,6 @@ export async function fetchAutomationList() {
  * @returns {Promise<object>} Upload response with frontendUrl/backendUrl
  */
 export async function uploadAutomationFlow(frontendJson, backendJson, flowName) {
-    const apiUrl = getApiBaseUrl();
     const headers = getHeaders();
     const companyCode = getCompanyCode();
 
@@ -80,7 +78,7 @@ export async function uploadAutomationFlow(frontendJson, backendJson, flowName) 
     if (headers?.Version) forwardHeaders['version'] = headers.Version;
     if (headers?.sv) forwardHeaders['sv'] = headers.sv;
 
-    const res = await fetch(`${apiUrl}/whatsapp/automation/upload`, {
+    const res = await fetch(AUTOMATION_UPLOAD(), {
         method: 'POST',
         headers: forwardHeaders,
         body: formData,
@@ -94,6 +92,47 @@ export async function uploadAutomationFlow(frontendJson, backendJson, flowName) 
     }
 
     if (!res.ok) {
+        throw new Error(data?.message || data?.error || `Backend returned ${res.status}`);
+    }
+
+    return data;
+}
+
+/**
+ * Delete an automation flow on the backend.
+ * @param {object} params
+ * @param {string} params.appuserid - App user id (email)
+ * @param {number|string} params.FlowId - Numeric backend flow id
+ * @param {number|string} params.AccountId - Channel account id
+ * @returns {Promise<object>} Delete response
+ */
+export async function deleteAutomationFlow({ appuserid, FlowId, AccountId }) {
+    const headers = getHeaders();
+
+    const forwardHeaders = { 'Content-Type': 'application/json' };
+    if (headers?.Yearcode) forwardHeaders['YearCode'] = headers.Yearcode;
+    if (headers?.sp) forwardHeaders['sp'] = headers.sp;
+    if (headers?.Version) forwardHeaders['version'] = headers.Version;
+    if (headers?.sv) forwardHeaders['sv'] = headers.sv;
+
+    const res = await fetch(AUTOMATION_DELETE(), {
+        method: 'POST',
+        headers: forwardHeaders,
+        body: JSON.stringify({
+            appuserid: appuserid || '',
+            FlowId: FlowId || '',
+            AccountId: AccountId || '',
+        }),
+    });
+
+    let data;
+    try {
+        data = await res.json();
+    } catch {
+        data = { raw: await res.text() };
+    }
+
+    if (!res.ok || data?.success === false) {
         throw new Error(data?.message || data?.error || `Backend returned ${res.status}`);
     }
 

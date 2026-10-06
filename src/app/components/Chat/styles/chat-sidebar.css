@@ -616,6 +616,27 @@
   background: var(--primary-light);
 }
 
+/* Unread filter chip — count pill inside */
+.unread-filter-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--chat-sidebar-border);
+  color: var(--chat-secondary-color);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.unread-filter-chip.active .unread-filter-count {
+  background: var(--primary-main);
+  color: #fff;
+}
+
 /* Skeleton placeholder chips keep a fixed chip-like size */
 .tag-filter-skeleton {
   width: 72px;

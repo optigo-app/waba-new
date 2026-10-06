@@ -44,9 +44,9 @@ export const fetchChannels = async (userId, signal, page = 1, pageSize = 100, se
   }
 };
 
-export const fetchConversationLists = async (page = 1, pageSize = 20, userId, search = '', tagId = '') => {
+export const fetchConversationLists = async (page = 1, pageSize = 20, userId, search = '', tagId = '', unreadOnly = false) => {
   try {
-    const payload = { Page: page, PageSize: pageSize, SearchTerm: search };
+    const payload = { Page: page, PageSize: pageSize, SearchTerm: search, UnreadMsg: unreadOnly ? 1 : 0 };
     const accountId = getAccountId();
     if (accountId) {
       payload.AccountId = accountId;

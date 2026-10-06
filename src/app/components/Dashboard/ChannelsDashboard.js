@@ -342,7 +342,7 @@ const ChannelsDashboard = () => {
                                 <Box sx={{ pb: 16 }}>
                                     <Grid container spacing={2}>
                                         {filteredChannels.slice(cardPage * cardRowsPerPage, (cardPage + 1) * cardRowsPerPage).map((channel) => (
-                                            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }} key={channel.id}>
+                                            <Grid size={{ xs: 12, sm: 6, md: 6, xl: 4 }} key={channel.id}>
                                                 <ChannelCard
                                                     channel={channel}
                                                     onWalletOpen={() => handleWalletOpen(channel)}

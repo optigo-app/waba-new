@@ -100,6 +100,7 @@ function ChatSidebar({
   const [hasMore, setHasMore] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [tabValue, setTabValue] = useState(0);
+  const [unreadOnly, setUnreadOnly] = useState(false);
   const [allTags, setAllTags] = useState([]);
   const [tagsLoading, setTagsLoading] = useState(true);
   const [showEmptyAfterDelay, setShowEmptyAfterDelay] = useState(false);
@@ -140,7 +141,7 @@ function ChatSidebar({
     try {
       const normalizedSearch = searchTerm ? searchTerm.replace(/[+\-\s()]/g, '') : searchTerm;
       const currentTagId = selectedTag && selectedTag !== 'All' ? (getTagId(selectedTag) || '') : '';
-      const response = await fetchConversationLists(targetPage, 20, userId, normalizedSearch, currentTagId);
+      const response = await fetchConversationLists(targetPage, 20, userId, normalizedSearch, currentTagId, unreadOnly);
       let rawList = response?.data?.rd || [];
       const rd1List = response?.data?.rd1 || [];
 
@@ -187,9 +188,9 @@ function ChatSidebar({
       } else {
         setConversations(list);
         onConversationList?.(list);
-        // Only update caches when no search and no tag filter —
+        // Only update caches when no search, tag, or unread filter —
         // otherwise we'd overwrite the full list with filtered results
-        if (!searchTerm && (!selectedTag || selectedTag === 'All')) {
+        if (!searchTerm && !unreadOnly && (!selectedTag || selectedTag === 'All')) {
           setAllConversationsCache(list);
           if (channelId) {
             setConversationsByChannel(channelId, list);
@@ -206,7 +207,7 @@ function ChatSidebar({
       setLoading(false);
       setIsLoadingMore(false);
     }
-  }, [userId, onConversationList, searchTerm, channelId, selectedTag]);
+  }, [userId, onConversationList, searchTerm, channelId, selectedTag, unreadOnly]);
 
   // Reset archived view when switching channels
   useEffect(() => {
@@ -223,8 +224,8 @@ function ChatSidebar({
       setShowArchived(false);
     }
 
-    // Check per-channel cache first (only when no search and no tag filter)
-    if (!searchTerm.trim() && channelId && (selectedTag === 'All' || !selectedTag)) {
+    // Check per-channel cache first (only when no search, tag, or unread filter)
+    if (!searchTerm.trim() && !unreadOnly && channelId && (selectedTag === 'All' || !selectedTag)) {
       const channelCache = conversationsByChannel[String(channelId)];
       if (channelCache && channelCache.length > 0) {
         setConversations(channelCache);
@@ -236,8 +237,8 @@ function ChatSidebar({
       }
     }
 
-    // Fall back to allConversationsCache when no specific channel and no tag filter
-    if (!searchTerm.trim() && !channelId && (selectedTag === 'All' || !selectedTag) && allConversationsCache.length > 0) {
+    // Fall back to allConversationsCache when no specific channel, tag, or unread filter
+    if (!searchTerm.trim() && !unreadOnly && !channelId && (selectedTag === 'All' || !selectedTag) && allConversationsCache.length > 0) {
       setConversations(allConversationsCache);
       onConversationList?.(allConversationsCache);
       setPage(1);
@@ -248,7 +249,12 @@ function ChatSidebar({
       loadConversations(1, false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth?.token, userId, searchTerm, tagsLoading, channelId, selectedTag]);
+  }, [auth?.token, userId, searchTerm, tagsLoading, channelId, selectedTag, unreadOnly]);
+
+  const unreadConversationsCount = useMemo(
+    () => conversations.filter((c) => Number(c?.unreadCount ?? c?.UnReadMsgCount ?? 0) > 0).length,
+    [conversations]
+  );
 
   const filtered = useMemo(() => {
     const term = searchTerm.toLowerCase().replace(/[+\-\s()]/g, '');
@@ -258,6 +264,10 @@ function ChatSidebar({
       const matchesSearch = !term || name.includes(term) || phone.includes(term);
       if (!matchesSearch) return false;
 
+      // Client-side unread filter — keeps the chip correct even for
+      // cached lists and live unread bumps between API refreshes
+      if (unreadOnly && Number(c?.unreadCount ?? c?.UnReadMsgCount ?? 0) <= 0) return false;
+
       const isFavorite = c.IsStar === 1;
       switch (tabValue) {
         case 1: return c.IsAssign == 1;
@@ -265,7 +275,7 @@ function ChatSidebar({
         default: return true;
       }
     });
-  }, [conversations, searchTerm, tabValue]);
+  }, [conversations, searchTerm, tabValue, unreadOnly]);
 
   const archivedConversations = useMemo(
     () => filtered.filter((c) => c.IsArchived === 1),
@@ -569,7 +579,7 @@ function ChatSidebar({
     try {
       const normalizedSearch = searchTerm ? searchTerm.replace(/[+\-\s()]/g, '') : searchTerm;
       const currentTagId = selectedTag && selectedTag !== 'All' ? (getTagId(selectedTag) || '') : '';
-      const res = await fetchConversationLists(1, 20, auth.userId, normalizedSearch, currentTagId);
+      const res = await fetchConversationLists(1, 20, auth.userId, normalizedSearch, currentTagId, unreadOnly);
       const rawRd = res?.data?.rd || [];
       const rawRd1 = res?.data?.rd1 || [];
       let rawList = rawRd;
@@ -662,7 +672,7 @@ function ChatSidebar({
         } else {
           // For other actions, refresh conversation list to reflect change
           const currentTagId = selectedTag && selectedTag !== 'All' ? (getTagId(selectedTag) || '') : '';
-          const res = await fetchConversationLists(1, 20, appuserId, '', currentTagId);
+          const res = await fetchConversationLists(1, 20, appuserId, '', currentTagId, unreadOnly);
           const rawRd = res?.data?.rd || [];
           const rawRd1 = res?.data?.rd1 || [];
           let rawList = rawRd;
@@ -758,8 +768,8 @@ function ChatSidebar({
         </div>
       </div>
 
-      {/* Tag filter — 'All' always visible, skeleton chips while loading */}
-      <div className={`chat-sidebar-tag-filter ${tagsLoading ? 'is-loading' : allTags?.length > 0 ? 'has-tags' : 'no-tags'}`}>
+      {/* Filter row — All + Unread always visible, tag chips follow */}
+      <div className={`chat-sidebar-tag-filter ${tagsLoading ? 'is-loading' : 'has-tags'}`}>
         {canScrollTagsLeft && (
           <button
             type="button"
@@ -771,15 +781,31 @@ function ChatSidebar({
           </button>
         )}
         <div className="tag-filter-scroll" ref={tagFilterScrollRef}>
-          {!tagsLoading && allTags?.length > 0 && (
-            <button
-              type="button"
-              className={`tag-filter-chip ${selectedTag === 'All' ? 'active' : ''}`}
-              onClick={() => onTagSelect?.('All')}
-            >
-              All
-            </button>
-          )}
+          {/* All — resets tag + unread filters */}
+          <button
+            type="button"
+            className={`tag-filter-chip ${selectedTag === 'All' && !unreadOnly ? 'active' : ''}`}
+            onClick={() => {
+              setUnreadOnly(false);
+              onTagSelect?.('All');
+            }}
+          >
+            All
+          </button>
+
+          {/* Unread filter — always visible, independent of tags */}
+          <button
+            type="button"
+            className={`tag-filter-chip unread-filter-chip ${unreadOnly ? 'active' : ''}`}
+            onClick={() => setUnreadOnly((v) => !v)}
+            aria-pressed={unreadOnly}
+            title="Show unread conversations only"
+          >
+            Unread
+            {unreadConversationsCount > 0 && (
+              <span className="unread-filter-count">{unreadConversationsCount}</span>
+            )}
+          </button>
 
           {tagsLoading && (
             <>
@@ -984,7 +1010,7 @@ function ChatSidebar({
                               {member.lastMessageText ? (
                                 member.lastMessageText !== 'No message' ? (
                                   typeof member.lastMessage === 'string' ? (
-                                    <WhatsAppText text={member.lastMessage} />
+                                    <WhatsAppText text={member.lastMessage} linkify={false} />
                                   ) : (
                                     member.lastMessage
                                   )

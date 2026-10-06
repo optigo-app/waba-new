@@ -179,7 +179,7 @@ const ChannelCard = ({ channel, onWalletOpen, onTemplatesClick, onBusinessProfil
                             fontFamily: 'Poppins, sans-serif',
                         }}
                     >
-                        Refund: ₹{channel.refundBalance.toLocaleString('en-IN')}
+                        Credits: ₹{channel.refundBalance.toLocaleString('en-IN')}
                     </Typography>
                 </Box>
             </Box>

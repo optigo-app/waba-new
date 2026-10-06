@@ -1,12 +1,15 @@
 import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { DataGrid, useGridApiRef } from '@mui/x-data-grid';
 import { TextField, InputAdornment, Box, IconButton, Tooltip } from '@mui/material';
-import { Search, Delete, Download, File } from 'lucide-react';
+import { Search, Trash2, Download, File } from 'lucide-react';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import {
   GridToolbarFilterButton,
 } from '@mui/x-data-grid';
+import { getCountryCodeValue, getCountryNameValue, getSourceLabel } from '../utils/audienceMapper';
+
+const isExcelRow = (row) => getSourceLabel(row?.Source) === 'Excel';
 
 // ── Stable column definitions (never recreated) ───────────────────────────────
 const renderDashIfEmpty = (params) => params.value || '-';
@@ -18,10 +21,11 @@ const CRM_COLUMNS = [
   { field: 'CompanyType',   headerName: 'Company Type',  width: 150, minWidth: 110, headerClassName: 'data-grid-header', renderCell: renderDashIfEmpty },
   { field: 'CustomerEmail', headerName: 'Email',         width: 220, minWidth: 120, headerClassName: 'data-grid-header', renderCell: renderDashIfEmpty },
   { field: 'CustomerPhone', headerName: 'Phone',         width: 160, minWidth: 110, headerClassName: 'data-grid-header', renderCell: renderDashIfEmpty },
-  { field: 'CountryCode',   headerName: 'Country Code',  width: 120, minWidth: 80, headerClassName: 'data-grid-header', renderCell: renderDashIfEmpty },
+  { field: 'CountryCode',   headerName: 'CC',            width: 70,  minWidth: 60, headerClassName: 'data-grid-header', renderCell: (params) => getCountryCodeValue(params.row.CountryCode) || '-' },
   { field: 'Country',       headerName: 'Country',       width: 120, minWidth: 80, headerClassName: 'data-grid-header', renderCell: renderDashIfEmpty },
   { field: 'State',         headerName: 'State',         width: 120, minWidth: 80, headerClassName: 'data-grid-header', renderCell: renderDashIfEmpty },
   { field: 'City',          headerName: 'City',          width: 120, minWidth: 80, headerClassName: 'data-grid-header', renderCell: renderDashIfEmpty },
+  { field: 'Source',        headerName: 'Source',        width: 100, minWidth: 70, headerClassName: 'data-grid-header', renderCell: (params) => getSourceLabel(params.row.Source) },
 ];
 
 const EXCEL_COLUMNS = [
@@ -32,7 +36,7 @@ const EXCEL_COLUMNS = [
   { field: 'Company',      headerName: 'Company',       width: 220, minWidth: 120, headerClassName: 'data-grid-header', renderCell: renderDashIfEmpty },
   { field: 'CustomerType', headerName: 'Type',          width: 140, minWidth: 80, headerClassName: 'data-grid-header', renderCell: renderDashIfEmpty },
   { field: 'Category',     headerName: 'Category',      width: 160, minWidth: 110, headerClassName: 'data-grid-header', renderCell: renderDashIfEmpty },
-  { field: 'Source',       headerName: 'Source',        width: 160, minWidth: 110, headerClassName: 'data-grid-header', renderCell: renderDashIfEmpty },
+  { field: 'Source',       headerName: 'Source',        width: 100, minWidth: 70, headerClassName: 'data-grid-header', renderCell: (params) => getSourceLabel(params.row.Source) },
   { field: 'PinCode',      headerName: 'Pin Code',      width: 120, minWidth: 80, headerClassName: 'data-grid-header', renderCell: renderDashIfEmpty },
   { field: 'City',         headerName: 'City',          width: 120, minWidth: 80, headerClassName: 'data-grid-header', renderCell: renderDashIfEmpty },
   { field: 'State',        headerName: 'State',         width: 120, minWidth: 80, headerClassName: 'data-grid-header', renderCell: renderDashIfEmpty },
@@ -51,11 +55,11 @@ const UNIFIED_COLUMNS = [
   },
   {
     field: 'CountryCode',
-    headerName: 'Country Code',
-    width: 120,
-    minWidth: 80,
+    headerName: 'CC',
+    width: 70,
+    minWidth: 60,
     headerClassName: 'data-grid-header',
-    renderCell: (params) => params.row.Source === 'Excel' ? '—' : (params.row.CountryCode || '—')
+    renderCell: (params) => isExcelRow(params.row) ? '—' : (getCountryCodeValue(params.row.CountryCode) || '—')
   },
   {
     field: 'Phone',
@@ -64,7 +68,7 @@ const UNIFIED_COLUMNS = [
     minWidth: 110,
     headerClassName: 'data-grid-header',
     renderCell: (params) => {
-      if (params.row.Source === 'Excel') {
+      if (isExcelRow(params.row)) {
         return params.row.PhoneNo || '—';
       }
       return params.row.CustomerPhone || '—';
@@ -77,7 +81,7 @@ const UNIFIED_COLUMNS = [
     minWidth: 120,
     headerClassName: 'data-grid-header',
     renderCell: (params) => {
-      if (params.row.Source === 'Excel') {
+      if (isExcelRow(params.row)) {
         return params.row.Email || '—';
       }
       return params.row.CustomerEmail || '—';
@@ -90,7 +94,7 @@ const UNIFIED_COLUMNS = [
     minWidth: 120,
     headerClassName: 'data-grid-header',
     renderCell: (params) => {
-      if (params.row.Source === 'Excel') {
+      if (isExcelRow(params.row)) {
         return params.row.Company || '—';
       }
       return params.row.CustomerCode || '—';
@@ -103,7 +107,7 @@ const UNIFIED_COLUMNS = [
     minWidth: 80,
     headerClassName: 'data-grid-header',
     renderCell: (params) => {
-      if (params.row.Source === 'Excel') {
+      if (isExcelRow(params.row)) {
         return params.row.CustomerType || '—';
       }
       return params.row.CompanyType || '—';
@@ -115,7 +119,7 @@ const UNIFIED_COLUMNS = [
     width: 100,
     minWidth: 70,
     headerClassName: 'data-grid-header',
-    renderCell: (params) => params.row.Source || 'CRM'
+    renderCell: (params) => getSourceLabel(params.row.Source)
   },
   {
     field: 'Category',
@@ -123,7 +127,7 @@ const UNIFIED_COLUMNS = [
     width: 160,
     minWidth: 110,
     headerClassName: 'data-grid-header',
-    renderCell: (params) => params.row.Source === 'Excel' ? (params.row.Category || '—') : '—'
+    renderCell: (params) => isExcelRow(params.row) ? (params.row.Category || '—') : '—'
   },
   {
     field: 'City',
@@ -147,7 +151,7 @@ const UNIFIED_COLUMNS = [
     width: 120,
     minWidth: 80,
     headerClassName: 'data-grid-header',
-    renderCell: (params) => params.row.Source === 'Excel' ? '—' : (params.row.Country || '—')
+    renderCell: (params) => isExcelRow(params.row) ? '—' : (getCountryNameValue(params.row.CountryCode, params.row.Country) || '—')
   },
   {
     field: 'PinCode',
@@ -155,7 +159,7 @@ const UNIFIED_COLUMNS = [
     width: 120,
     minWidth: 80,
     headerClassName: 'data-grid-header',
-    renderCell: (params) => params.row.Source === 'Excel' ? (params.row.PinCode || '—') : '—'
+    renderCell: (params) => isExcelRow(params.row) ? (params.row.PinCode || '—') : '—'
   },
 ];
 
@@ -306,8 +310,8 @@ const AudienceGrid = ({
   // Detect if data is mixed (has both Excel and CRM sources)
   const hasMixedData = useMemo(() => {
     if (!processedRows.length) return false;
-    const hasExcel = processedRows.some(row => row.Source === 'Excel');
-    const hasCRM = processedRows.some(row => !row.Source || row.Source !== 'Excel');
+    const hasExcel = processedRows.some(row => isExcelRow(row));
+    const hasCRM = processedRows.some(row => !isExcelRow(row));
     return hasExcel && hasCRM;
   }, [processedRows]);
 
@@ -319,17 +323,19 @@ const AudienceGrid = ({
     filterable: false,
     headerClassName: 'data-grid-header',
     renderCell: (params) => (
-      <IconButton
-        size="small"
-        color="error"
-        onClick={(e) => {
-          e.stopPropagation();
-          onDelete?.(params.row);
-        }}
-        sx={{ '&:hover': { backgroundColor: 'rgba(211, 47, 47, 0.1)' } }}
-      >
-        <Delete size={16} />
-      </IconButton>
+      <Tooltip title="Remove from audience" arrow>
+        <IconButton
+          size="small"
+          color="error"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete?.(params.row);
+          }}
+          sx={{ '&:hover': { backgroundColor: 'rgba(211, 47, 47, 0.1)' } }}
+        >
+          <Trash2 size={16} />
+        </IconButton>
+      </Tooltip>
     ),
   }), [onDelete]);
 
@@ -356,27 +362,27 @@ const AudienceGrid = ({
         if (col.field === 'CustomerName') {
           val = row.CustomerName || '—';
         } else if (col.field === 'Phone') {
-          val = row.Source === 'Excel' ? (row.PhoneNo || '—') : (row.CustomerPhone || '—');
+          val = isExcelRow(row) ? (row.PhoneNo || '—') : (row.CustomerPhone || '—');
         } else if (col.field === 'Email') {
-          val = row.Source === 'Excel' ? (row.Email || '—') : (row.CustomerEmail || '—');
+          val = isExcelRow(row) ? (row.Email || '—') : (row.CustomerEmail || '—');
         } else if (col.field === 'Company') {
-          val = row.Source === 'Excel' ? (row.Company || '—') : (row.CustomerCode || '—');
+          val = isExcelRow(row) ? (row.Company || '—') : (row.CustomerCode || '—');
         } else if (col.field === 'Type') {
-          val = row.Source === 'Excel' ? (row.CustomerType || '—') : (row.CompanyType || '—');
+          val = isExcelRow(row) ? (row.CustomerType || '—') : (row.CompanyType || '—');
         } else if (col.field === 'Source') {
-          val = row.Source || 'CRM';
+          val = getSourceLabel(row.Source);
         } else if (col.field === 'Category') {
-          val = row.Source === 'Excel' ? (row.Category || '—') : '—';
+          val = isExcelRow(row) ? (row.Category || '—') : '—';
         } else if (col.field === 'City') {
           val = row.City || '—';
         } else if (col.field === 'State') {
           val = row.State || '—';
         } else if (col.field === 'Country') {
-          val = row.Source === 'Excel' ? '—' : (row.Country || '—');
+          val = isExcelRow(row) ? '—' : (getCountryNameValue(row.CountryCode, row.Country) || '—');
         } else if (col.field === 'CountryCode') {
-          val = row.Source === 'Excel' ? '—' : (row.CountryCode || '—');
+          val = isExcelRow(row) ? '—' : (getCountryCodeValue(row.CountryCode) || '—');
         } else if (col.field === 'PinCode') {
-          val = row.Source === 'Excel' ? (row.PinCode || '—') : '—';
+          val = isExcelRow(row) ? (row.PinCode || '—') : '—';
         } else if (!val) {
           val = '—';
         }

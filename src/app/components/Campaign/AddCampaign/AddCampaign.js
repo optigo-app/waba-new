@@ -12,6 +12,7 @@ import { createCampaign } from '../../../api/AddCampaign';
 import { useAuthToken } from '../../../hooks/useAuthToken';
 import toast from 'react-hot-toast';
 import { normalizePhoneNumber } from '../../../utils/globalFunc';
+import { getCountryCodeValue } from '../utils/audienceMapper';
 import { getCampaignDraft, removeCampaignDraft, removeCampaignStepper, removeAudienceDraft } from '../../../utils/storage';
 import ProcessOverlay from '../../Common/ProcessOverlay';
 
@@ -119,7 +120,7 @@ const AddCampaign = () => {
         const formattedAudience = campaign.audienceData.map(item => ({
           customerId: item.CustomerId,
           CustomerPhone: item.PhoneNo,
-          CountryCode: item?.CountryCode || '',
+          CountryCode: getCountryCodeValue(item?.CountryCode),
           FirstName: item.FirstName,
           LastName: item.LastName,
           Source: item.Source
@@ -256,12 +257,16 @@ const AddCampaign = () => {
 
       const customerJson = audience.map(item => {
         const customerId = item.customerId ?? '';
-        const countryCode = item.CountryCode || item.countryCode || '91';
+        const countryCode = String(getCountryCodeValue(item.CountryCode ?? item.countryCode) || '91');
         const customerPhone = item.CustomerPhone || item.PhoneNo || item.phone;
         const fullPhoneNo = normalizePhoneNumber(customerPhone, countryCode) || '';
 
+        // Per-row source — a mixed audience (CRM + Excel) must tag each row
+        // individually; 'optigo' is the backend value for CRM-sourced contacts.
+        const rowSource = String(item.Source || item.DataSource || dataSource || '').toLowerCase();
+
         return {
-          Source: dataSource,
+          Source: rowSource === 'excel' || rowSource === 'csv' ? 'excel' : 'optigo',
           CustomerId: customerId,
           PhoneNo: fullPhoneNo
         };
@@ -696,6 +701,9 @@ const AddCampaign = () => {
                 >
                   <span className={styles.stepPillNum}>{done ? '✓' : s.step}</span>
                   <span className={styles.stepPillLabel}>{s.label}</span>
+                  {s.id === 'audience' && audience.length > 0 && (
+                    <span className={styles.stepPillBadge}>{audience.length}</span>
+                  )}
                 </button>
                 {i < STEPS.length - 1 && (
                   <div className={`${styles.stepConnector} ${done ? styles.stepConnectorDone : ''}`} />

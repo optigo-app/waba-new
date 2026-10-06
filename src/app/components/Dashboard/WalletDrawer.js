@@ -15,7 +15,7 @@ const WalletDrawer = ({ open, onClose, channel }) => {
             anchor="right"
             open={open}
             onClose={onClose}
-            slotProps={{ paper: { sx: { width: { xs: '100%', sm: 480 }, maxWidth: '100%', background: 'transparent', boxShadow: 'none' } } }}
+            slotProps={{ paper: { sx: { width: { xs: '100%', sm: 480 }, maxWidth: '100%', background: 'transparent', boxShadow: 'none', borderRadius: { sm: '12px 0 0 12px', xs: 0 } } } }}
         >
             <div className={styles.drawerRoot}>
                 {/* Drawer Header */}
@@ -46,8 +46,8 @@ const WalletDrawer = ({ open, onClose, channel }) => {
                         <span className={styles.summaryValue}>₹{remainingAmount.toLocaleString('en-IN')}</span>
                         <Wallet size={14} className={styles.summaryIcon} />
                     </div>
-                    <div className={`${styles.summaryCard} ${styles.summaryRefund}`}>
-                        <span className={styles.summaryLabel}>Refund</span>
+                    <div className={`${styles.summaryCard} ${styles.summaryCredit}`}>
+                        <span className={styles.summaryLabel}>Credits</span>
                         <span className={styles.summaryValue}>₹{refundAmount.toLocaleString('en-IN')}</span>
                         <TrendingUp size={14} className={styles.summaryIcon} />
                     </div>

@@ -558,7 +558,7 @@ const CampaignReport = () => {
                                 <Skeleton variant="text" width={120} height={24} sx={{ mb: 2, bgcolor: 'rgba(0, 0, 0, 0.03)' }} />
                                 <Grid container spacing={2}>
                                     {Array.from({ length: 6 }).map((_, i) => (
-                                        <Grid size={{ xs: 12, sm: 4, md: 2 }} key={i}>
+                                        <Grid size={{ xs: 12, sm: 4, lg: 2 }} key={i}>
                                             <Box className={styles.metricCard}>
                                                 <Skeleton variant="circular" width={44} height={44} sx={{ mb: 1, bgcolor: 'rgba(0, 0, 0, 0.03)' }} />
                                                 <Skeleton variant="text" width={60} height={16} sx={{ bgcolor: 'rgba(0, 0, 0, 0.03)' }} />
@@ -600,7 +600,7 @@ const CampaignReport = () => {
                             <Box className={styles.section}>
                                 <Grid container spacing={2}>
                                     {Array.from({ length: 6 }).map((_, i) => (
-                                        <Grid size={{ xs: 12, sm: 4, md: 2 }} key={i}>
+                                        <Grid size={{ xs: 12, sm: 4, lg: 2 }} key={i}>
                                             <Skeleton variant="rectangular" width="100%" height={60} sx={{ borderRadius: 2, bgcolor: 'rgba(0, 0, 0, 0.03)' }} />
                                         </Grid>
                                     ))}
@@ -738,12 +738,12 @@ const CampaignReport = () => {
                                     <Typography className={styles.sectionTitle}>Quick Report</Typography>
                                     <Grid container spacing={2}>
                                         {metrics.map((m, idx) => (
-                                            <Grid size={{ xs: 12, sm: 4, md: 2 }} key={idx}>
+                                            <Grid size={{ xs: 12, sm: 4, lg: 2 }} key={idx}>
                                                 <Box className={styles.metricCard} style={{ color: m.color }}>
                                                     <Box className={styles.metricIconWrap} style={{ backgroundColor: m.bg, color: m.color }}>
                                                         <m.icon size={22} />
                                                     </Box>
-                                                    <Box>
+                                                    <Box sx={{ minWidth: 0 }}>
                                                         <Typography variant="caption" className={styles.metricLabel}>{m.label}</Typography>
                                                         <Typography variant="h6" className={styles.metricValue}>
                                                             {m.value}
@@ -769,7 +769,7 @@ const CampaignReport = () => {
                                                             {d.label === 'Campaign Status' && (
                                                                 <Box component="span" className={styles.statusSignal} />
                                                             )}
-                                                            {d.value}
+                                                            <span className={styles.detailValueText} title={String(d.value)}>{d.value}</span>
                                                         </Typography>
                                                     </Box>
                                                     <Box
@@ -946,7 +946,7 @@ const CampaignReport = () => {
                                     </Box>
                                 </Box>
 
-                                <Paper className={styles.gridPaper} sx={{ borderRadius: '12px', overflow: 'hidden', backgroundColor: '#fff' }}>
+                                <Paper className={styles.gridPaper} sx={{ borderRadius: '12px', overflow: 'hidden', backgroundColor: '#fff', height: { xs: 360, sm: 420, md: 'calc(100vh - 340px)' } }}>
                                     <DataGrid
                                         rows={filteredTemplateMessages}
                                         columns={getTemplateMessageColumns(statFilter)}
@@ -963,14 +963,15 @@ const CampaignReport = () => {
                                         getRowHeight={() => (statFilter === 'Failed' || statFilter === 'Replied' ? 'auto' : 48)}
                                         initialState={{
                                             pagination: {
-                                                paginationModel: { pageSize: 10, page: 0 },
+                                                paginationModel: { pageSize: 100, page: 0 },
                                             },
                                         }}
-                                        pageSizeOptions={[5, 10, 20, 50]}
+                                        pageSizeOptions={[5, 10, 20, 50, 100]}
                                         loading={templateMessagesLoading}
                                         sx={{
                                             border: 'none',
-                                            height: { xs: 320, sm: 360, md: 420 },
+                                            height: { xs: 360, sm: 420, md: 'calc(100vh - 340px)' },
+                                            minHeight: { md: 420 },
                                             '& .MuiDataGrid-virtualScroller': {
                                                 overflowX: 'auto',
                                             },

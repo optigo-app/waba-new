@@ -73,7 +73,7 @@ const MessagePreview = ({
     const carouselBlobUrls = useObjectUrls(carouselFiles);
 
     const finalPreviewImageUrl = previewImageUrl || (headerType === 'Media' && headerMedia?.mediaType === 'image' ? (headerImageBlobUrl || (headerMedia.mediaUrl && isOwnServerUrl(headerMedia.mediaUrl) ? headerMedia.mediaUrl : imagePlaceholder)) : '');
-    const finalPreviewVideoUrl = previewVideoUrl || (headerType === 'Media' && headerMedia?.mediaType === 'video' ? (headerVideoBlobUrl || (headerMedia.mediaUrl || '')) : '');
+    const finalPreviewVideoUrl = previewVideoUrl || (headerType === 'Media' && headerMedia?.mediaType === 'video' ? (headerVideoBlobUrl || (headerMedia.mediaUrl && isOwnServerUrl(headerMedia.mediaUrl) ? headerMedia.mediaUrl : '')) : '');
     const previewDocumentLabel = useMemo(() => {
         if (headerType !== 'Media' || headerMedia?.mediaType !== 'document') return '';
         if (headerMedia?.file?.name) return headerMedia.file.name;
@@ -186,7 +186,7 @@ const MessagePreview = ({
                                                                 />
                                                             ) : card.header.mediaType === 'video' ? (
                                                                 <video
-                                                                    src={carouselBlobUrls[idx] || (card.header.mediaUrl || '')}
+                                                                    src={carouselBlobUrls[idx] || ((card.header.mediaUrl && isOwnServerUrl(card.header.mediaUrl)) ? card.header.mediaUrl : '')}
                                                                     className={styles.previewCardMedia}
                                                                     controls
                                                                     playsInline

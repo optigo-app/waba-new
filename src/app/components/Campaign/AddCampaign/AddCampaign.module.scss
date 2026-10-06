@@ -163,6 +163,11 @@
         color: $primary-main;
         font-weight: 600;
     }
+
+    .stepPillBadge {
+        background: $primary-main;
+        color: #fff;
+    }
 }
 
 .stepPillDone {
@@ -177,6 +182,23 @@
     .stepPillLabel {
         color: $success-main;
     }
+
+    .stepPillBadge {
+        background: rgba($success-main, 0.14);
+        color: $success-main;
+    }
+}
+
+.stepPillBadge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: rgba($primary-main, 0.12);
+    color: $primary-main;
+    line-height: 1.5;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .stepPillNum {

@@ -343,7 +343,13 @@ export const useChatStore = create((set, get) => ({
       (knownChannelIds.size === 0 || knownChannelIds.has(emitChannelId));
     const targetChannelKey = emitIsKnownChannel ? emitChannelId : selectedKey;
     const isSelectedChannel = targetChannelKey === selectedKey;
-    const isSelected = isSelectedChannel && String(state.selectedConversationId) === msgConversationId;
+    /* The open conversation matches on its id alone — backend echoes (e.g.
+       sendMessage for a template sent server-side) may carry an AccountId or
+       unrelated ChannelId, which must not silently drop the message. Emits
+       that explicitly name a different known channel are still excluded so a
+       same-id conversation on another channel never receives it. */
+    const emitForOtherChannel = emitIsKnownChannel && emitChannelId !== selectedKey;
+    const isSelected = !emitForOtherChannel && String(state.selectedConversationId) === msgConversationId;
     const isOutgoing = Number(normalized.direction) === 1;
     /* IsRead: 1 marks a re-emit of an already-read message (e.g. reaction
        add/remove re-broadcasts the full row) — never bump unread for it */

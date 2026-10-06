@@ -15,7 +15,9 @@ import {
     LayoutGrid,
     Table,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import styles from './Automation.module.scss';
+import ConfirmationModal from '../ConfirmationModal/ConfirmationModal';
 import { useFlowStore } from '../../store/flowStore';
 import { useWallet } from '../../contexts/WalletContext';
 import FilterBar from '../Common/FilterBar/FilterBar';
@@ -51,6 +53,8 @@ const Automation = () => {
     const [importError, setImportError] = useState('');
     const [showDraftPrompt, setShowDraftPrompt] = useState(false);
     const [showSetupDialog, setShowSetupDialog] = useState(false);
+    const [flowToDelete, setFlowToDelete] = useState(null);
+    const [isDeletingFlow, setIsDeletingFlow] = useState(false);
     const fileInputRef = useRef(null);
 
     useEffect(() => {
@@ -78,6 +82,11 @@ const Automation = () => {
             MobileNumber: ch.mobileNumber,
         }));
     }, [walletChannels]);
+
+    // Auto-select when only one channel is connected (render-adjust pattern)
+    if (!selectedChannel && channelOptions.length === 1) {
+        setSelectedChannel(channelOptions[0].value);
+    }
 
     const filteredFlows = useMemo(() => {
         let list = [...flowsList];
@@ -159,9 +168,27 @@ const Automation = () => {
         loadFlow(flowId);
     };
 
-    const handleDeleteFlow = (flowId, e) => {
-        e.stopPropagation();
-        deleteFlow(flowId);
+    const handleDeleteFlow = (flow, e) => {
+        e?.stopPropagation();
+        setFlowToDelete(flow);
+    };
+
+    const confirmDeleteFlow = async () => {
+        if (!flowToDelete) return;
+        setIsDeletingFlow(true);
+        try {
+            const result = await deleteFlow(flowToDelete.id);
+            if (result?.success === false) {
+                toast.error(result.error || `Failed to delete "${flowToDelete.name}"`);
+            } else {
+                toast.success(`Flow "${flowToDelete.name}" deleted`);
+            }
+        } catch (err) {
+            toast.error(err?.message || 'Failed to delete flow');
+        } finally {
+            setIsDeletingFlow(false);
+            setFlowToDelete(null);
+        }
     };
 
     const flowColumns = [
@@ -207,7 +234,7 @@ const Automation = () => {
                     <IconButton size="small" onClick={() => handleEditFlow(row.id)} sx={{ color: 'var(--text-tertiary)', '&:hover': { color: 'var(--titleColor)' } }}>
                         <Pencil size={18} />
                     </IconButton>
-                    <IconButton size="small" onClick={(e) => handleDeleteFlow(row.id, e)} sx={{ color: 'var(--text-tertiary)', '&:hover': { color: 'var(--error-main)' } }}>
+                    <IconButton size="small" onClick={(e) => handleDeleteFlow(row, e)} sx={{ color: 'var(--text-tertiary)', '&:hover': { color: 'var(--error-main)' } }}>
                         <Trash2 size={18} />
                     </IconButton>
                 </Box>
@@ -518,7 +545,7 @@ const Automation = () => {
                                         </IconButton>
                                         <IconButton
                                             size="small"
-                                            onClick={(e) => handleDeleteFlow(flow.id, e)}
+                                            onClick={(e) => handleDeleteFlow(flow, e)}
                                             sx={{ color: 'var(--text-tertiary)', '&:hover': { color: 'var(--error-main)' } }}
                                         >
                                             <Trash2 size={16} />
@@ -557,6 +584,20 @@ const Automation = () => {
                 </>
                 )}
             </div>
+
+            {/* Delete flow confirmation */}
+            <ConfirmationModal
+                isOpen={Boolean(flowToDelete)}
+                onClose={() => { if (!isDeletingFlow) setFlowToDelete(null); }}
+                onConfirm={confirmDeleteFlow}
+                title="Delete Automation"
+                description={`Are you sure you want to delete the flow "${flowToDelete?.name || 'this flow'}"? This action cannot be undone.`}
+                icon={Trash2}
+                isDanger={true}
+                confirmLabel="Delete"
+                cancelLabel="Cancel"
+                isLoading={isDeletingFlow}
+            />
         </div>
     );
 };
