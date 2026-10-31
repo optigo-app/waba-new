@@ -7,14 +7,15 @@ import {
     Typography,
     Button,
     Paper,
-    InputBase,
     Grid,
 } from '@mui/material';
-import { Search, Plus, MessageCircle, LayoutGrid, Table2 } from 'lucide-react';
+import { Plus, MessageCircle, LayoutGrid, Table2 } from 'lucide-react';
 import WalletDrawer from './WalletDrawer';
 import ChannelCardSkeleton from './ChannelCardSkeleton';
 import ChannelCard from './ChannelCard';
+import EmailChannelCard, { EMAIL_CHANNEL } from './EmailChannelCard';
 import ChannelTable from './ChannelTable';
+import FilterBar from '../Common/FilterBar/FilterBar';
 import BusinessProfile from '../BusinessProfile/BusinessProfile';
 import Pagination from '../Common/Pagination/Pagination';
 import { useAuth } from '../../hooks/useAuth';
@@ -40,6 +41,8 @@ const ChannelsDashboard = () => {
     const [profileOpen, setProfileOpen] = useState(false);
     const [activeChannel, setActiveChannel] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [channelType, setChannelType] = useState('all');
+    const [sortBy, setSortBy] = useState('name');
     const [viewMode, setViewMode] = useState('grid');
     const [cardPage, setCardPage] = useState(0);
     const [cardRowsPerPage, setCardRowsPerPage] = useState(15);
@@ -67,21 +70,56 @@ const ChannelsDashboard = () => {
     }, [walletChannels]);
 
     const filteredChannels = useMemo(() => {
-        if (!searchQuery.trim()) return channels;
-        const q = searchQuery.toLowerCase();
-        return channels.filter((ch) =>
-            (ch.companyCode || '').toLowerCase().includes(q) ||
-            (ch.mobileNumber || '').toLowerCase().includes(q) ||
-            (ch.wabaId || '').toLowerCase().includes(q) ||
-            (ch.whatsappName || '').toLowerCase().includes(q) ||
-            (ch.channelTitle || '').toLowerCase().includes(q)
-        );
-    }, [channels, searchQuery]);
+        let list = channels;
+        if (searchQuery.trim()) {
+            const q = searchQuery.toLowerCase();
+            list = channels.filter((ch) =>
+                (ch.companyCode || '').toLowerCase().includes(q) ||
+                (ch.mobileNumber || '').toLowerCase().includes(q) ||
+                (ch.wabaId || '').toLowerCase().includes(q) ||
+                (ch.whatsappName || '').toLowerCase().includes(q) ||
+                (ch.channelTitle || '').toLowerCase().includes(q)
+            );
+        }
+        const sorted = [...list];
+        if (sortBy === 'name') {
+            sorted.sort((a, b) =>
+                (a.channelTitle || a.whatsappName || a.companyCode || '').localeCompare(b.channelTitle || b.whatsappName || b.companyCode || '')
+            );
+        } else if (sortBy === 'balance-high') {
+            sorted.sort((a, b) => Number(b.balance || 0) - Number(a.balance || 0));
+        } else if (sortBy === 'balance-low') {
+            sorted.sort((a, b) => Number(a.balance || 0) - Number(b.balance || 0));
+        }
+        return sorted;
+    }, [channels, searchQuery, sortBy]);
 
     const handleSearchChange = useCallback((val) => {
         setSearchQuery(val);
         setCardPage(0);
     }, []);
+
+    const handleChannelTypeChange = useCallback((val) => {
+        setChannelType(val);
+        setCardPage(0);
+    }, []);
+
+    const showWhatsApp = channelType !== 'email';
+    const showEmail = useMemo(() => {
+        if (channelType === 'whatsapp') return false;
+        if (!searchQuery.trim()) return true;
+        const q = searchQuery.toLowerCase();
+        return ['email', EMAIL_CHANNEL.title, EMAIL_CHANNEL.sender, EMAIL_CHANNEL.provider]
+            .filter(Boolean)
+            .some((f) => f.toLowerCase().includes(q));
+    }, [channelType, searchQuery]);
+    const hasVisibleContent = (showWhatsApp && filteredChannels.length > 0) || showEmail;
+
+    const typeChips = useMemo(() => [
+        { value: 'all', label: `All (${filteredChannels.length + 1})` },
+        { value: 'whatsapp', label: `WhatsApp (${filteredChannels.length})` },
+        { value: 'email', label: 'Email (1)' },
+    ], [filteredChannels.length]);
 
     const handleWalletOpen = (channel) => {
         setActiveChannel(channel);
@@ -115,44 +153,6 @@ const ChannelsDashboard = () => {
                 </div>
 
                 <div className={styles.topActions}>
-                    <Paper
-                        elevation={0}
-                        sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            borderRadius: '12px',
-                            border: '1px solid',
-                            borderColor: 'var(--border-color)',
-                            px: '1rem',
-                            py: '6px',
-                            width: { xs: '100%', sm: '280px' },
-                            background: 'var(--bg-paper)',
-                            transition: 'border-color 0.2s',
-                            '&:focus-within': {
-                                borderColor: 'var(--primary-main)',
-                                boxShadow: '0 0 0 3px var(--primary-light-bg)',
-                            },
-                        }}
-                    >
-                        <Search size={18} color="var(--text-tertiary)" />
-                        <InputBase
-                            placeholder="Search channels..."
-                            value={searchQuery}
-                            onChange={(e) => handleSearchChange(e.target.value)}
-                            sx={{
-                                ml: '0.75rem',
-                                flex: 1,
-                                fontFamily: 'Poppins, sans-serif',
-                                fontSize: '0.85rem',
-                                color: 'var(--text-primary)',
-                                '& input::placeholder': {
-                                    color: 'var(--text-placeholder)',
-                                    opacity: 1,
-                                },
-                            }}
-                        />
-                    </Paper>
-
                     {/* View Switcher */}
                     <Box
                         sx={{
@@ -234,11 +234,28 @@ const ChannelsDashboard = () => {
                 </div>
             </div>
 
+            {/* Filters — same row as the templates page */}
+            <FilterBar
+                search={searchQuery}
+                onSearchChange={handleSearchChange}
+                searchPlaceholder="Search channels..."
+                sortBy={sortBy}
+                onSortChange={setSortBy}
+                sortOptions={[
+                    { value: 'name', label: 'Name (A-Z)' },
+                    { value: 'balance-high', label: 'Balance (High → Low)' },
+                    { value: 'balance-low', label: 'Balance (Low → High)' },
+                ]}
+                filterChips={typeChips}
+                activeFilter={channelType}
+                onFilterChange={handleChannelTypeChange}
+            />
+
             {/* Content */}
             <div className={styles.contentArea}>
                 {isLoading ? (
                     <ChannelCardSkeleton count={Math.min(6, Math.max(3, filteredChannels.length || 6))} />
-                ) : filteredChannels.length === 0 ? (
+                ) : !hasVisibleContent ? (
                     <Box
                         sx={{
                             display: 'flex',
@@ -341,7 +358,7 @@ const ChannelsDashboard = () => {
                             <Box sx={{ flex: 1, overflow: 'auto', minHeight: 0, position: 'relative' }}>
                                 <Box sx={{ pb: 16 }}>
                                     <Grid container spacing={2}>
-                                        {filteredChannels.slice(cardPage * cardRowsPerPage, (cardPage + 1) * cardRowsPerPage).map((channel) => (
+                                        {showWhatsApp && filteredChannels.slice(cardPage * cardRowsPerPage, (cardPage + 1) * cardRowsPerPage).map((channel) => (
                                             <Grid size={{ xs: 12, sm: 6, md: 6, xl: 4 }} key={channel.id}>
                                                 <ChannelCard
                                                     channel={channel}
@@ -354,9 +371,16 @@ const ChannelsDashboard = () => {
                                                 />
                                             </Grid>
                                         ))}
+                                        {showEmail && (
+                                            <Grid size={{ xs: 12, sm: 6, md: 6, xl: 4 }}>
+                                                <EmailChannelCard
+                                                    onTemplatesClick={() => router.push('/email/templates')}
+                                                />
+                                            </Grid>
+                                        )}
                                     </Grid>
                                 </Box>
-                                {filteredChannels.length > cardRowsPerPage && (
+                                {showWhatsApp && filteredChannels.length > cardRowsPerPage && (
                                     <Pagination
                                         count={filteredChannels.length}
                                         page={cardPage}
@@ -367,15 +391,26 @@ const ChannelsDashboard = () => {
                                 )}
                             </Box>
                         ) : (
-                            <ChannelTable
-                                items={filteredChannels}
-                                onWalletOpen={(ch) => handleWalletOpen(ch)}
-                                onTemplatesClick={(ch) => {
-                                    const qs = buildQueryString({ tempid: ch.Id, wabaid: ch.wabaId, whatsappNo: ch.mobileNumber });
-                                    router.push(qs ? `/templates?${qs}` : '/templates');
-                                }}
-                                onBusinessProfileClick={(ch) => handleBusinessProfileOpen(ch)}
-                            />
+                            <Box sx={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
+                                {showWhatsApp && (
+                                    <ChannelTable
+                                        items={filteredChannels}
+                                        onWalletOpen={(ch) => handleWalletOpen(ch)}
+                                        onTemplatesClick={(ch) => {
+                                            const qs = buildQueryString({ tempid: ch.Id, wabaid: ch.wabaId, whatsappNo: ch.mobileNumber });
+                                            router.push(qs ? `/templates?${qs}` : '/templates');
+                                        }}
+                                        onBusinessProfileClick={(ch) => handleBusinessProfileOpen(ch)}
+                                    />
+                                )}
+                                {showEmail && (
+                                    <Box sx={{ mt: showWhatsApp ? 2 : 0, maxWidth: 480 }}>
+                                        <EmailChannelCard
+                                            onTemplatesClick={() => router.push('/email/templates')}
+                                        />
+                                    </Box>
+                                )}
+                            </Box>
                         )}
                     </>
                 )}

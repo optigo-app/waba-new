@@ -50,3 +50,16 @@ export function cleanSessionFromUrl() {
   url.searchParams.delete("session");
   window.history.replaceState({}, document.title, url.toString());
 }
+/**
+ * Encode a session object for the ?session= URL param — inverse of
+ * getDecodedSession(). The embedded app (central-email-builder) decodes it
+ * with atob(decodeURIComponent(...)), so we base64 then percent-encode.
+ */
+export function encodeSession(session) {
+    if (!session || typeof session !== 'object') return '';
+    try {
+        return encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(session)))));
+    } catch {
+        return '';
+    }
+}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Typography, TextField, Button, RadioGroup, Radio, FormControlLabel, Select, MenuItem, Box, IconButton, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Grid, Menu, ListItemText, ListItemIcon, Popover, Skeleton, Alert, Drawer, useMediaQuery, Paper } from '@mui/material';
-import { Smile, Send, Info, Eye, X, Smartphone, BadgeCheck, Check } from 'lucide-react';
+import { Smile, Send, Info, Eye, X, Smartphone, BadgeCheck, Check, Mail } from 'lucide-react';
 import SelectAutocomplete from '../../Audience/SelectAutocomplete';
 import { useAuthToken } from '../../../../hooks/useAuthToken';
 import { useWallet } from '../../../../contexts/WalletContext';
@@ -14,6 +14,8 @@ import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import styles from '../AddCampaign.module.scss';
 import { fetchTemplateLists } from '@/app/api/TemplateList';
+import { EMAIL_TEMPLATES } from '../../../Email/emailTemplateFixtures';
+import { EMAIL_CHANNEL } from '../../../Dashboard/EmailChannelCard';
 import { getChannelDisplayName, getChannelSubName, getChannelMobile } from '../../../Chat/utils/chatUtils';
 import { Whatsapp } from '../../../../assests/svg';
 
@@ -32,6 +34,81 @@ const getValidImageUrl = (url) => {
 
 const getChannelImgUrl = (ch) =>
   getValidImageUrl(ch.ChannelImage || ch.channelImage || ch.ProfilePictureUrl || ch.profilePictureUrl || ch.profile_picture_url);
+
+// Pseudo-channel id used to select the Email broadcast channel in this wizard
+const EMAIL_CHANNEL_ID = 'email';
+
+// Email template preview — inbox-style header (From / To / Subject) + rendered
+// HTML in a sandboxed iframe, like a mail client reading pane
+export const EmailTemplatePreview = ({ template }) => {
+  const html = template?.Html || template?.html || '';
+  const metaRow = (label, value) => (
+    <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1.25, py: '3px' }}>
+      <Typography sx={{ fontSize: '0.7rem', fontWeight: 600, color: '#9b98a6', fontFamily: 'Poppins, sans-serif', width: 52, flexShrink: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+        {label}
+      </Typography>
+      <Typography sx={{ fontSize: '0.82rem', color: '#444050', fontFamily: 'Poppins, sans-serif', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {value || '—'}
+      </Typography>
+    </Box>
+  );
+
+  return (
+    <Box sx={{ border: '1px solid #e4e8ee', borderRadius: '12px', overflow: 'hidden', background: '#fff', boxShadow: '0 1px 4px rgba(15,23,42,0.05)' }}>
+      {/* Window chrome */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, px: 1.5, py: 1, background: '#f8fafc', borderBottom: '1px solid #eef1f5' }}>
+        <Box component="span" sx={{ width: 9, height: 9, borderRadius: '50%', background: '#ff5f57' }} />
+        <Box component="span" sx={{ width: 9, height: 9, borderRadius: '50%', background: '#febc2e' }} />
+        <Box component="span" sx={{ width: 9, height: 9, borderRadius: '50%', background: '#28c840' }} />
+        <Typography sx={{ ml: 1, fontSize: '0.72rem', fontWeight: 600, color: '#8a8794', fontFamily: 'Poppins, sans-serif', letterSpacing: '0.02em' }}>
+          Email Preview
+        </Typography>
+      </Box>
+
+      {/* Message header */}
+      <Box sx={{ px: 2, py: 1.25, borderBottom: '1px solid #eef1f5' }}>
+        <Typography sx={{ fontSize: '0.95rem', fontWeight: 600, color: '#262626', fontFamily: 'Poppins, sans-serif', lineHeight: 1.3, mb: 0.5 }}>
+          {template?.Subject || '—'}
+        </Typography>
+        {metaRow('From', template?.From)}
+        {metaRow('To', '{{first_name}} <customer@example.com>')}
+      </Box>
+
+      {/* Body */}
+      {html ? (
+        <iframe
+          title="email template preview"
+          sandbox=""
+          srcDoc={html}
+          style={{ width: '100%', height: '70vh', border: 0, display: 'block', background: '#f5f5f5' }}
+        />
+      ) : (
+        <Box sx={{ p: 4, textAlign: 'center', color: '#8a8794', fontSize: '0.85rem' }}>
+          No rendered preview available for this template.
+        </Box>
+      )}
+    </Box>
+  );
+};
+
+// Empty-state shown in the preview column before anything is selected
+const EmptyPreviewHint = ({ text }) => (
+  <Box
+    sx={{
+      border: '1px dashed #dfe4ec',
+      borderRadius: '12px',
+      py: 8,
+      px: 3,
+      textAlign: 'center',
+      color: '#8a8794',
+      fontSize: '0.85rem',
+      fontFamily: 'Poppins, sans-serif',
+      background: '#fff',
+    }}
+  >
+    {text}
+  </Box>
+);
 
 // ── Local Input Wrapper for General Performance ──────────────────────────────
 const LocalTextField = React.memo(({ value, onChange, ...props }) => {
@@ -74,6 +151,7 @@ const Message = ({ onNext, onBack, onMessageConfigured, showError, messageError,
   const router = useRouter();
   const [selectedChannel, setSelectedChannel] = useState(channelId || '');
   const [channelImgErrors, setChannelImgErrors] = useState({});
+  const isEmailChannel = String(selectedChannel) === EMAIL_CHANNEL_ID;
 
   useEffect(() => {
     if (channelId && channelId !== selectedChannel) {
@@ -140,6 +218,15 @@ const Message = ({ onNext, onBack, onMessageConfigured, showError, messageError,
         setTemplates([]);
         return;
       }
+      if (String(selectedChannel) === EMAIL_CHANNEL_ID) {
+        // Email templates are static for now — swap with the email-template API when it lands
+        setTemplates(EMAIL_TEMPLATES);
+        if (preSelectedTemplate?.TemplateId) {
+          const matched = EMAIL_TEMPLATES.find(t => String(t.Id) === String(preSelectedTemplate.TemplateId));
+          if (matched) setTemplate(matched);
+        }
+        return;
+      }
       setTemplatesLoading(true);
       try {
         const response = await fetchTemplateLists(userToken?.userId || userToken?.userid || userToken?.appuserid, selectedChannel);
@@ -168,6 +255,26 @@ const Message = ({ onNext, onBack, onMessageConfigured, showError, messageError,
       onTemplateData?.(null);
       setPreviewData(null);
       setMediaDataMissing(false);
+      return;
+    }
+
+    // Email templates have a different shape — no WhatsApp Components/variables
+    if (isEmailChannel) {
+      setVariableCount(0);
+      setVariables({});
+      setMediaDataMissing(false);
+      setPreviewData({ templateType: 'Email' });
+      onTemplateData?.({
+        Channel: 'email',
+        TemplateId: template.TemplateId || template.Id,
+        TemplateName: template.TemplateName,
+        Subject: template.Subject,
+        From: template.From,
+        Html: template.Html || template.html || '',
+        Document: template.Document,
+        variables: {},
+        mediaDataMissing: false
+      });
       return;
     }
 
@@ -344,11 +451,13 @@ const Message = ({ onNext, onBack, onMessageConfigured, showError, messageError,
       onTemplateData?.(null);
       setPreviewData(null);
     }
-  }, [template, onTemplateData]);
+  }, [template, onTemplateData, isEmailChannel]);
 
   const getTemplateLabel = (option) => {
     if (!option) return '';
-    return `${option.TemplateName} (${option.TemplateType})`;
+    return option.Subject
+      ? `${option.TemplateName} (${option.Subject})`
+      : `${option.TemplateName} (${option.TemplateType})`;
   };
 
   const handleVariableChange = useCallback((index, value) => {
@@ -384,14 +493,17 @@ const Message = ({ onNext, onBack, onMessageConfigured, showError, messageError,
     handleEmojiPickerClose();
   };
 
-  // Show preview column when: template is selected (preApproved) OR regular message mode
-  const showPreview = (messageType === 'preApprovedTemplate' && template !== null) || messageType === 'regularMessage';
+  // Preview column is always visible — shows an empty hint until a template/message is chosen
+  const showPreview = true;
 
   // Check if message is configured
   useEffect(() => {
     let isConfigured = false;
 
-    if (messageType === 'preApprovedTemplate') {
+    if (isEmailChannel) {
+      // Email: configured once a template is picked (no variables yet)
+      isConfigured = !!template;
+    } else if (messageType === 'preApprovedTemplate') {
       // Check if template is selected, has valid media (if required), and all variables are filled
       if (template && !mediaDataMissing) {
         const allVarsFilled = Object.values(variables).every(val => val && val.trim() !== '');
@@ -403,7 +515,7 @@ const Message = ({ onNext, onBack, onMessageConfigured, showError, messageError,
     }
 
     onMessageConfigured?.(isConfigured);
-  }, [messageType, template, variables, variableCount, regularMessageText, onMessageConfigured, mediaDataMissing]);
+  }, [messageType, template, variables, variableCount, regularMessageText, onMessageConfigured, mediaDataMissing, isEmailChannel]);
 
   // Update template data when variables change - Debounced
   useEffect(() => {
@@ -592,6 +704,69 @@ const Message = ({ onNext, onBack, onMessageConfigured, showError, messageError,
                     </Paper>
                   );
                 })}
+
+                {/* Email channel card — static pseudo-channel (like the dashboard) */}
+                <Paper
+                  onClick={() => {
+                    setSelectedChannel(EMAIL_CHANNEL_ID);
+                    setTemplate(null);
+                  }}
+                  sx={{
+                    position: 'relative',
+                    cursor: 'pointer',
+                    borderRadius: '12px',
+                    border: isEmailChannel ? '2px solid #7367f0' : '1px solid #e4e8ee',
+                    background: isEmailChannel ? 'rgba(115,103,240,0.04)' : '#fff',
+                    p: 2,
+                    minWidth: 240,
+                    maxWidth: 320,
+                    flex: '1 1 240px',
+                    transition: 'all 0.2s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1.25,
+                    '&:hover': {
+                      borderColor: 'rgba(115,103,240,0.4)',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
+                      transform: 'translateY(-1px)',
+                    },
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: '12px',
+                      background: 'linear-gradient(135deg, rgba(115,103,240,0.14), rgba(115,103,240,0.28))',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: '1px solid rgba(115,103,240,0.20)',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Mail size={22} color="#7367f0" />
+                  </Box>
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Typography sx={{ fontSize: '0.82rem', fontWeight: 600, color: '#444050', fontFamily: 'Poppins, sans-serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {EMAIL_CHANNEL.title}
+                    </Typography>
+                    <Typography sx={{ fontSize: '0.7rem', color: '#8a8794', fontFamily: 'Poppins, sans-serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {EMAIL_CHANNEL.provider} channel
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.25, color: '#6D6B77' }}>
+                      <Mail size={11} />
+                      <Typography component="span" sx={{ fontSize: '0.72rem', fontFamily: 'Poppins, sans-serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {EMAIL_CHANNEL.sender}
+                      </Typography>
+                    </Box>
+                  </Box>
+                  {isEmailChannel && (
+                    <Box sx={{ position: 'absolute', top: 8, right: 8, width: 20, height: 20, borderRadius: '50%', background: '#7367f0', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Check size={12} strokeWidth={3} />
+                    </Box>
+                  )}
+                </Paper>
               </Box>
             ) : (
               <Select
@@ -623,12 +798,15 @@ const Message = ({ onNext, onBack, onMessageConfigured, showError, messageError,
                     </MenuItem>
                   );
                 })}
+                <MenuItem value={EMAIL_CHANNEL_ID} sx={{ fontFamily: 'Poppins, sans-serif', fontSize: '0.875rem' }}>
+                  {EMAIL_CHANNEL.title} ({EMAIL_CHANNEL.sender})
+                </MenuItem>
               </Select>
             )}
           </div>
 
-          {/* Message Type - Only show after channel is selected */}
-          {selectedChannel && (
+          {/* Message Type - WhatsApp only (email always uses templates) */}
+          {selectedChannel && !isEmailChannel && (
           <div className={styles.formField}>
             <label className={styles.label}>Message Type</label>
             <RadioGroup
@@ -678,9 +856,9 @@ const Message = ({ onNext, onBack, onMessageConfigured, showError, messageError,
           )}
 
           {/* Template Section - Only show for Pre Approved Template when channel is selected */}
-          {messageType === 'preApprovedTemplate' && selectedChannel && (
+          {(messageType === 'preApprovedTemplate' || isEmailChannel) && selectedChannel && (
             <div className={styles.formField} style={{ marginBottom: '1rem' }}>
-              <label className={styles.label}>Template</label>
+              <label className={styles.label}>{isEmailChannel ? 'Email Template' : 'Template'}</label>
               {templatesLoading ? (
                 <Skeleton variant="rectangular" width="100%" height={56} sx={{ borderRadius: '8px' }} />
               ) : (
@@ -692,6 +870,13 @@ const Message = ({ onNext, onBack, onMessageConfigured, showError, messageError,
                   getOptionLabel={getTemplateLabel}
                   disabled={templatesLoading}
                 />
+              )}
+              {messageError && isEmailChannel && (
+                <Box sx={{ mt: 2, p: 2, bgcolor: 'var(--error-light-bg)', borderRadius: '8px', border: '1px solid var(--error-main)' }}>
+                  <Typography sx={{ color: 'var(--error-main)', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    Message configuration is required. Please configure your message before proceeding.
+                  </Typography>
+                </Box>
               )}
             </div>
           )}
@@ -836,7 +1021,7 @@ const Message = ({ onNext, onBack, onMessageConfigured, showError, messageError,
           />
 
           {/* Send Test Message Button */}
-          {(messageType === 'preApprovedTemplate' && template) && (
+          {(messageType === 'preApprovedTemplate' && template && !isEmailChannel) && (
             <Box className={styles.sendTestButtonContainer}>
               <Button
                 variant="contained"
@@ -922,7 +1107,9 @@ const Message = ({ onNext, onBack, onMessageConfigured, showError, messageError,
         {/* Right: Preview — desktop only; mobile uses drawer */}
         {showPreview && !isMobilePreview && (
           <Grid size={{ lg: 4, md: 4 }}>
-            {messageType === 'preApprovedTemplate' && template ? (
+            {isEmailChannel ? (
+              template ? <EmailTemplatePreview template={template} /> : <EmptyPreviewHint text="Select an email template to see the preview." />
+            ) : messageType === 'preApprovedTemplate' ? (
               <MessagePreview
                 headerType={previewData?.headerType || 'None'}
                 headerText={previewData?.headerText || ''}
@@ -934,7 +1121,7 @@ const Message = ({ onNext, onBack, onMessageConfigured, showError, messageError,
                 templateType={previewData?.templateType || 'Interactive'}
                 carouselCards={previewData?.carouselCards || []}
                 variableValues={variables}
-                showEmptyHint={false}
+                showEmptyHint
               />
             ) : messageType === 'regularMessage' ? (
               <MessagePreview
@@ -1021,7 +1208,9 @@ const Message = ({ onNext, onBack, onMessageConfigured, showError, messageError,
             <X size={18} />
           </IconButton>
         </Box>
-        {messageType === 'preApprovedTemplate' && template ? (
+        {isEmailChannel ? (
+          template ? <EmailTemplatePreview template={template} /> : <EmptyPreviewHint text="Select an email template to see the preview." />
+        ) : messageType === 'preApprovedTemplate' ? (
           <MessagePreview
             headerType={previewData?.headerType || 'None'}
             headerText={previewData?.headerText || ''}
@@ -1033,7 +1222,7 @@ const Message = ({ onNext, onBack, onMessageConfigured, showError, messageError,
             templateType={previewData?.templateType || 'Interactive'}
             carouselCards={previewData?.carouselCards || []}
             variableValues={variables}
-            showEmptyHint={false}
+            showEmptyHint
           />
         ) : messageType === 'regularMessage' ? (
           <MessagePreview

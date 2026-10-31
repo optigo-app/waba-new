@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom';
 import { ExternalLink, X, Loader2 } from 'lucide-react';
 import './ConfimationModal.scss';
 
-const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, description, icon: Icon, isDanger, confirmLabel, cancelLabel, isLoading = false, hideCancel = false, maxWidth = null }) => {
+const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, description, icon: Icon, isDanger, confirmLabel, cancelLabel, isLoading = false, hideCancel = false, maxWidth = null, children }) => {
     if (!isOpen) return null;
 
     const contentStyle = maxWidth ? { maxWidth: maxWidth } : {};
@@ -24,6 +24,8 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, description, ico
                         </React.Fragment>
                     ))}
                 </p>
+
+                {children && <div className="modal-children">{children}</div>}
 
                 <div className="modal-actions">
                     {!hideCancel && (

@@ -859,13 +859,15 @@ function ChatSidebar({
       </div>
 
       {/* List */}
+      {/* Permission gate disabled for now — will re-enable with proper chat-view
+          permission handling (own/all/team chat) in the future
       {!can(15) ? (
         <div className="chat-sidebar-list">
           <div className="chat-empty" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
             No access to conversations
           </div>
         </div>
-      ) : (
+      ) : ( */}
         <div className="chat-sidebar-list">
           {(loading || channelSwitching) && (
             <ul>
@@ -1098,7 +1100,7 @@ function ChatSidebar({
           </ul>
           )}
         </div>
-      )}
+      {/* )} */}
 
       {/* Dropdown Menu */}
       <Menu

@@ -1,0 +1,410 @@
+@use '../../globals.scss' as *;
+
+// ── Grid — rows size to content (no stretch-to-fill empty space) ─────────────
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 4px;
+    align-content: start;
+
+    @media (max-width: 640px) {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+
+    &::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: var(--border-color);
+        border-radius: 99px;
+    }
+}
+
+// ── Email template card (gallery-style: email-mock thumbnail + info) ─────────
+.emailCard {
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    background: var(--bg-paper);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+
+    &:hover {
+        border-color: rgba(115, 103, 240, 0.35);
+        box-shadow: 0 8px 22px rgba(115, 103, 240, 0.12);
+        transform: translateY(-2px);
+
+        .thumbOverlay {
+            opacity: 1;
+        }
+    }
+}
+
+// ── Thumbnail — a miniature render of the email itself ───────────────────────
+.thumbWrap {
+    position: relative;
+    aspect-ratio: 16 / 10;
+    background: linear-gradient(160deg, var(--bg-light), var(--bg-subtle));
+    display: flex;
+    align-items: stretch;
+    justify-content: stretch;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+// Saved-HTML previews render on the email's own white canvas.
+.thumbWrapFill {
+    background: #fff;
+}
+
+.htmlThumbWrap {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+}
+
+.htmlThumb {
+    display: block;
+    border: 0;
+    background: #fff;
+    transform-origin: top left;
+    pointer-events: none;
+}
+
+.thumb {
+    width: 100%;
+    height: 100%;
+    background: var(--bg-paper);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: transform 0.25s ease;
+
+    .emailCard:hover & {
+        transform: scale(1.03);
+    }
+}
+
+.thumbHeader {
+    height: 44px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 14px;
+}
+
+.thumbLogo {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.95);
+    flex-shrink: 0;
+}
+
+.thumbHeaderLine {
+    width: 44%;
+    height: 7px;
+    border-radius: 99px;
+    background: rgba(255, 255, 255, 0.65);
+}
+
+.thumbBody {
+    flex: 1;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 0;
+}
+
+.thumbImage {
+    height: 38%;
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+
+.thumbTitleLine {
+    width: 62%;
+    height: 9px;
+    border-radius: 99px;
+    background: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.thumbLine {
+    height: 6px;
+    border-radius: 99px;
+    background: var(--bg-light);
+    flex-shrink: 0;
+}
+
+.thumbCta {
+    width: 64px;
+    height: 18px;
+    border-radius: 99px;
+    margin-top: 4px;
+    flex-shrink: 0;
+}
+
+// ── Hover overlay with quick actions ─────────────────────────────────────────
+.thumbOverlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(20, 20, 35, 0.52);
+    backdrop-filter: blur(2px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    opacity: 0;
+    transition: opacity 0.18s ease;
+}
+
+.thumbAction {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.95);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #3a4054;
+    transition: transform 0.15s ease, background 0.15s ease;
+
+    &:hover {
+        transform: scale(1.1);
+        background: #fff;
+    }
+
+    &.danger {
+        color: var(--error-main);
+    }
+}
+
+// ── Card info (below thumbnail) ──────────────────────────────────────────────
+.cardInfo {
+    padding: 0.8rem 0.9rem 0.9rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.cardNameRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.cardName {
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-family: $font-family;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cardMeta {
+    font-size: 0.7rem;
+    color: var(--text-tertiary);
+    font-family: $font-family;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-height: 1.05em;
+}
+
+.cardFooter {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    border-top: 1px solid var(--border-color);
+    padding-top: 0.55rem;
+    margin-top: auto;
+}
+
+.statusChip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 99px;
+    font-size: 0.66rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    font-family: $font-family;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.dateText {
+    font-size: 0.7rem;
+    color: var(--text-placeholder);
+    font-family: $font-family;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+// ── Preview drawer — meta card + framed real-email body + actions ────────────
+.previewBody {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-height: 0;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+.previewMeta {
+    background: var(--bg-paper);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 0.85rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    box-shadow: var(--box-shadow);
+}
+
+.previewNameRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.previewName {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-family: $font-family;
+}
+
+.previewSubject {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    font-family: $font-family;
+}
+
+.previewMetaRow {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    font-size: 0.7rem;
+    color: var(--text-tertiary);
+    font-family: $font-family;
+
+    b {
+        font-weight: 600;
+        color: var(--text-secondary);
+    }
+}
+
+.previewDot {
+    opacity: 0.5;
+}
+
+.previewFrame {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+    background: #fff; // emails render on a white canvas regardless of app theme
+    box-shadow: var(--box-shadow);
+    min-height: 0;
+}
+
+.drawerActions {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--border-color);
+    background: var(--bg-paper);
+}
+
+// ── Email preview (drawer) ────────────────────────────────────────────────────
+.emailMock {
+    width: 100%;
+    max-width: 560px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--bg-paper);
+    box-shadow: var(--box-shadow);
+}
+
+.emailMockHeader {
+    padding: 0.75rem 1rem;
+    background: var(--bg-light);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.emailMockSubject {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-family: $font-family;
+}
+
+.emailMockMeta {
+    font-size: 0.72rem;
+    color: var(--text-tertiary);
+    font-family: $font-family;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.emailMockBody {
+    padding: 1rem;
+    font-size: 0.82rem;
+    color: var(--text-primary);
+    font-family: $font-family;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+    min-height: 120px;
+}
+
+.emailMockFooter {
+    padding: 0.6rem 1rem;
+    border-top: 1px solid var(--border-color);
+    font-size: 0.68rem;
+    color: var(--text-placeholder);
+    font-family: $font-family;
+    text-align: center;
+    background: var(--bg-subtle);
+}

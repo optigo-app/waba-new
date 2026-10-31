@@ -4,14 +4,16 @@ import { Send, CheckCircle, AlertCircle, Megaphone, Clock, Filter, Users, Messag
 import styles from '../AddCampaign.module.scss';
 import ConfirmationModal from '../../../ConfirmationModal/ConfirmationModal';
 import MessagePreview from '../../../Common/MessagePreview';
+import { EmailTemplatePreview } from './Message';
 import { getSourceLabel } from '../../utils/audienceMapper';
 
 const PreviewSave = ({ onBack, onSave, campaignName, campaignType, scheduledFor, audience, dataSource, repeat, recurrenceFrequency, messageConfigured, onNavigateToStep, isSaving, templateData }) => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const isEmail = templateData?.Channel === 'email';
 
   // Extract preview data from templateData
   const previewData = React.useMemo(() => {
-    if (!templateData?.Components) return null;
+    if (isEmail || !templateData?.Components) return null;
 
     try {
       const components = templateData.Components;
@@ -131,7 +133,7 @@ const PreviewSave = ({ onBack, onSave, campaignName, campaignType, scheduledFor,
       console.error('Error extracting preview data:', error);
       return null;
     }
-  }, [templateData]);
+  }, [templateData, isEmail]);
 
   const handleSaveClick = () => {
     // Check validation before showing confirmation modal
@@ -188,7 +190,7 @@ const PreviewSave = ({ onBack, onSave, campaignName, campaignType, scheduledFor,
     },
     {
       label: 'Messages',
-      value: '1',
+      value: isEmail ? '1 (Email)' : '1',
       icon: MessageSquare,
       color: 'var(--primary-main)'
     }
@@ -290,7 +292,19 @@ const PreviewSave = ({ onBack, onSave, campaignName, campaignType, scheduledFor,
           <Box sx={{ position: { lg: 'sticky' }, top: 16 }}>
             <Paper className={styles.summaryCard} elevation={0}>
               <Box className={styles.summaryCardContent}>
-                {previewData ? (
+                {isEmail ? (
+                  templateData ? (
+                    <EmailTemplatePreview
+                      template={{
+                        Subject: templateData.Subject,
+                        From: templateData.From,
+                        Html: templateData.Html,
+                      }}
+                    />
+                  ) : (
+                    <Typography className={styles.emptyMessageText}>No message configured</Typography>
+                  )
+                ) : previewData ? (
                   <MessagePreview
                     headerType={previewData.headerType}
                     headerText={previewData.headerText}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Box, Typography, Paper, Button, Chip, FormControl, InputLabel, Select, MenuItem, Dialog, IconButton, CircularProgress, TextField, InputAdornment, Checkbox } from '@mui/material';
+import { Box, Typography, Button, Chip, Dialog, IconButton, CircularProgress, TextField, InputAdornment, Checkbox } from '@mui/material';
 import { Plus, Database, FileSpreadsheet, X, Trash2, Download, Search } from 'lucide-react';
 import AudienceGrid from '../../Audience/AudienceGrid';
 import FilterSelectionDialog from '../../Audience/FilterSelectionDialog';
@@ -8,7 +8,6 @@ import { ExcelImport } from '../../../../api/UploadMedia';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import { fetchExcelList } from '../../../../api/ExcelLists';
-import { fetchCampaignDetails } from '../../../../api/FetchCampaignDetails';
 import { fetchCampaignCustomerList } from '../../../../api/FetchCampaignCustomerList';
 import { fetchTemplateMessages } from '../../../../api/TemplateMessages';
 import { useAuthToken } from '../../../../hooks/useAuthToken';
@@ -653,10 +652,7 @@ const Audience = ({ onNext, onBack, onAudienceChange, onDataSourceChange, onFilt
             return;
         }
 
-        // Source-aware columns — must mirror the grid's UNIFIED_COLUMNS so the
-        // exported file matches what the user sees (Excel rows use Company/
-        // CustomerType/Category/PinCode; CRM rows use CustomerCode/CompanyType/
-        // CountryCode/Country).
+        // CountryCode/Country).        
         const isExcel = (row) => String(row?.Source || '').toLowerCase() === 'excel';
         const exportColumns = [
             { header: 'Customer Name', get: (r) => r.CustomerName },

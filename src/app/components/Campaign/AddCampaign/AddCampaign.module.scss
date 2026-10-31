@@ -480,11 +480,245 @@
     font-family: $font-family;
 }
 
+.centeredForm {
+    width: 100%;
+    max-width: 460px;
+    margin: 3vh auto auto;
+    display: flex;
+    flex-direction: column;
+    padding: 0.5rem 0.75rem 1rem;
+}
+
+// ── Campaign Details two-column layout ───────────────────────────────────────
+.detailsWrap {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr);
+    gap: 1rem;
+    align-items: start;
+    flex: 1;
+    min-height: 0;
+
+    @media (max-width: 1024px) {
+        grid-template-columns: 1fr;
+    }
+}
+
+.detailsAside {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.overviewCard {
+    background: #fff;
+    border: 1px solid var(--sidebar-borderColor);
+    border-radius: 12px;
+    padding: 1.15rem 1.25rem;
+}
+
+.overviewHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.9rem;
+}
+
+.overviewTitle {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: $titleColor;
+    font-family: $font-family;
+    margin: 0;
+}
+
+.draftBadge {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: #64748b;
+    background: #f1f5f9;
+    border-radius: 999px;
+    padding: 3px 10px;
+    text-transform: uppercase;
+    font-family: $font-family;
+}
+
+.overviewStats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.65rem;
+}
+
+.statBox {
+    background: #f8fafc;
+    border: 1px solid #eef1f5;
+    border-radius: 10px;
+    padding: 0.65rem 0.8rem;
+}
+
+.statLabel {
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: #94a3b8;
+    text-transform: uppercase;
+    font-family: $font-family;
+    margin-bottom: 4px;
+}
+
+.statValue {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: $titleColor;
+    font-family: $font-family;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.statDot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: $success-main;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.stepsProgress {
+    margin-top: 1rem;
+    padding-top: 0.9rem;
+    border-top: 1px solid #eef1f5;
+
+    .statLabel {
+        margin-bottom: 0.5rem;
+    }
+}
+
+.stepRow {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 4px 0;
+    font-size: 0.78rem;
+    color: #64748b;
+    font-family: $font-family;
+}
+
+.stepRowActive {
+    color: $titleColor;
+    font-weight: 600;
+
+    .stepRowNum {
+        background: $primary-main;
+        color: #fff;
+        border-color: $primary-main;
+    }
+}
+
+.stepRowNum {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 1.5px solid #e2e8f0;
+    background: #fff;
+    color: #94a3b8;
+    font-size: 0.62rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.proTipCard {
+    background: #0f172a;
+    border-radius: 12px;
+    padding: 1.15rem 1.25rem;
+    color: #cbd5e1;
+}
+
+.proTipTitle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #34d399;
+    font-size: 0.8rem;
+    font-weight: 700;
+    font-family: $font-family;
+    margin-bottom: 0.5rem;
+}
+
+.proTipText {
+    font-size: 0.78rem;
+    line-height: 1.6;
+    margin: 0;
+    font-family: $font-family;
+    color: #94a3b8;
+}
+
+.proTipCode {
+    color: #e2e8f0;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    padding: 0 4px;
+}
+
+.labelRow {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.charCounter {
+    font-size: 0.68rem;
+    color: #94a3b8;
+    font-family: $font-family;
+    white-space: nowrap;
+}
+
+.labelCaps {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-2nd-color);
+    font-family: $font-family;
+}
+
+.formSubtitle {
+    font-size: 0.78rem;
+    color: $secondaryColor;
+    font-family: $font-family;
+    margin: 0;
+}
+
+.alertTitle {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: $titleColor;
+    font-family: $font-family;
+    margin-bottom: 2px;
+}
+
+.fieldHint {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    font-family: $font-family;
+    margin-left: 32px;
+}
+
 .formField {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
     margin-top: 1rem;
+
+    .centeredForm > &:first-child {
+        margin-top: 0;
+    }
 }
 
 .label {
@@ -503,7 +737,7 @@
 .chipGroup {
     display: flex;
     gap: 0.75rem;
-    margin-block: 0.5rem;
+    margin-block: 0.25rem;
     flex-wrap: wrap;
 
     @media (max-width: 480px) {
@@ -512,7 +746,7 @@
 }
 
 .chipButton {
-    padding: 0.5rem 1.5rem;
+    padding: 0.45rem 1.3rem;
     border: 1.5px solid var(--sidebar-borderColor);
     background: #fff;
     border-radius: 16px !important;
@@ -538,10 +772,16 @@
 
 .infoAlert {
     display: flex;
-    gap: 0.75rem;
-    padding: 1rem;
-    background: #f9f9f9;
+    gap: 0.6rem;
+    padding: 0.75rem 0.9rem;
+    margin-top: 0.75rem;
+    background: rgba($info-main, 0.06);
+    border: 1px solid rgba($info-main, 0.2);
     border-radius: 8px;
+
+    .alertIcon {
+        color: $info-main;
+    }
 }
 
 .alertIcon {

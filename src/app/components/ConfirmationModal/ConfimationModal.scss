@@ -69,6 +69,29 @@
             margin-bottom: 32px;
         }
 
+        .modal-children {
+            margin: -12px 0 24px;
+
+            .modal-input {
+                width: 100%;
+                padding: 12px 16px;
+                border-radius: 12px;
+                border: 1px solid var(--border-color, #e2e2e8);
+                background: var(--bg-default, transparent);
+                color: var(--text-primary, #262626);
+                font-family: $font-family;
+                font-size: 15px;
+                outline: none;
+                text-align: left;
+                transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+                &:focus {
+                    border-color: var(--primary-main, $primary-main);
+                    box-shadow: 0 0 0 3px rgba($primary-main, 0.15);
+                }
+            }
+        }
+
         .modal-actions {
             display: flex;
             gap: 12px;

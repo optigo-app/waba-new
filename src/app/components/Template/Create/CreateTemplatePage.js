@@ -1282,7 +1282,7 @@ const CreateTemplatePage = () => {
                     </Box>
                 </Box>
 
-                {/* Right side: step progress + error */}
+                {/* Right side: step progress + error + actions */}
                 <Box className={styles.headerRightActions}>
                     <Box className={styles.stepProgress}>
                         {[
@@ -1311,6 +1311,32 @@ const CreateTemplatePage = () => {
                     </Box>
                     {step === 2 && saveError && (
                         <span className={styles.saveErrorText}>{saveError}</span>
+                    )}
+                    {step === 2 && (
+                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', ml: 1 }}>
+                            {!isEditMode && (
+                                <Button
+                                    variant="outlined"
+                                    onClick={handleDraftClick}
+                                    disabled={isSaving || isUploading}
+                                    startIcon={<Save size={15} />}
+                                    className={styles.cancelBtn}
+                                    size="small"
+                                >
+                                    Save as Draft
+                                </Button>
+                            )}
+                            <Button
+                                variant="contained"
+                                onClick={handleCreateClick}
+                                disabled={isSaving || isUploading}
+                                className={styles.primaryBtn}
+                                size="small"
+                                startIcon={(isSaving || isUploading) ? <CircularProgress size={14} color="inherit" /> : <Plus size={15} />}
+                            >
+                                {isUploading ? `Uploading... ${uploadProgress}%` : isSaving ? 'Saving...' : (isEditMode ? 'Update Template' : 'Create Template')}
+                            </Button>
+                        </Box>
                     )}
                 </Box>
             </Box>
